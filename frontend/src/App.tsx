@@ -57,9 +57,9 @@ import { HealthCheck } from './components/HealthCheck';
 import { initGlobalErrorLogging } from './utils/clientLogger';
 import type { GenieACSDevice } from './types';
 
-export const BACKEND_URL = window.location.hostname === 'localhost' 
-  ? 'http://localhost:5000' 
-  : 'https://nemesys.vercel.app';
+export const BACKEND_URL = 
+  import.meta.env.VITE_BACKEND_URL || 
+  (window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://nemesys.vercel.app');
 const socket = io(BACKEND_URL);
 
 interface AuthUser {
