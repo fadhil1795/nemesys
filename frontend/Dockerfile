@@ -2,11 +2,14 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Explicit copy to bust docker layer cache
-COPY package.json package-lock.json ./
+# # Explicit copy to bust docker layer cache
+# COPY package.json package-lock.json ./
+# RUN npm ci || npm install
+COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci || npm install
+COPY frontend/ .
 
-COPY . .
+# COPY . .
 
 ARG VITE_BACKEND_URL=""
 ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
