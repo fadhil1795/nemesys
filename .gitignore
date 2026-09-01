@@ -1,0 +1,43 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Production build outputs
+dist/
+*/dist/
+dist-ssr/
+build/
+*.local
+
+# Environment variables
+.env
+.env.*
+*.env
+backend/.env
+frontend/.env
+!*.env.example
+
+# Editor & OS files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Temporary / Documentation working files
+# LAPORAN_SISTEM_IT_HELPDESK.md
+# plan.md
