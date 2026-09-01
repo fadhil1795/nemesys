@@ -2,9 +2,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Support building when context is root directory
-COPY frontend/package*.json ./
-RUN npm install
+# Explicit copy to bust docker layer cache when context is root
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci || npm install
 
 COPY frontend/ ./
 
