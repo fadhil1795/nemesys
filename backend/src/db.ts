@@ -805,6 +805,158 @@ export async function initializeDatabase() {
       ) ENGINE=InnoDB;
     `);
 
+    // ============================================================
+    // IT INVENTORY & COMPONENT SUITE TABLES
+    // ============================================================
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS it_inventory_assets (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        asset_code VARCHAR(100) NOT NULL UNIQUE,
+        name VARCHAR(200) NOT NULL,
+        category VARCHAR(100) NOT NULL,
+        brand VARCHAR(100) NULL,
+        model_number VARCHAR(100) NULL,
+        serial_number VARCHAR(100) NULL,
+        mac_address VARCHAR(50) NULL,
+        ip_address VARCHAR(50) NULL,
+        location VARCHAR(150) NOT NULL,
+        assigned_user VARCHAR(150) NULL,
+        status ENUM('Baik / Aktif', 'Rusak Ringan', 'Rusak Berat', 'Cadangan / Stock', 'Dipinjamkan', 'Afkir / Disposed') NOT NULL DEFAULT 'Baik / Aktif',
+        purchase_date VARCHAR(50) NULL,
+        purchase_cost DOUBLE NOT NULL DEFAULT 0,
+        vendor VARCHAR(150) NULL,
+        warranty_expiry VARCHAR(50) NULL,
+        specs TEXT NULL,
+        image_url LONGTEXT NULL,
+        notes TEXT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS it_inventory_components (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        component_code VARCHAR(100) NOT NULL UNIQUE,
+        name VARCHAR(200) NOT NULL,
+        category VARCHAR(100) NOT NULL,
+        brand VARCHAR(100) NULL,
+        model_number VARCHAR(100) NULL,
+        stock_quantity INT NOT NULL DEFAULT 0,
+        min_stock_alert INT NOT NULL DEFAULT 2,
+        unit VARCHAR(50) NOT NULL DEFAULT 'Pcs',
+        condition_status ENUM('Baru', 'Bekas Bagus', 'Rusak / Rusak Part') NOT NULL DEFAULT 'Baru',
+        storage_location VARCHAR(150) NOT NULL,
+        unit_price DOUBLE NOT NULL DEFAULT 0,
+        supplier VARCHAR(150) NULL,
+        notes TEXT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS it_asset_components (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        asset_id INT NOT NULL,
+        component_id INT NOT NULL,
+        quantity INT NOT NULL DEFAULT 1,
+        installed_at VARCHAR(50) NOT NULL,
+        installed_by VARCHAR(150) NOT NULL,
+        slot_or_position VARCHAR(100) NULL,
+        status ENUM('Installed', 'Removed') NOT NULL DEFAULT 'Installed',
+        notes TEXT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (asset_id) REFERENCES it_inventory_assets(id) ON DELETE CASCADE,
+        FOREIGN KEY (component_id) REFERENCES it_inventory_components(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS it_inventory_mutations (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        type VARCHAR(50) NOT NULL,
+        reference_id INT NOT NULL,
+        reference_name VARCHAR(255) NOT NULL,
+        details TEXT NOT NULL,
+        quantity_change INT NULL,
+        actor_name VARCHAR(150) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB;
+    `);
+
+    // Seed initial IT Assets if empty
+    const [itAssetRows]: any = await pool.query('SELECT COUNT(*) as count FROM it_inventory_assets');
+    if (itAssetRows[0].count === 0) {
+      await pool.query(`
+        INSERT INTO it_inventory_assets 
+        (id, asset_code, name, category, brand, model_number, serial_number, mac_address, ip_address, location, assigned_user, status, purchase_date, purchase_cost, vendor, warranty_expiry, specs, notes) 
+        VALUES
+        (1, 'AST-SRV-0001', 'Server Database Utama UNTAG', 'Server', 'Dell', 'PowerEdge R740', 'DL-SRV-98721X', '00:1E:67:D2:AA:01', '10.10.10.5', 'Server Room Rektorat', 'Dika Admin', 'Baik / Aktif', '2023-01-15', 48500000, 'PT Multidata Infokom', '2026-01-15', '2x Intel Xeon Gold 5218R, 64GB DDR4 ECC, 4x 1.2TB SAS 10K RAID-10, Dual 750W PSU', 'Server utama database kampus dan portal akademik'),
+        (2, 'AST-SWT-0002', 'Core Switch Backbone', 'Switch', 'Cisco', 'Catalyst WS-C2960X-24TD-L', 'FOC2134S881', '70:69:79:81:44:99', '10.10.10.2', 'Server Room Rektorat', 'Rizal Kurniawan', 'Baik / Aktif', '2022-06-10', 28000000, 'PT Mitra Integrasi', '2025-06-10', '24 Port Gigabit Ethernet, 2x 10G SFP+ Uplink, Layer 2 Enterprise', 'Switch distribusi core gedung rektorat'),
+        (3, 'AST-RTR-0003', 'MikroTik Cloud Core Router Gateway', 'Router', 'MikroTik', 'CCR1036-8G-2S+', 'CCR-BWI-7762', '48:8F:5A:11:32:00', '10.10.10.1', 'Gedung Rektorat Lt 1', 'Rizal Kurniawan', 'Baik / Aktif', '2022-08-20', 17500000, 'Citraweb Solusi', '2024-08-20', '36 Cores Tile-Gx CPU, 8x Gigabit LAN, 2x SFP+ 10G, 4GB RAM', 'Gateway utama routing internet & bandwidth management kampus'),
+        (4, 'AST-PC-0004', 'PC Workstation Lab Komputer 1-01', 'PC / Desktop', 'Lenovo', 'ThinkCentre M70t Gen 3', 'MJ089921', 'A4:BB:6D:32:11:F4', '10.10.110.21', 'Lab Komputer Bersama', 'Dian Prasetyo', 'Baik / Aktif', '2023-05-12', 12500000, 'CV Bintang Mandiri', '2026-05-12', 'Intel Core i7-12700, 16GB DDR4, 512GB NVMe SSD, Monitor 24 FHD', 'PC Praktikum Mahasiswa Lab 1'),
+        (5, 'AST-LAP-0005', 'Laptop Operasional Teknisi Lapangan', 'Laptop', 'ASUS', 'ExpertBook B1400', 'AS-EXP-66219', '8C:1D:96:44:88:E1', '10.10.30.55', 'Ruang IT Helpdesk', 'Rizal Kurniawan', 'Baik / Aktif', '2023-09-01', 9800000, 'ASUS Store Surabaya', '2025-09-01', 'Intel Core i5-1135G7, 16GB DDR4, 512GB SSD, Windows 11 Pro', 'Laptop untuk troubleshooting teknisi jaringan & on-site repair'),
+        (6, 'AST-AP-0006', 'Access Point Outdoor Gedung Kopi', 'Access Point', 'Ubiquiti', 'UniFi U6-Mesh Outdoor', 'U6M-88912B', 'F4:92:BF:88:12:33', '10.10.20.11', 'Lobi Gazebo Gedung Kopi', 'Dian Prasetyo', 'Rusak Ringan', '2023-03-10', 3200000, 'Ubiquiti Distributor Indo', '2024-03-10', 'WiFi 6 Dual-Band AX3000, IPX5 Weatherproof, PoE 802.3af', 'Port PoE kadang drop saat hujan lebat, butuh pengecekan kabel patchcord'),
+        (7, 'AST-PRN-0007', 'Printer Ink Tank Administrasi BAAK', 'Printer / Scanner', 'Epson', 'EcoTank L3210', 'X76Y99120', NULL, NULL, 'Ruang BAAK Rektorat', 'Staff BAAK', 'Baik / Aktif', '2024-02-18', 2450000, 'Toko Komputer Banyuwangi', '2025-02-18', 'All-in-One Print, Scan, Copy, Borderless 4R, Resolusi 5760 dpi', 'Printer cetak surat & kartu ujian civitas'),
+        (8, 'AST-UPS-0008', 'UPS Rak Server Rektorat', 'UPS / Power', 'APC by Schneider', 'Smart-UPS SMT3000RMI2U', 'UPS-APC-3301', NULL, NULL, 'Server Room Rektorat', 'Dika Admin', 'Baik / Aktif', '2022-01-10', 21000000, 'PT Schneider Electric Indo', '2025-01-10', '3000VA / 2700W, Pure Sine Wave, LCD Interface, SmartSlot Web Card', 'Backup daya darurat rak server utama rektorat')
+      `);
+      console.log('Seeded initial IT Assets.');
+    }
+
+    // Seed initial IT Components if empty
+    const [itCompRows]: any = await pool.query('SELECT COUNT(*) as count FROM it_inventory_components');
+    if (itCompRows[0].count === 0) {
+      await pool.query(`
+        INSERT INTO it_inventory_components 
+        (id, component_code, name, category, brand, model_number, stock_quantity, min_stock_alert, unit, condition_status, storage_location, unit_price, supplier, notes) 
+        VALUES
+        (1, 'CMP-RAM-001', 'RAM Server DDR4 ECC 32GB 3200MHz', 'RAM / Memory', 'Kingston', 'KSM32ED8/32HC', 6, 2, 'Pcs', 'Baru', 'Lemari Sparepart Lab 1 (Rak A1)', 1850000, 'PT Multidata Infokom', 'Memory ECC khusus server Dell PowerEdge / HP ProLiant'),
+        (2, 'CMP-RAM-002', 'RAM Desktop DDR4 8GB 3200MHz', 'RAM / Memory', 'Corsair', 'Vengeance LPX 8GB', 12, 3, 'Pcs', 'Baru', 'Lemari Sparepart Lab 1 (Rak A2)', 380000, 'Toko Komputer Banyuwangi', 'RAM untuk PC workstation laboratorium'),
+        (3, 'CMP-SSD-001', 'SSD NVMe M.2 1TB PCIe 4.0', 'Storage / SSD', 'Samsung', '980 PRO NVMe 1TB', 4, 2, 'Pcs', 'Baru', 'Gudang IT Server Room (Box B1)', 1650000, 'CV Bintang Mandiri', 'Storage high speed untuk server & PC desainer'),
+        (4, 'CMP-SSD-002', 'SSD SATA 2.5 Inch 512GB', 'Storage / SSD', 'Kingston', 'KC600 512GB', 1, 3, 'Pcs', 'Baru', 'Gudang IT Server Room (Box B2)', 620000, 'CV Bintang Mandiri', 'PENGINGAT: Stok kritis sisa 1 pcs untuk upgrade PC lama'),
+        (5, 'CMP-SFP-001', 'Modul Transceiver SFP+ 10G LC 10km', 'Fiber Optic / SFP', 'MikroTik', 'S+31DLC10D', 5, 2, 'Pcs', 'Baru', 'Lemari Jaringan (Rak SFP)', 850000, 'Citraweb Solusi', 'Modul uplink SFP 10G antar gedung'),
+        (6, 'CMP-FBR-001', 'Patch Cord Fiber Optic LC-LC Duplex 3M', 'Fiber Optic / SFP', 'COMMSCOPE', 'FPC-LCLC-SM-3M', 18, 5, 'Pcs', 'Baru', 'Lemari Jaringan (Laci FO)', 95000, 'PT Mitra Integrasi', 'Patchcord jumper dari ODF ke Switch Core'),
+        (7, 'CMP-CBL-001', 'Kabel UTP Cat6 Pure Copper 305M Roll', 'Kabel & Konektor', 'Belden', 'Cat6 7814A UTP', 3, 1, 'Roll', 'Baru', 'Gudang IT Lantai Dasar', 1950000, 'PT Mitra Integrasi', 'Kabel tarikan LAN backbone gedung baru'),
+        (8, 'CMP-CON-001', 'Konektor RJ45 Cat6 Pass-Through (Box 100pcs)', 'Kabel & Konektor', 'Vention', 'IDBR0', 4, 2, 'Box', 'Baru', 'Lemari Sparepart Lab 1 (Rak A3)', 150000, 'Marketplace Official', 'Konektor crimping teknisi'),
+        (9, 'CMP-PSU-001', 'Power Supply Redundant Dell 750W Titanium', 'Power Supply / Adaptor', 'Dell', '0W8R3C 750W', 2, 1, 'Pcs', 'Baru', 'Server Room Rektorat (Box PSU)', 3200000, 'PT Multidata Infokom', 'Cadangan hot-plug PSU server database'),
+        (10, 'CMP-TNR-001', 'Toner Cartridge HP 85A Black', 'Consumable & Peripheral', 'HP', 'CE285A Original', 0, 2, 'Pcs', 'Baru', 'Lemari Administrasi IT', 950000, 'ATK Kampus', 'STOK HABIS: Perlu PO pengadaan ulang untuk printer dosen')
+      `);
+      console.log('Seeded initial IT Components.');
+    }
+
+    // Seed initial Asset Components installation if empty
+    const [itAttachRows]: any = await pool.query('SELECT COUNT(*) as count FROM it_asset_components');
+    if (itAttachRows[0].count === 0) {
+      await pool.query(`
+        INSERT INTO it_asset_components 
+        (id, asset_id, component_id, quantity, installed_at, installed_by, slot_or_position, status, notes) 
+        VALUES
+        (1, 1, 1, 2, '2023-01-16', 'Dika Admin', 'DIMM Slot A1 & A2 (Total 64GB)', 'Installed', 'RAM ECC terpasang saat inisialisasi server database'),
+        (2, 1, 9, 2, '2023-01-16', 'Dika Admin', 'PSU Bay 1 & Bay 2 (Redundant Dual 750W)', 'Installed', 'Power supply redundant aktif'),
+        (3, 2, 5, 2, '2022-06-12', 'Rizal Kurniawan', 'SFP+ Port Te1/0/1 & Te1/0/2', 'Installed', 'Transceiver uplink 10G ke Gateway Rektorat & Server DB'),
+        (4, 4, 2, 2, '2023-05-14', 'Dian Prasetyo', 'DIMM Slot 1 & 2 (Dual Channel 16GB)', 'Installed', 'Upgrade RAM untuk lab praktikum multimedia'),
+        (5, 4, 3, 1, '2023-05-14', 'Dian Prasetyo', 'M.2 NVMe Slot 1', 'Installed', 'System Drive Windows 11')
+      `);
+      console.log('Seeded initial installed Asset Components.');
+    }
+
+    // Seed initial mutation logs if empty
+    const [itMutRows]: any = await pool.query('SELECT COUNT(*) as count FROM it_inventory_mutations');
+    if (itMutRows[0].count === 0) {
+      await pool.query(`
+        INSERT INTO it_inventory_mutations 
+        (type, reference_id, reference_name, details, quantity_change, actor_name) 
+        VALUES
+        ('Asset Create', 1, 'Server Database Utama UNTAG', 'Registrasi aset baru server Dell PowerEdge R740 ke sistem', NULL, 'Dika Admin'),
+        ('Stock In', 1, 'RAM Server DDR4 ECC 32GB 3200MHz', 'Penerimaan stok awal komponen dari supplier PT Multidata Infokom (8 Pcs)', 8, 'Dika Admin'),
+        ('Install Component', 1, 'Server Database Utama UNTAG', 'Pemasangan 2x RAM DDR4 ECC 32GB ke Slot A1-A2 server', -2, 'Dika Admin'),
+        ('Stock In', 5, 'Modul Transceiver SFP+ 10G LC 10km', 'Penerimaan pengadaan modul SFP+ 10G (7 Pcs)', 7, 'Rizal Kurniawan'),
+        ('Install Component', 2, 'Core Switch Backbone', 'Pemasangan 2x SFP+ 10G ke Port Te1/0/1 & Te1/0/2 Cisco WS-C2960X', -2, 'Rizal Kurniawan')
+      `);
+      console.log('Seeded initial IT inventory mutations.');
+    }
+
     console.log('Database tables verified/created successfully');
 
   } catch (error) {

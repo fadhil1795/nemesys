@@ -22,7 +22,8 @@ import {
   Terminal,
   FileSpreadsheet,
   FileText,
-  QrCode
+  QrCode,
+  Boxes
 } from 'lucide-react';
 import { io } from 'socket.io-client';
 import type { Device, DailyTask, User, Mission, TemperatureLog, DailyTodo, CustomMission, DeviceCategory } from './types';
@@ -33,6 +34,7 @@ import { Team } from './components/Team';
 import { EngOpsManager } from './components/EngOpsManager';
 import { ExecutiveReport } from './components/ExecutiveReport';
 import { QRCodeManager } from './components/QRCodeManager';
+import { InventoryManager } from './components/InventoryManager';
 import { NetMap } from './components/NetMap';
 import { NetList } from './components/NetList';
 import { Topology } from './components/Topology';
@@ -411,6 +413,8 @@ export default function App() {
         return <HealthCheck token={token || ''} />;
       case 'eng-ops':
         return <EngOpsManager currentUserRole={currentUser?.role} currentUserName={currentUser?.name} />;
+      case 'inventory':
+        return <InventoryManager token={token || ''} currentUserRole={currentUser?.role} currentUserName={currentUser?.name} />;
       case 'executive-report':
         return <ExecutiveReport />;
       case 'qr-manager':
@@ -439,6 +443,9 @@ export default function App() {
           <span className="menu-section-title">Core Task</span>
           <a className={`menu-item ${currentMenu === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentMenu('dashboard')}>
             <LayoutDashboard size={18} /> Dashboard
+          </a>
+          <a className={`menu-item ${currentMenu === 'inventory' ? 'active' : ''}`} onClick={() => setCurrentMenu('inventory')}>
+            <Boxes size={18} /> Inventaris IT
           </a>
           <a className={`menu-item ${currentMenu === 'tasks' ? 'active' : ''}`} onClick={() => setCurrentMenu('tasks')}>
             <ClipboardList size={18} /> Daily Task

@@ -50,8 +50,31 @@ router.get('/device/:id', async (req: Request, res: Response) => {
 router.get('/scan/:code', async (req: Request, res: Response) => {
   try {
     const { code } = req.params;
+
+    // 1. Check if asset_code exists in IT Inventory Assets
+    const [itAssetRows]: any = await pool.query('SELECT * FROM it_inventory_assets WHERE asset_code = ?', [code]);
+    if (itAssetRows.length > 0) {
+      const asset = itAssetRows[0];
+      const [components]: any = await pool.query(`
+        SELECT ac.id, ac.quantity, ac.slot_or_position, ac.installed_at, c.name as component_name, c.component_code, c.category
+        FROM it_asset_components ac
+        JOIN it_inventory_components c ON ac.component_id = c.id
+        WHERE ac.asset_id = ? AND ac.status = 'Installed'
+      `, [asset.id]);
+
+      return res.json({
+        success: true,
+        type: 'it_asset',
+        data: {
+          ...asset,
+          installed_components: components
+        },
+        asset_code: code
+      });
+    }
+
+    // 2. Check if asset_code exists in Network Devices
     const [qrRows]: any = await pool.query('SELECT * FROM device_qr_codes WHERE asset_code = ?', [code]);
-    
     if (qrRows.length > 0 && qrRows[0].device_id) {
       const [devRows]: any = await pool.query('SELECT * FROM devices WHERE id = ?', [qrRows[0].device_id]);
       if (devRows.length > 0) {
@@ -59,13 +82,13 @@ router.get('/scan/:code', async (req: Request, res: Response) => {
       }
     }
 
-    // Fallback: Check if asset_code matches procurement item
+    // 3. Fallback: Check if asset_code matches procurement item
     const [procRows]: any = await pool.query('SELECT * FROM operational_procurements WHERE id = ?', [code.replace(/\D/g, '')]);
     if (procRows.length > 0) {
       return res.json({ success: true, type: 'procurement', data: procRows[0], asset_code: code });
     }
 
-    res.status(404).json({ error: 'Asset not found for scanned QR code' });
+    res.status(404).json({ error: 'Perangkat atau aset tidak ditemukan untuk kode QR tersebut' });
   } catch (error) {
     console.error('Error scanning QR code:', error);
     res.status(500).json({ error: 'Failed to scan QR code' });

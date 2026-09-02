@@ -326,3 +326,113 @@ export interface OperationalSummary {
   totalMonitors?: number;
   warningMonitors?: number;
 }
+
+// ============================================================
+// IT INVENTORY & COMPONENT SUITE TYPES
+// ============================================================
+
+export type ITAssetStatus = 
+  | 'Baik / Aktif' 
+  | 'Rusak Ringan' 
+  | 'Rusak Berat' 
+  | 'Cadangan / Stock' 
+  | 'Dipinjamkan' 
+  | 'Afkir / Disposed';
+
+export interface ITAsset {
+  id: number;
+  asset_code: string;
+  name: string;
+  category: string;
+  brand: string | null;
+  model_number: string | null;
+  serial_number: string | null;
+  mac_address: string | null;
+  ip_address: string | null;
+  location: string;
+  assigned_user: string | null;
+  status: ITAssetStatus;
+  purchase_date: string | null;
+  purchase_cost: number;
+  vendor: string | null;
+  warranty_expiry: string | null;
+  specs: string | null;
+  image_url: string | null;
+  notes: string | null;
+  created_at?: string;
+  updated_at?: string;
+  installed_components_count?: number;
+  installed_components_value?: number;
+}
+
+export type ITComponentCondition = 'Baru' | 'Bekas Bagus' | 'Rusak / Rusak Part';
+
+export interface ITComponent {
+  id: number;
+  component_code: string;
+  name: string;
+  category: string;
+  brand: string | null;
+  model_number: string | null;
+  stock_quantity: number;
+  min_stock_alert: number;
+  unit: string;
+  condition_status: ITComponentCondition;
+  storage_location: string;
+  unit_price: number;
+  supplier: string | null;
+  notes: string | null;
+  created_at?: string;
+  updated_at?: string;
+  is_low_stock?: boolean;
+  installed_count?: number;
+}
+
+export interface ITAssetComponent {
+  attachment_id: number;
+  asset_id: number;
+  component_id: number;
+  quantity: number;
+  installed_at: string;
+  installed_by: string;
+  slot_or_position: string | null;
+  status: 'Installed' | 'Removed';
+  attachment_notes?: string | null;
+  component_code: string;
+  component_name: string;
+  component_category: string;
+  component_brand: string | null;
+  component_model: string | null;
+  unit: string;
+  unit_price: number;
+}
+
+export interface ITInventoryMutation {
+  id: number;
+  type: string;
+  reference_id: number;
+  reference_name: string;
+  details: string;
+  quantity_change: number | null;
+  actor_name: string;
+  created_at: string;
+}
+
+export interface ITInventoryStats {
+  summary: {
+    totalAssets: number;
+    totalAssetCost: number;
+    goodAssets: number;
+    brokenAssets: number;
+    spareAssets: number;
+    totalComponentTypes: number;
+    totalStockItems: number;
+    totalComponentValue: number;
+    lowStockCount: number;
+    totalInventoryValuation: number;
+  };
+  assetsByCategory: Array<{ category: string; count: number; total_val: number }>;
+  componentsByCategory: Array<{ category: string; count: number; total_stock: number; total_val: number }>;
+  recentMutations: ITInventoryMutation[];
+}
+

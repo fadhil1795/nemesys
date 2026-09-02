@@ -42,11 +42,13 @@ import crudRouter from './routes/crud';
 import operationalRouter from './routes/operational';
 import reportsRouter from './routes/reports';
 import qrRouter from './routes/qr';
+import inventoryRouter from './routes/inventory';
 
 app.post('/api/login', handleLogin);
 app.use('/api/operational', operationalRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/qr', qrRouter);
+app.use('/api/inventory', inventoryRouter);
 
 // Broadcast database change helper (no-op on Vercel)
 async function broadcastUpdate() {
