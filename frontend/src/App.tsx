@@ -55,9 +55,11 @@ import { Router as RouterIcon } from 'lucide-react';
 import { initGlobalErrorLogging } from './utils/clientLogger';
 import type { GenieACSDevice } from './types';
 
-export const BACKEND_URL = 
+const rawBackendUrl = 
   import.meta.env.VITE_BACKEND_URL || 
   (window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://nemesys.vercel.app');
+
+export const BACKEND_URL = rawBackendUrl.replace(/\/+$/, '');
 
 const socket = io(BACKEND_URL, {
   autoConnect: true,
