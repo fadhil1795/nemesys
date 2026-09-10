@@ -42,7 +42,7 @@ export async function callZabbixRPC<T = any>(method: string, params: any): Promi
       method: 'POST',
       headers,
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(6000),
+      signal: AbortSignal.timeout(20000),
     });
 
     const data: any = await response.json();

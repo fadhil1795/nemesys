@@ -58,7 +58,20 @@ import type { GenieACSDevice } from './types';
 export const BACKEND_URL = 
   import.meta.env.VITE_BACKEND_URL || 
   (window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://nemesys.vercel.app');
-const socket = io(BACKEND_URL);
+
+const socket = io(BACKEND_URL, {
+  autoConnect: true,
+  transports: ['websocket', 'polling'],
+  reconnectionAttempts: 3,
+  timeout: 5000,
+});
+
+socket.on('connect_error', () => {
+  // Gracefully stop polling on Vercel serverless environment where socket.io server is disabled
+  if (socket.active) {
+    socket.disconnect();
+  }
+});
 
 interface AuthUser {
   id: number;

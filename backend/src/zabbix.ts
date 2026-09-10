@@ -35,7 +35,7 @@ async function callZabbixAPI(method: string, params: any, auth: string | null = 
       method: 'POST',
       headers,
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(6000),
+      signal: AbortSignal.timeout(20000),
     });
 
     const result: any = await response.json();

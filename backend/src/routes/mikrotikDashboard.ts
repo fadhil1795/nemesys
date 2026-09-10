@@ -26,7 +26,7 @@ async function callZabbixRPC(method: string, params: any) {
         params,
         id: Date.now(),
       }),
-      signal: AbortSignal.timeout(12000),
+      signal: AbortSignal.timeout(20000),
     });
 
     const data: any = await res.json();
