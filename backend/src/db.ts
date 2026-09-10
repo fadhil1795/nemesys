@@ -248,8 +248,40 @@ export async function initializeDatabase() {
     } catch (e) {}
 
     try {
-      await pool.query("ALTER TABLE open_tickets ADD COLUMN image_url LONGTEXT NULL");
-      console.log("Migration: open_tickets.image_url added as LONGTEXT");
+      await pool.query("ALTER TABLE open_tickets ADD COLUMN priority ENUM('Low', 'Medium', 'High', 'Critical') NOT NULL DEFAULT 'Medium'");
+    } catch (e) {}
+    try {
+      await pool.query("ALTER TABLE open_tickets ADD COLUMN proof_before_url LONGTEXT NULL");
+    } catch (e) {}
+    try {
+      await pool.query("ALTER TABLE open_tickets ADD COLUMN proof_after_url LONGTEXT NULL");
+    } catch (e) {}
+    try {
+      await pool.query("ALTER TABLE open_tickets ADD COLUMN sla_limit_minutes INT NOT NULL DEFAULT 60");
+    } catch (e) {}
+    try {
+      await pool.query("ALTER TABLE open_tickets ADD COLUMN sla_breached TINYINT(1) NOT NULL DEFAULT 0");
+    } catch (e) {}
+    try {
+      await pool.query("ALTER TABLE open_tickets ADD COLUMN escalation_level INT NOT NULL DEFAULT 1");
+    } catch (e) {}
+    try {
+      await pool.query("ALTER TABLE open_tickets ADD COLUMN csat_rating INT NULL");
+    } catch (e) {}
+    try {
+      await pool.query("ALTER TABLE open_tickets ADD COLUMN csat_feedback TEXT NULL");
+    } catch (e) {}
+    try {
+      await pool.query("ALTER TABLE open_tickets ADD COLUMN csat_submitted_at VARCHAR(100) NULL");
+    } catch (e) {}
+    try {
+      await pool.query("ALTER TABLE open_tickets ADD COLUMN bast_number VARCHAR(50) NULL");
+    } catch (e) {}
+    try {
+      await pool.query("ALTER TABLE open_tickets ADD COLUMN bast_signer_name VARCHAR(150) NULL");
+    } catch (e) {}
+    try {
+      await pool.query("ALTER TABLE open_tickets ADD COLUMN bast_signed_at VARCHAR(100) NULL");
     } catch (e) {}
 
     // Migration: Expand tasks status ENUM for Manager approve/reject workflow
@@ -436,113 +468,133 @@ export async function initializeDatabase() {
     `);
 
     // PON Network Topology — Map Items (GPS markers)
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS map_items (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        item_type ENUM('server','isp','mikrotik','olt','odc','odp','onu','other') NOT NULL,
-        parent_id INT NULL,
-        name VARCHAR(255) NOT NULL,
-        latitude DECIMAL(10,8) NOT NULL DEFAULT 0,
-        longitude DECIMAL(11,8) NOT NULL DEFAULT 0,
-        genieacs_device_id VARCHAR(255) NULL,
-        status ENUM('online','offline','unknown') NOT NULL DEFAULT 'unknown',
-        properties LONGTEXT NULL COMMENT 'JSON extra properties',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (parent_id) REFERENCES map_items(id) ON DELETE CASCADE
-      ) ENGINE=InnoDB;
-    `);
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS map_items (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          item_type ENUM('server','isp','mikrotik','olt','odc','odp','onu','other') NOT NULL,
+          parent_id INT NULL,
+          name VARCHAR(255) NOT NULL,
+          latitude DECIMAL(10,8) NOT NULL DEFAULT 0,
+          longitude DECIMAL(11,8) NOT NULL DEFAULT 0,
+          genieacs_device_id VARCHAR(255) NULL,
+          status ENUM('online','offline','unknown') NOT NULL DEFAULT 'unknown',
+          properties LONGTEXT NULL COMMENT 'JSON extra properties',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB;
+      `);
+    } catch (e) {
+      console.error('Table map_items creation error:', e);
+    }
 
     // PON Network Topology — Connections/Polylines
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS map_connections (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        from_item_id INT NOT NULL,
-        to_item_id INT NOT NULL,
-        connection_type ENUM('online','offline','unknown') NOT NULL DEFAULT 'online',
-        path_coordinates LONGTEXT NULL COMMENT 'JSON array of [lat, lng] waypoints',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (from_item_id) REFERENCES map_items(id) ON DELETE CASCADE,
-        FOREIGN KEY (to_item_id) REFERENCES map_items(id) ON DELETE CASCADE
-      ) ENGINE=InnoDB;
-    `);
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS map_connections (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          from_item_id INT NOT NULL,
+          to_item_id INT NOT NULL,
+          connection_type ENUM('online','offline','unknown') NOT NULL DEFAULT 'online',
+          path_coordinates LONGTEXT NULL COMMENT 'JSON array of [lat, lng] waypoints',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB;
+      `);
+    } catch (e) {
+      console.error('Table map_connections creation error:', e);
+    }
 
     // OLT Config
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS olt_config (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        map_item_id INT NOT NULL UNIQUE,
-        output_power DECIMAL(5,2) NOT NULL DEFAULT 2.00,
-        pon_count INT NOT NULL DEFAULT 1,
-        attenuation_db DECIMAL(5,2) NOT NULL DEFAULT 0.00,
-        olt_link VARCHAR(255) NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (map_item_id) REFERENCES map_items(id) ON DELETE CASCADE
-      ) ENGINE=InnoDB;
-    `);
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS olt_config (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          map_item_id INT NOT NULL UNIQUE,
+          output_power DECIMAL(5,2) NOT NULL DEFAULT 2.00,
+          pon_count INT NOT NULL DEFAULT 1,
+          attenuation_db DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+          olt_link VARCHAR(255) NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB;
+      `);
+    } catch (e) {
+      console.error('Table olt_config creation error:', e);
+    }
 
     // OLT PON Ports
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS olt_pon_ports (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        olt_item_id INT NOT NULL,
-        pon_number INT NOT NULL,
-        output_power DECIMAL(5,2) NOT NULL DEFAULT 9.00,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE KEY (olt_item_id, pon_number),
-        FOREIGN KEY (olt_item_id) REFERENCES map_items(id) ON DELETE CASCADE
-      ) ENGINE=InnoDB;
-    `);
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS olt_pon_ports (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          olt_item_id INT NOT NULL,
+          pon_number INT NOT NULL,
+          output_power DECIMAL(5,2) NOT NULL DEFAULT 9.00,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE KEY (olt_item_id, pon_number)
+        ) ENGINE=InnoDB;
+      `);
+    } catch (e) {
+      console.error('Table olt_pon_ports creation error:', e);
+    }
 
     // ODC Config
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS odc_config (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        map_item_id INT NOT NULL UNIQUE,
-        olt_pon_port_id INT NULL,
-        port_count INT NOT NULL DEFAULT 8,
-        parent_attenuation_db DECIMAL(5,2) NOT NULL DEFAULT 0.00,
-        calculated_power DECIMAL(5,2) NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (map_item_id) REFERENCES map_items(id) ON DELETE CASCADE
-      ) ENGINE=InnoDB;
-    `);
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS odc_config (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          map_item_id INT NOT NULL UNIQUE,
+          olt_pon_port_id INT NULL,
+          port_count INT NOT NULL DEFAULT 8,
+          parent_attenuation_db DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+          calculated_power DECIMAL(5,2) NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB;
+      `);
+    } catch (e) {
+      console.error('Table odc_config creation error:', e);
+    }
 
     // ODP Config
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS odp_config (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        map_item_id INT NOT NULL UNIQUE,
-        odc_port INT NULL,
-        input_power DECIMAL(5,2) NULL,
-        port_count INT NOT NULL DEFAULT 8,
-        use_splitter TINYINT(1) NOT NULL DEFAULT 0,
-        splitter_ratio VARCHAR(20) NULL,
-        calculated_power DECIMAL(5,2) NULL,
-        port_rx_power LONGTEXT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (map_item_id) REFERENCES map_items(id) ON DELETE CASCADE
-      ) ENGINE=InnoDB;
-    `);
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS odp_config (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          map_item_id INT NOT NULL UNIQUE,
+          odc_port INT NULL,
+          input_power DECIMAL(5,2) NULL,
+          port_count INT NOT NULL DEFAULT 8,
+          use_splitter TINYINT(1) NOT NULL DEFAULT 0,
+          splitter_ratio VARCHAR(20) NULL,
+          calculated_power DECIMAL(5,2) NULL,
+          port_rx_power LONGTEXT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB;
+      `);
+    } catch (e) {
+      console.error('Table odp_config creation error:', e);
+    }
 
     // ONU Config
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS onu_config (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        map_item_id INT NOT NULL UNIQUE,
-        odp_port INT NULL,
-        customer_name VARCHAR(255) NULL,
-        genieacs_device_id VARCHAR(255) NULL,
-        calculated_rx_power DECIMAL(5,2) NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (map_item_id) REFERENCES map_items(id) ON DELETE CASCADE
-      ) ENGINE=InnoDB;
-    `);
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS onu_config (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          map_item_id INT NOT NULL UNIQUE,
+          odp_port INT NULL,
+          customer_name VARCHAR(255) NULL,
+          genieacs_device_id VARCHAR(255) NULL,
+          calculated_rx_power DECIMAL(5,2) NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB;
+      `);
+    } catch (e) {
+      console.error('Table onu_config creation error:', e);
+    }
 
     // Server PON Ports
     await pool.query(`
@@ -601,29 +653,35 @@ export async function initializeDatabase() {
       ) ENGINE=InnoDB;
     `);
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS telegram_report_logs (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        schedule_id INT NOT NULL,
-        status VARCHAR(50) NOT NULL,
-        message TEXT NULL,
-        sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (schedule_id) REFERENCES telegram_report_schedules(id) ON DELETE CASCADE
-      ) ENGINE=InnoDB;
-    `);
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS telegram_report_logs (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          schedule_id INT NOT NULL,
+          status VARCHAR(50) NOT NULL,
+          message TEXT NULL,
+          sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB;
+      `);
+    } catch (e) {
+      console.error('Table telegram_report_logs creation error:', e);
+    }
 
     // System Logs / Audit Trail
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS system_logs (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NULL,
-        action VARCHAR(255) NOT NULL,
-        details TEXT NULL,
-        ip_address VARCHAR(45) NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-      ) ENGINE=InnoDB;
-    `);
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS system_logs (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id INT NULL,
+          action VARCHAR(255) NOT NULL,
+          details TEXT NULL,
+          ip_address VARCHAR(45) NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB;
+      `);
+    } catch (e) {
+      console.error('Table system_logs creation error:', e);
+    }
 
     // GAP #4: Client Logs
     await pool.query(`
@@ -855,22 +913,26 @@ export async function initializeDatabase() {
       ) ENGINE=InnoDB;
     `);
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS it_asset_components (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        asset_id INT NOT NULL,
-        component_id INT NOT NULL,
-        quantity INT NOT NULL DEFAULT 1,
-        installed_at VARCHAR(50) NOT NULL,
-        installed_by VARCHAR(150) NOT NULL,
-        slot_or_position VARCHAR(100) NULL,
-        status ENUM('Installed', 'Removed') NOT NULL DEFAULT 'Installed',
-        notes TEXT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (asset_id) REFERENCES it_inventory_assets(id) ON DELETE CASCADE,
-        FOREIGN KEY (component_id) REFERENCES it_inventory_components(id) ON DELETE CASCADE
-      ) ENGINE=InnoDB;
-    `);
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS it_asset_components (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          asset_id INT NOT NULL,
+          component_id INT NOT NULL,
+          quantity INT NOT NULL DEFAULT 1,
+          installed_at VARCHAR(50) NOT NULL,
+          installed_by VARCHAR(150) NOT NULL,
+          slot_or_position VARCHAR(100) NULL,
+          status ENUM('Installed', 'Removed') NOT NULL DEFAULT 'Installed',
+          notes TEXT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_asset_id (asset_id),
+          INDEX idx_component_id (component_id)
+        ) ENGINE=InnoDB;
+      `);
+    } catch (e) {
+      console.error('Table it_asset_components creation error:', e);
+    }
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS it_inventory_mutations (
@@ -955,6 +1017,170 @@ export async function initializeDatabase() {
         ('Install Component', 2, 'Core Switch Backbone', 'Pemasangan 2x SFP+ 10G ke Port Te1/0/1 & Te1/0/2 Cisco WS-C2960X', -2, 'Rizal Kurniawan')
       `);
       console.log('Seeded initial IT inventory mutations.');
+    }
+
+    // =========================================================================
+    // CAMPUS NETWORK MULTI-BUILDING INFRASTRUCTURE TABLES
+    // =========================================================================
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS campus_buildings (
+          id VARCHAR(50) PRIMARY KEY,
+          name VARCHAR(150) NOT NULL,
+          code VARCHAR(50) NOT NULL,
+          category VARCHAR(50) NOT NULL DEFAULT 'faculty',
+          status VARCHAR(30) NOT NULL DEFAULT 'healthy',
+          x DOUBLE NOT NULL DEFAULT 50,
+          y DOUBLE NOT NULL DEFAULT 50,
+          floors_count INT NOT NULL DEFAULT 1,
+          total_clients INT NOT NULL DEFAULT 0,
+          traffic_in_mbps DOUBLE NOT NULL DEFAULT 0,
+          traffic_out_mbps DOUBLE NOT NULL DEFAULT 0,
+          ping_ms DOUBLE NOT NULL DEFAULT 1.0,
+          uplink_speed VARCHAR(100) NOT NULL DEFAULT '10G SFP+ Trunk',
+          uplink_type VARCHAR(50) NOT NULL DEFAULT '10G Fiber',
+          description TEXT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB;
+      `);
+    } catch (e) {
+      console.error('Table campus_buildings creation error:', e);
+    }
+
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS campus_building_floors (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          building_id VARCHAR(50) NOT NULL,
+          floor_number INT NOT NULL DEFAULT 1,
+          floor_name VARCHAR(150) NOT NULL,
+          switch_name VARCHAR(150) NOT NULL DEFAULT 'SW-DISTRIB',
+          switch_ip VARCHAR(50) NULL,
+          switch_status VARCHAR(30) NOT NULL DEFAULT 'healthy',
+          active_ports INT NOT NULL DEFAULT 20,
+          total_ports INT NOT NULL DEFAULT 24,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_building_id (building_id)
+        ) ENGINE=InnoDB;
+      `);
+    } catch (e) {
+      console.error('Table campus_building_floors creation error:', e);
+    }
+
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS campus_floor_aps (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          floor_id INT NOT NULL,
+          building_id VARCHAR(50) NOT NULL,
+          name VARCHAR(150) NOT NULL,
+          ip VARCHAR(50) NOT NULL,
+          channel VARCHAR(50) NOT NULL DEFAULT 'Ch 36 (5GHz)',
+          band VARCHAR(50) NOT NULL DEFAULT 'Wi-Fi 6 AX',
+          clients_count INT NOT NULL DEFAULT 0,
+          status VARCHAR(30) NOT NULL DEFAULT 'healthy',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_floor_id (floor_id),
+          INDEX idx_ap_building (building_id)
+        ) ENGINE=InnoDB;
+      `);
+    } catch (e) {
+      console.error('Table campus_floor_aps creation error:', e);
+    }
+
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS campus_fiber_links (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          from_building_id VARCHAR(50) NOT NULL,
+          to_building_id VARCHAR(50) NOT NULL,
+          speed VARCHAR(50) NOT NULL DEFAULT '10G FO',
+          status VARCHAR(30) NOT NULL DEFAULT 'healthy',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB;
+      `);
+    } catch (e) {
+      console.error('Table campus_fiber_links creation error:', e);
+    }
+
+    // Seed initial campus buildings if empty
+    const [bldgRows]: any = await pool.query('SELECT COUNT(*) as count FROM campus_buildings');
+    if (bldgRows[0].count === 0) {
+      await pool.query(`
+        INSERT INTO campus_buildings 
+        (id, name, code, category, status, x, y, floors_count, total_clients, traffic_in_mbps, traffic_out_mbps, ping_ms, uplink_speed, uplink_type, description)
+        VALUES
+        ('bldg-noc', 'Server Room & NOC HQ', 'NOC-HQ', 'datacenter', 'healthy', 20, 35, 2, 35, 920, 740, 0.4, '2x 10G LACP Trunk', '10G Fiber', 'Core Gateway MikroTik CCR2116, OLT GPON, ISP Uplink Transit & Server Farm'),
+        ('bldg-fac-a', 'Gedung Kuliah A (Rektorat & Kelas)', 'GDG-A', 'faculty', 'healthy', 48, 20, 3, 128, 145, 38, 0.9, '10G SFP+ Trunk', '10G Fiber', 'Ruang Rektorat, Ruang Dekanat, Ruang Dosen & Ruang Kelas Teori 101 - 308'),
+        ('bldg-lab', 'Gedung Kuliah & Lab Komputer B', 'GDG-B-LAB', 'lab', 'healthy', 80, 28, 3, 164, 285, 84, 1.1, '10G SFP+ Trunk', '10G Fiber', 'Lab Komputer Jaringan, Lab Multimedia, Server Ujian CBT, & Ruang Kuliah'),
+        ('bldg-lib', 'Perpustakaan Pusat (Central Library)', 'LIB-PUSAT', 'library', 'healthy', 52, 52, 2, 76, 95, 22, 0.8, '1G SFP Direct Fiber', '1G SFP', 'Area Belajar Mandiri, Digital Library, E-Resource Center, & Ruang Diskusi'),
+        ('bldg-dorm', 'Asrama Mahasiswa (Dormitory)', 'ASRAMA-PUTRA', 'dormitory', 'warning', 24, 72, 4, 198, 340, 62, 1.4, '10G SFP+ Trunk', '10G Fiber', 'Kamar Mahasiswa 101 - 420 (PPPoE / Hotspot Voucher) & Lorong Access Point'),
+        ('bldg-canteen', 'Student Center & Kantin', 'STUDENT-CTR', 'canteen', 'healthy', 76, 68, 2, 84, 110, 25, 0.9, '1G SFP Direct Fiber', '1G SFP', 'Food Court Kantin Kampus, Ruang UKM / BEM, & Area Outdoor Plaza')
+      `);
+
+      // Seed Floors
+      await pool.query(`
+        INSERT INTO campus_building_floors 
+        (id, building_id, floor_number, floor_name, switch_name, switch_ip, switch_status, active_ports, total_ports)
+        VALUES
+        (1, 'bldg-noc', 1, 'Lantai 1 - Main Server Room & NOC Operations', 'SW-CORE-NOC-01 (48-Port 10G)', '10.10.0.1', 'healthy', 42, 48),
+        (2, 'bldg-fac-a', 1, 'Lantai 1 - Ruang Dekanat & Tata Usaha', 'SW-DISTRIB-GDGA-LT1 (24-Port)', '192.168.50.20', 'healthy', 19, 24),
+        (3, 'bldg-fac-a', 2, 'Lantai 2 - Ruang Kelas Teori 201 - 206', 'SW-DISTRIB-GDGA-LT2 (24-Port)', '192.168.50.21', 'healthy', 22, 24),
+        (4, 'bldg-fac-a', 3, 'Lantai 3 - Aula & Ruang Dosen', 'SW-DISTRIB-GDGA-LT3 (24-Port)', '192.168.50.22', 'healthy', 14, 24),
+        (5, 'bldg-lab', 1, 'Lantai 1 - Lab Jaringan & Sistem Informasi', 'SW-LAB-KOMP-LT1 (48-Port GbE)', '192.168.50.30', 'healthy', 44, 48),
+        (6, 'bldg-lab', 2, 'Lantai 2 - Lab Multimedia & Server CBT', 'SW-LAB-KOMP-LT2 (48-Port GbE)', '192.168.50.31', 'healthy', 40, 48),
+        (7, 'bldg-lab', 3, 'Lantai 3 - Ruang Kuliah Interaktif', 'SW-DISTRIB-GDGB-LT3 (24-Port)', '192.168.50.32', 'healthy', 18, 24),
+        (8, 'bldg-lib', 1, 'Lantai 1 - Sirkulasi & Ruang Baca Umum', 'SW-PERPUS-LT1 (24-Port GbE)', '192.168.50.40', 'healthy', 16, 24),
+        (9, 'bldg-lib', 2, 'Lantai 2 - E-Library & Ruang Diskusi', 'SW-PERPUS-LT2 (24-Port GbE)', '192.168.50.41', 'healthy', 14, 24),
+        (10, 'bldg-dorm', 1, 'Lantai 1 - Kamar 101-120 & Hall Utama', 'SW-ASRAMA-LT1 (24-Port GbE)', '192.168.50.50', 'healthy', 22, 24),
+        (11, 'bldg-dorm', 2, 'Lantai 2 - Kamar 201-220', 'SW-ASRAMA-LT2 (24-Port GbE)', '192.168.50.51', 'healthy', 20, 24),
+        (12, 'bldg-dorm', 3, 'Lantai 3 - Kamar 301-320 (High Load)', 'SW-ASRAMA-LT3 (24-Port GbE)', '192.168.50.52', 'warning', 24, 24),
+        (13, 'bldg-canteen', 1, 'Lantai 1 - Food Court & Area Terbuka', 'SW-KANTIN-LT1 (24-Port GbE)', '192.168.50.60', 'healthy', 14, 24)
+      `);
+
+      // Seed APs
+      await pool.query(`
+        INSERT INTO campus_floor_aps 
+        (floor_id, building_id, name, ip, channel, band, clients_count, status)
+        VALUES
+        (1, 'bldg-noc', 'AP-NOC-ROOM-01', '192.168.50.10', 'Ch 36 (5GHz)', 'Wi-Fi 6 AX', 18, 'healthy'),
+        (1, 'bldg-noc', 'AP-RUANG-OPERATOR', '192.168.50.11', 'Ch 1 (2.4GHz)', 'Wi-Fi 6 AX', 17, 'healthy'),
+        (2, 'bldg-fac-a', 'AP-REKTORAT-LOBBY', '192.168.50.21', 'Ch 44 (5GHz)', 'Wi-Fi 6', 24, 'healthy'),
+        (2, 'bldg-fac-a', 'AP-RUANG-DEKANAT', '192.168.50.22', 'Ch 6 (2.4GHz)', 'Wi-Fi 6', 16, 'healthy'),
+        (3, 'bldg-fac-a', 'AP-KELAS-201-203', '192.168.50.23', 'Ch 149 (5GHz)', 'Wi-Fi 6', 38, 'healthy'),
+        (3, 'bldg-fac-a', 'AP-KELAS-204-206', '192.168.50.24', 'Ch 11 (2.4GHz)', 'Wi-Fi 6', 26, 'healthy'),
+        (4, 'bldg-fac-a', 'AP-AULA-UTAMA-A', '192.168.50.25', 'Ch 36 (5GHz)', 'Wi-Fi 6 HD', 24, 'healthy'),
+        (5, 'bldg-lab', 'AP-LAB-KOMP-01', '192.168.50.31', 'Ch 36 (5GHz)', 'Wi-Fi 6 AX', 42, 'healthy'),
+        (5, 'bldg-lab', 'AP-LAB-KOMP-02', '192.168.50.32', 'Ch 1 (2.4GHz)', 'Wi-Fi 6 AX', 36, 'healthy'),
+        (6, 'bldg-lab', 'AP-LAB-MULTIMEDIA', '192.168.50.33', 'Ch 149 (5GHz)', 'Wi-Fi 6 HD', 48, 'healthy'),
+        (6, 'bldg-lab', 'AP-RUANG-SERVER-CBT', '192.168.50.34', 'Ch 6 (2.4GHz)', 'Wi-Fi 6', 12, 'healthy'),
+        (7, 'bldg-lab', 'AP-KELAS-LAB-301', '192.168.50.35', 'Ch 44 (5GHz)', 'Wi-Fi 6', 26, 'healthy'),
+        (8, 'bldg-lib', 'AP-PERPUS-LOBBY', '192.168.50.41', 'Ch 36 (5GHz)', 'Wi-Fi 6 HD', 34, 'healthy'),
+        (8, 'bldg-lib', 'AP-RUANG-BACA-TIMUR', '192.168.50.42', 'Ch 1 (2.4GHz)', 'Wi-Fi 6', 22, 'healthy'),
+        (9, 'bldg-lib', 'AP-DIGITAL-LIBRARY', '192.168.50.43', 'Ch 149 (5GHz)', 'Wi-Fi 6', 20, 'healthy'),
+        (10, 'bldg-dorm', 'AP-ASRAMA-LT1-A', '192.168.50.51', 'Ch 36 (5GHz)', 'Wi-Fi 6', 44, 'healthy'),
+        (10, 'bldg-dorm', 'AP-ASRAMA-LT1-B', '192.168.50.52', 'Ch 6 (2.4GHz)', 'Wi-Fi 6', 28, 'healthy'),
+        (11, 'bldg-dorm', 'AP-ASRAMA-LT2-A', '192.168.50.53', 'Ch 149 (5GHz)', 'Wi-Fi 6', 46, 'healthy'),
+        (12, 'bldg-dorm', 'AP-ASRAMA-PUTRA-LT3', '192.168.50.49', 'Ch 44 (5GHz)', 'Wi-Fi 6', 54, 'warning'),
+        (13, 'bldg-canteen', 'AP-KANTIN-OUTDOOR-01', '192.168.50.61', 'Ch 36 (5GHz)', 'Wi-Fi 6 Outdoor HD', 52, 'healthy'),
+        (13, 'bldg-canteen', 'AP-KANTIN-INDOOR', '192.168.50.62', 'Ch 11 (2.4GHz)', 'Wi-Fi 6', 32, 'healthy')
+      `);
+
+      // Seed Fiber Links
+      await pool.query(`
+        INSERT INTO campus_fiber_links 
+        (from_building_id, to_building_id, speed, status)
+        VALUES
+        ('bldg-noc', 'bldg-fac-a', '10G FO', 'healthy'),
+        ('bldg-noc', 'bldg-lib', '1G FO', 'healthy'),
+        ('bldg-noc', 'bldg-dorm', '10G FO', 'healthy'),
+        ('bldg-fac-a', 'bldg-lab', '10G FO', 'healthy'),
+        ('bldg-lib', 'bldg-canteen', '1G FO', 'healthy'),
+        ('bldg-dorm', 'bldg-canteen', '1G FO Ring Backup', 'healthy')
+      `);
+
+      console.log('Seeded initial Campus Infrastructure buildings, floors, APs, and fiber links.');
     }
 
     console.log('Database tables verified/created successfully');

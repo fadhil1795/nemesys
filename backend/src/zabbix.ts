@@ -11,7 +11,8 @@ let zabbixAuthToken: string | null = null;
 
 // Helper to communicate with Zabbix API
 async function callZabbixAPI(method: string, params: any, auth: string | null = null) {
-  if (!zabbixUrl) return null;
+  const url = process.env.ZABBIX_API_URL;
+  if (!url) return null;
 
   try {
     const payload: any = {
@@ -25,15 +26,16 @@ async function callZabbixAPI(method: string, params: any, auth: string | null = 
       'Content-Type': 'application/json-rpc',
     };
 
-    if (auth !== null) {
-      headers['Authorization'] = `Bearer ${auth}`;
+    const tokenToUse = auth || process.env.ZABBIX_API_TOKEN;
+    if (tokenToUse && method !== 'apiinfo.version' && method !== 'user.login') {
+      headers['Authorization'] = `Bearer ${tokenToUse}`;
     }
 
-    const response = await fetch(zabbixUrl, {
+    const response = await fetch(url, {
       method: 'POST',
       headers,
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(6000),
     });
 
     const result: any = await response.json();
@@ -50,6 +52,9 @@ async function callZabbixAPI(method: string, params: any, auth: string | null = 
 
 // 1. Authenticate with Zabbix
 async function getAuthToken() {
+  if (process.env.ZABBIX_API_TOKEN) {
+    return process.env.ZABBIX_API_TOKEN;
+  }
   if (zabbixAuthToken) return zabbixAuthToken;
 
   const result = await callZabbixAPI('user.login', {
@@ -66,74 +71,95 @@ async function getAuthToken() {
 
 // 2. Fetch hosts from Zabbix and synchronize with MySQL
 export async function syncZabbixHosts() {
-  if (!zabbixUrl) {
-    console.log('Zabbix API URL not configured. Skipping Zabbix hosts synchronization.');
-    return;
-  }
+  try {
+    if (!zabbixUrl) {
+      console.log('Zabbix API URL not configured. Skipping Zabbix hosts synchronization.');
+      return;
+    }
 
-  const token = await getAuthToken();
-  if (!token) {
-    console.error('Failed to authenticate with Zabbix. Check ZABBIX_USER/PASSWORD credentials.');
-    return;
-  }
+    const token = await getAuthToken();
+    if (!token) {
+      console.error('Failed to authenticate with Zabbix. Check ZABBIX_USER/PASSWORD credentials.');
+      return;
+    }
 
-  // Get hosts with interface details (IP Address) and triggers to determine ICMP status
-  const hosts = await callZabbixAPI(
-    'host.get',
-    {
-      output: ['hostid', 'name', 'status', 'available'],
-      selectInterfaces: ['ip'],
-      selectTriggers: ['triggerid', 'description', 'value', 'priority'],
-    },
-    token
-  );
-
-  if (!hosts || !Array.isArray(hosts)) {
-    console.warn('No hosts returned from Zabbix.');
-    return;
-  }
-
-  console.log(`Syncing ${hosts.length} hosts from Zabbix API to MySQL...`);
-
-  for (const zHost of hosts) {
-    // Determine status: Zabbix available or active triggers indicating ICMP downtime
-    let status = zHost.available === '2' ? 'Down' : 'Up';
-    
-    const activeTriggers = zHost.triggers?.filter((t: any) => t.value === '1') || [];
-    const isOfflineTrigger = activeTriggers.some((t: any) => 
-      t.description.toLowerCase().includes('unavailable by icmp') ||
-      (t.description.toLowerCase().includes('ping') && 
-       (t.description.toLowerCase().includes('unavailable') || t.description.toLowerCase().includes('loss') || t.description.toLowerCase().includes('down')))
+    // Get hosts with interface details (IP Address), host groups, and triggers to determine ICMP status
+    const hosts = await callZabbixAPI(
+      'host.get',
+      {
+        output: ['hostid', 'name', 'status', 'available'],
+        selectInterfaces: ['ip'],
+        selectTriggers: ['triggerid', 'description', 'value', 'priority'],
+        selectHostGroups: ['groupid', 'name'],
+        selectGroups: ['groupid', 'name'],
+      },
+      token
     );
-    if (isOfflineTrigger) {
-      status = 'Down';
-    }
-    const ipAddress = zHost.interfaces && zHost.interfaces[0] ? zHost.interfaces[0].ip : '0.0.0.0';
-    const isBackbone = zHost.name.toLowerCase().includes('core') || zHost.name.toLowerCase().includes('backbone') ? 1 : 0;
-    
-    // Check if host already exists in database
-    const [rows]: any = await pool.query('SELECT * FROM devices WHERE name = ?', [zHost.name]);
 
-    if (rows.length > 0) {
-      // Update existing device (do NOT overwrite is_backbone to preserve manual classification)
-      await pool.query(
-        'UPDATE devices SET status = ?, ip_address = ?, last_ping = "Just now" WHERE name = ?',
-        [status, ipAddress, zHost.name]
-      );
-    } else {
-      // Insert new device
-      // Generate random lat/long coordinates around the campus map for visualization
-      const latitude = -7.9790 + (Math.random() - 0.5) * 0.005;
-      const longitude = 112.6300 + (Math.random() - 0.5) * 0.005;
+    if (!hosts || !Array.isArray(hosts)) {
+      console.warn('No hosts returned from Zabbix.');
+      return;
+    }
+
+    console.log(`Syncing ${hosts.length} hosts from Zabbix API to MySQL...`);
+
+    for (const zHost of hosts) {
+      // Determine status: Zabbix available or active triggers indicating ICMP downtime
+      let status = zHost.available === '2' ? 'Down' : 'Up';
       
-      await pool.query(
-        'INSERT INTO devices (name, type, ip_address, location, latitude, longitude, status, last_ping, is_backbone) VALUES (?, "Router", ?, "Lokasi Terdeteksi Zabbix", ?, ?, ?, "Just now", ?)',
-        [zHost.name, ipAddress, latitude, longitude, status, isBackbone]
+      const activeTriggers = zHost.triggers?.filter((t: any) => t.value === '1') || [];
+      const isOfflineTrigger = activeTriggers.some((t: any) => 
+        t.description.toLowerCase().includes('unavailable by icmp') ||
+        (t.description.toLowerCase().includes('ping') && 
+         (t.description.toLowerCase().includes('unavailable') || t.description.toLowerCase().includes('loss') || t.description.toLowerCase().includes('down')))
       );
-    }
-  }
+      if (isOfflineTrigger) {
+        status = 'Down';
+      }
+      const ipAddress = zHost.interfaces && zHost.interfaces[0] ? zHost.interfaces[0].ip : '0.0.0.0';
+      const isBackbone = zHost.name.toLowerCase().includes('core') || zHost.name.toLowerCase().includes('backbone') ? 1 : 0;
+      
+      // Classify Device Type based on Zabbix Host Group (Primary for C-Data & Generic SNMP) & Name
+      const groups = zHost.hostgroups || zHost.groups || [];
+      const groupText = groups.map((g: any) => (g.name || '').toLowerCase()).join(' ');
+      const nameLower = zHost.name.toLowerCase();
 
-  console.log('Zabbix synchronization complete.');
+      let devType = 'Router';
+      if (groupText.includes('modem cdata') || groupText.includes('modem') || groupText.includes('ont') || groupText.includes('onu') || groupText.includes('cpe') || groupText.includes('pelanggan') || nameLower.includes('modem') || nameLower.includes('ont')) {
+        devType = 'Modem';
+      } else if (groupText.includes('olt cdata') || groupText.includes('olt') || groupText.includes('cdata') || groupText.includes('c-data') || groupText.includes('gpon') || groupText.includes('epon') || nameLower.includes('olt') || nameLower.includes('cdata')) {
+        devType = 'OLT';
+      } else if (groupText.includes('ap') || groupText.includes('access point') || groupText.includes('wifi') || groupText.includes('wireless') || nameLower.includes('ap-') || nameLower.includes('wifi')) {
+        devType = 'Access Point';
+      } else if (groupText.includes('server') || groupText.includes('linux') || groupText.includes('zabbix') || nameLower.includes('server') || nameLower.includes('zabbix')) {
+        devType = 'Server';
+      }
+
+      // Check if host already exists in database
+      const [rows]: any = await pool.query('SELECT * FROM devices WHERE name = ?', [zHost.name]);
+
+      if (rows.length > 0) {
+        // Update existing device (update type, status, and IP)
+        await pool.query(
+          'UPDATE devices SET type = ?, status = ?, ip_address = ?, last_ping = "Just now" WHERE name = ?',
+          [devType, status, ipAddress, zHost.name]
+        );
+      } else {
+        // Insert new device
+        const latitude = -7.9790 + (Math.random() - 0.5) * 0.005;
+        const longitude = 112.6300 + (Math.random() - 0.5) * 0.005;
+        
+        await pool.query(
+          'INSERT INTO devices (name, type, ip_address, location, latitude, longitude, status, last_ping, is_backbone) VALUES (?, ?, ?, "Lokasi Terdeteksi Zabbix", ?, ?, ?, "Just now", ?)',
+          [zHost.name, devType, ipAddress, latitude, longitude, status, isBackbone]
+        );
+      }
+    }
+
+    console.log('Zabbix synchronization complete.');
+  } catch (err: any) {
+    console.warn('Zabbix synchronization warning / error:', err?.message || err);
+  }
 }
 
 export async function testZabbixConnection() {

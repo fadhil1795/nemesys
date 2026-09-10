@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Wifi, MessageSquare, CheckCircle, XCircle, Save, TestTube, Server } from 'lucide-react';
 import { BACKEND_URL } from '../App';
-import type { GenieACSCredentials, MikroTikCredentials, TelegramBotConfig } from '../types';
+import type { MikroTikCredentials, TelegramBotConfig } from '../types';
 
 interface GacsConfigProps {
   token: string;
 }
 
-type Tab = 'acs' | 'mikrotik' | 'telegram' | 'reports' | 'webhook';
+type Tab = 'mikrotik' | 'telegram' | 'reports' | 'webhook';
 
 const STATUS_BADGE = {
   connected: { color: '#22c55e', icon: <CheckCircle size={13} />, label: 'Connected' },
@@ -41,18 +41,7 @@ const rowStyle: React.CSSProperties = {
 };
 
 export const GacsConfig: React.FC<GacsConfigProps> = ({ token }) => {
-  const [activeTab, setActiveTab] = useState<Tab>('acs');
-
-  // ---- ACS State ----
-  const [acsHost, setAcsHost] = useState('');
-  const [acsPort, setAcsPort] = useState('7557');
-  const [acsUser, setAcsUser] = useState('');
-  const [acsPass, setAcsPass] = useState('');
-  const [acsCfg, setAcsCfg] = useState<GenieACSCredentials | null>(null);
-  const [acsMsg, setAcsMsg] = useState('');
-  const [acsMsgOk, setAcsMsgOk] = useState(true);
-  const [acsSaving, setAcsSaving] = useState(false);
-  const [acsTesting, setAcsTesting] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>('mikrotik');
 
   // ---- MikroTik State ----
   const [mtHost, setMtHost] = useState('');
@@ -149,22 +138,6 @@ export const GacsConfig: React.FC<GacsConfigProps> = ({ token }) => {
     if (activeTab === 'webhook') fetchWebhookLogs();
   }, [activeTab]);
 
-
-  // Load ACS config
-  useEffect(() => {
-    fetch(`${BACKEND_URL}/api/config/acs`, { headers })
-      .then(r => r.json())
-      .then((data: any[]) => {
-        if (data && data.length > 0) {
-          setAcsCfg(data[0]);
-          setAcsHost(data[0].host ?? '');
-          setAcsPort(String(data[0].port ?? 7557));
-          setAcsUser(data[0].username ?? '');
-        }
-      })
-      .catch(() => {});
-  }, []);
-
   // Load MikroTik config
   useEffect(() => {
     fetch(`${BACKEND_URL}/api/config/mikrotik`, { headers })
@@ -192,34 +165,6 @@ export const GacsConfig: React.FC<GacsConfigProps> = ({ token }) => {
       })
       .catch(() => {});
   }, []);
-
-  // ---- ACS Handlers ----
-  const handleSaveACS = async () => {
-    if (!acsHost) { setAcsMsg('Host wajib diisi'); setAcsMsgOk(false); return; }
-    setAcsSaving(true); setAcsMsg('');
-    try {
-      const r = await fetch(`${BACKEND_URL}/api/config/acs`, {
-        method: 'POST', headers,
-        body: JSON.stringify({ host: acsHost, port: parseInt(acsPort), username: acsUser, password: acsPass }),
-      });
-      const d = await r.json();
-      if (r.ok) { setAcsMsg('✓ Konfigurasi ACS disimpan'); setAcsMsgOk(true); }
-      else { setAcsMsg(d.error || 'Gagal menyimpan'); setAcsMsgOk(false); }
-    } catch { setAcsMsg('Error koneksi ke server'); setAcsMsgOk(false); }
-    setAcsSaving(false);
-  };
-
-  const handleTestACS = async () => {
-    setAcsTesting(true); setAcsMsg('Sedang menguji koneksi...');
-    try {
-      const r = await fetch(`${BACKEND_URL}/api/config/acs/test`, { method: 'POST', headers });
-      const d = await r.json();
-      setAcsMsg(d.success ? '✓ ' + d.message : '✗ ' + (d.message || d.error));
-      setAcsMsgOk(d.success);
-      if (d.success) setAcsCfg(prev => prev ? { ...prev, is_connected: 1 } : prev);
-    } catch { setAcsMsg('Error koneksi ke server'); setAcsMsgOk(false); }
-    setAcsTesting(false);
-  };
 
   // ---- MikroTik Handlers ----
   const handleSaveMT = async () => {
@@ -277,7 +222,6 @@ export const GacsConfig: React.FC<GacsConfigProps> = ({ token }) => {
   };
 
   const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: 'acs', label: 'ACS Config', icon: <Server size={15} /> },
     { key: 'mikrotik', label: 'MikroTik Config', icon: <Wifi size={15} /> },
     { key: 'telegram', label: 'Telegram Bot', icon: <MessageSquare size={15} /> },
     { key: 'reports', label: 'Scheduled Reports', icon: <Settings size={15} /> },
@@ -298,7 +242,7 @@ export const GacsConfig: React.FC<GacsConfigProps> = ({ token }) => {
           <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>Konfigurasi Sistem</h2>
         </div>
         <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13.5px' }}>
-          Atur koneksi ke GenieACS, MikroTik API, Telegram Bot, Scheduled Reports, dan Webhook Receiver.
+          Atur koneksi ke MikroTik API, Telegram Bot, Scheduled Reports, dan Webhook Receiver.
         </p>
 
         {/* Tab Header */}
@@ -320,69 +264,6 @@ export const GacsConfig: React.FC<GacsConfigProps> = ({ token }) => {
           ))}
         </div>
       </div>
-
-      {/* ---- ACS Tab ---- */}
-      {activeTab === 'acs' && (
-        <div className="glass-card" style={{ padding: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
-            <div>
-              <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: 700 }}>GenieACS NBI API</h3>
-              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>Koneksi ke GenieACS Northbound Interface (default port 7557)</p>
-            </div>
-            {acsCfg !== null && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12.5px', fontWeight: 600, color: statusInfo(acsCfg.is_connected).color }}>
-                {statusInfo(acsCfg.is_connected).icon} {statusInfo(acsCfg.is_connected).label}
-              </div>
-            )}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-            <div style={{ gridColumn: '1 / -1', ...rowStyle }}>
-              <label style={labelStyle}>Host / IP GenieACS</label>
-              <input style={inputStyle} placeholder="contoh: 127.0.0.1 atau 192.168.1.10" value={acsHost} onChange={e => setAcsHost(e.target.value)} />
-            </div>
-            <div style={rowStyle}>
-              <label style={labelStyle}>Port NBI</label>
-              <input style={inputStyle} type="number" value={acsPort} onChange={e => setAcsPort(e.target.value)} />
-            </div>
-            <div style={rowStyle}>
-              <label style={labelStyle}>Username (opsional)</label>
-              <input style={inputStyle} placeholder="kosongkan jika tidak ada auth" value={acsUser} onChange={e => setAcsUser(e.target.value)} />
-            </div>
-            <div style={{ gridColumn: '1 / -1', ...rowStyle }}>
-              <label style={labelStyle}>Password (opsional)</label>
-              <input style={inputStyle} type="password" value={acsPass} onChange={e => setAcsPass(e.target.value)} />
-            </div>
-          </div>
-
-          {acsMsg && (
-            <div style={{ marginBottom: '16px', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
-              background: acsMsgOk ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
-              color: acsMsgOk ? '#22c55e' : '#ef4444',
-              border: `1px solid ${acsMsgOk ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
-            }}>
-              {acsMsg}
-            </div>
-          )}
-
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={handleSaveACS} disabled={acsSaving} style={{
-              display: 'flex', alignItems: 'center', gap: '7px', padding: '10px 20px',
-              background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-              border: 'none', borderRadius: '8px', color: '#fff', fontWeight: 700, fontSize: '13.5px', cursor: 'pointer'
-            }}>
-              <Save size={14} /> {acsSaving ? 'Menyimpan...' : 'Simpan'}
-            </button>
-            <button onClick={handleTestACS} disabled={acsTesting} style={{
-              display: 'flex', alignItems: 'center', gap: '7px', padding: '10px 20px',
-              background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', borderRadius: '8px',
-              color: 'var(--text-primary)', fontWeight: 600, fontSize: '13.5px', cursor: 'pointer'
-            }}>
-              <TestTube size={14} /> {acsTesting ? 'Testing...' : 'Test Koneksi'}
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* ---- MikroTik Tab ---- */}
       {activeTab === 'mikrotik' && (

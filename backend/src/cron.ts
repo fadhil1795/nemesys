@@ -1,87 +1,5 @@
 import cron from 'node-cron';
 import { pool } from './db';
-import { getDevices, parseDeviceData, GenieACSConfig } from './genieacs';
-
-// Fetch the telegram config and send message directly via HTTP
-async function sendTelegramAlert(message: string) {
-  try {
-    const [rows]: any = await pool.query('SELECT bot_token, chat_id FROM telegram_bot_config WHERE is_connected = 1 LIMIT 1');
-    if (rows.length === 0) return; // Not configured
-
-    const { bot_token, chat_id } = rows[0];
-    await fetch(`https://api.telegram.org/bot${bot_token}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id, text: message, parse_mode: 'Markdown' })
-    });
-  } catch (err) {
-    console.error('[CRON] Failed to send Telegram alert:', err);
-  }
-}
-
-async function startDeviceMonitor() {
-  console.log(`[CRON] ${new Date().toISOString()} Device Monitor Started`);
-  try {
-    const [credRows]: any = await pool.query('SELECT host, port, username, password FROM genieacs_credentials WHERE is_connected = 1 ORDER BY id DESC LIMIT 1');
-    if (credRows.length === 0) {
-      console.log('[CRON] GenieACS not configured. Skipping monitor.');
-      return;
-    }
-    
-    const creds: GenieACSConfig = credRows[0];
-
-    const response = await getDevices(creds);
-    if (!response.success || !response.data) {
-      console.log('[CRON] Failed to fetch devices from ACS');
-      return;
-    }
-
-    let changedCount = 0;
-
-    for (const device of response.data) {
-      const parsed = parseDeviceData(device);
-      const deviceId = parsed._id;
-      const currentStatus = parsed.status;
-
-      // Get last known status
-      const [lastRows]: any = await pool.query(
-        'SELECT status, notified FROM device_monitoring WHERE device_id = ? ORDER BY created_at DESC LIMIT 1',
-        [deviceId]
-      );
-      
-      const lastStatus = lastRows.length > 0 ? lastRows[0].status : null;
-      const wasNotified = lastRows.length > 0 ? lastRows[0].notified : 0;
-
-      if (lastStatus !== currentStatus) {
-        changedCount++;
-        console.log(`[CRON] Device ${deviceId}: ${lastStatus} -> ${currentStatus}`);
-
-        // Insert new record
-        const [insertRes]: any = await pool.query(
-          'INSERT INTO device_monitoring (device_id, status, notified) VALUES (?, ?, 0)',
-          [deviceId, currentStatus]
-        );
-
-        // Send Telegram notification
-        if (!wasNotified) {
-          const alertMsg = `⚠️ *PERINGATAN ACS*\n\nDevice: \`${deviceId}\`\nSN: ${parsed.serialNumber}\nIP TR069: ${parsed.ipTr069}\nStatus: *${currentStatus.toUpperCase()}*`;
-          await sendTelegramAlert(alertMsg);
-
-          // Mark as notified
-          await pool.query('UPDATE device_monitoring SET notified = 1 WHERE id = ?', [insertRes.insertId]);
-        }
-      }
-    }
-    
-    // Cleanup old records (>30 days)
-    await pool.query('DELETE FROM device_monitoring WHERE created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)');
-    
-    console.log(`[CRON] ${new Date().toISOString()} Device Monitor Finished. Changes: ${changedCount}`);
-  } catch (err) {
-    console.error('[CRON] Error in device monitor:', err);
-  }
-}
-
 async function startScheduledReports() {
   console.log(`[CRON] ${new Date().toISOString()} Checking report schedules...`);
   try {
@@ -122,6 +40,9 @@ async function startScheduledReports() {
       return;
     }
 
+    const { NocZabbixService } = await import('./services/nocZabbixService');
+    const kpi = await NocZabbixService.getSummaryKPI();
+
     for (const schedule of schedules) {
       try {
         const chatId = schedule.chat_id || schedule.default_chat_id;
@@ -131,18 +52,6 @@ async function startScheduledReports() {
           continue;
         }
 
-        // Build stats
-        const [credRows]: any = await pool.query('SELECT host, port, username, password FROM genieacs_credentials WHERE is_connected = 1 LIMIT 1');
-        let total = 0, online = 0, offline = 0;
-        if (credRows.length > 0) {
-          try {
-            const resp = await getDevices(credRows[0]);
-            if (resp.success && resp.data) {
-              for (const dev of resp.data) { total++; if (parseDeviceData(dev).status === 'online') online++; else offline++; }
-            }
-          } catch {}
-        }
-
         let mtStatus = 'Not Configured';
         try {
           const [mtRows]: any = await pool.query('SELECT is_connected FROM mikrotik_credentials LIMIT 1');
@@ -150,10 +59,15 @@ async function startScheduledReports() {
         } catch {}
 
         const typeLabel = schedule.report_type === 'weekly' ? 'Weekly' : 'Daily';
-        const reportMsg = `📊 *${typeLabel} System Report (Nemesys)*\n` +
+        const reportMsg = `📊 *${typeLabel} System Report (NOC UNTAG)*\n` +
           `📅 ${now.toLocaleDateString('id-ID')}\n\n` +
-          `*GenieACS Devices*\n- Total: ${total}\n- Online: ${online} 🟢\n- Offline: ${offline} 🔴\n\n` +
-          `*MikroTik Status*\n- API: ${mtStatus}\n\n` +
+          `*Zabbix Network Nodes:*\n` +
+          `- Total: ${kpi.totalDevices}\n` +
+          `- Healthy / Up: ${kpi.healthyDevices} 🟢\n` +
+          `- Warning: ${kpi.warningDevices} 🟡\n` +
+          `- Down: ${kpi.downDevices} 🔴\n` +
+          `- Uptime: ${kpi.overallUptimePercent}%\n\n` +
+          `*MikroTik Status:*\n- API: ${mtStatus}\n\n` +
           `_Schedule ID: #${schedule.id} | ${typeLabel} at ${schedule.schedule_time}_`;
 
         await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -177,15 +91,11 @@ async function sendDefaultDailyReport() {
   try {
     const [tgRows]: any = await pool.query('SELECT bot_token, chat_id FROM telegram_bot_config WHERE is_connected = 1 LIMIT 1');
     if (!tgRows.length) return;
-    const [credRows]: any = await pool.query('SELECT host, port, username, password FROM genieacs_credentials WHERE is_connected = 1 LIMIT 1');
-    let total = 0, online = 0, offline = 0;
-    if (credRows.length > 0) {
-      try {
-        const resp = await getDevices(credRows[0]);
-        if (resp.success && resp.data) { for (const dev of resp.data) { total++; if (parseDeviceData(dev).status === 'online') online++; else offline++; } }
-      } catch {}
-    }
-    const msg = `📊 *Daily System Report (Nemesys)*\n📅 ${new Date().toLocaleDateString('id-ID')}\n\n*GenieACS:* Total ${total} | Online 🟢${online} | Offline 🔴${offline}\n\n_Auto default daily report_`;
+    
+    const { NocZabbixService } = await import('./services/nocZabbixService');
+    const kpi = await NocZabbixService.getSummaryKPI();
+
+    const msg = `📊 *Daily System Report (NOC UNTAG)*\n📅 ${new Date().toLocaleDateString('id-ID')}\n\n*Zabbix Nodes:* Total ${kpi.totalDevices} | Up 🟢${kpi.healthyDevices} | Down 🔴${kpi.downDevices}\n*SLA Uptime:* ${kpi.overallUptimePercent}%\n\n_Auto default daily report_`;
     await fetch(`https://api.telegram.org/bot${tgRows[0].bot_token}/sendMessage`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: tgRows[0].chat_id, text: msg, parse_mode: 'Markdown' })
@@ -197,22 +107,50 @@ async function sendDefaultDailyReport() {
   }
 }
 
+// Real-time Zabbix Problem Monitor & Telegram Broadcast
+async function checkAndAlertNocProblems() {
+  try {
+    const { NocZabbixService } = await import('./services/nocZabbixService');
+    const { sendNocProblemAlert } = await import('./telegram');
+    const problems = await NocZabbixService.getActiveProblems();
+
+    for (const p of problems) {
+      if (!p.acknowledged && p.severity >= 3) {
+        await sendNocProblemAlert(p);
+      }
+    }
+  } catch (err) {
+    // Non-blocking catch
+  }
+}
+
 export function startCronJobs() {
   console.log('⏳ Initializing Cron Jobs...');
   
-  // Every 5 minutes — device monitor
-  cron.schedule('*/5 * * * *', () => {
-    startDeviceMonitor();
-  });
-
   // Every 30 minutes — check report schedules from DB
   cron.schedule('*/30 * * * *', () => {
     startScheduledReports();
   });
+
+  // Every 1 minute — Realtime NOC Zabbix Problem Monitor
+  cron.schedule('* * * * *', () => {
+    checkAndAlertNocProblems();
+  });
+
+  // Every day at 07:00 WIB — Morning NOC Daily Digest Report
+  cron.schedule('0 7 * * *', async () => {
+    try {
+      const { sendDailyDigestReport } = await import('./telegram');
+      await sendDailyDigestReport();
+      console.log('[CRON] Morning NOC Daily Digest successfully sent.');
+    } catch (err) {
+      console.error('[CRON] Failed to send morning daily digest:', err);
+    }
+  });
   
-  // Trigger device monitor once on startup (with slight delay)
+  // Trigger initial checks on startup (with slight delay)
   setTimeout(() => {
-    startDeviceMonitor();
+    checkAndAlertNocProblems();
   }, 10000);
 }
 

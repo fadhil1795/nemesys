@@ -105,12 +105,24 @@ export interface UserTicket {
   service_type: string;
   description: string;
   status: 'Open' | 'In Progress' | 'Resolved' | 'Closed' | 'Rejected';
+  priority?: 'Low' | 'Medium' | 'High' | 'Critical';
   assigned_user_id: number | null;
   assigned_user_name: string | null;
   created_at: string;
   updated_at: string;
   resolution_notes?: string | null;
   image_url?: string | null;
+  proof_before_url?: string | null;
+  proof_after_url?: string | null;
+  sla_limit_minutes?: number;
+  sla_breached?: boolean | number;
+  escalation_level?: number;
+  csat_rating?: number | null;
+  csat_feedback?: string | null;
+  csat_submitted_at?: string | null;
+  bast_number?: string | null;
+  bast_signer_name?: string | null;
+  bast_signed_at?: string | null;
 }
 
 // ============================================================

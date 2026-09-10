@@ -3,30 +3,27 @@ import {
   LayoutDashboard, 
   ClipboardList, 
   Users, 
-  Network, 
   Map, 
   List, 
-  Thermometer, 
-  Sun, 
   BookOpen, 
   BarChart3, 
   MessageSquare,
   ShieldAlert,
   LogOut,
   Target,
+  Sun,
   Moon,
   Ticket,
-  Wifi,
   Settings,
-  GitBranch,
   Terminal,
   FileSpreadsheet,
   FileText,
   QrCode,
-  Boxes
+  Boxes,
+  Award
 } from 'lucide-react';
 import { io } from 'socket.io-client';
-import type { Device, DailyTask, User, Mission, TemperatureLog, DailyTodo, CustomMission, DeviceCategory } from './types';
+import type { Device, DailyTask, User, Mission, DailyTodo, CustomMission, DeviceCategory } from './types';
 import { Dashboard } from './components/Dashboard';
 import { DailyTaskComponent } from './components/DailyTask';
 import { MissionPage } from './components/MissionPage';
@@ -37,25 +34,24 @@ import { QRCodeManager } from './components/QRCodeManager';
 import { InventoryManager } from './components/InventoryManager';
 import { NetMap } from './components/NetMap';
 import { NetList } from './components/NetList';
-import { Topology } from './components/Topology';
-import { TempSolar } from './components/TempSolar';
 import { Documentation } from './components/Documentation';
 import { Statistics } from './components/Statistics';
 import { TelegramBot } from './components/TelegramBot';
 import { Login } from './components/Login';
 import { CrudManager } from './components/CrudManager';
 import { EditLocation } from './components/EditLocation';
-import { OpenTicket } from './components/OpenTicket';
-import { OpenTicketDashboard } from './components/OpenTicketDashboard';
 import { PublicHelpdesk } from './components/PublicHelpdesk';
-import { CivitasTickets } from './components/CivitasTickets';
+import { ServiceDeskManager } from './components/ServiceDeskManager';
 import { GacsDeviceList } from './components/GacsDeviceList';
 import { GacsDeviceDetail } from './components/GacsDeviceDetail';
 import { GacsPonMap } from './components/GacsPonMap';
 import { GacsConfig } from './components/GacsConfig';
 import { SystemLogs } from './components/SystemLogs';
 import { Activity } from 'lucide-react';
-import { HealthCheck } from './components/HealthCheck';
+import { NocDashboard } from './components/NocMonitoring/NocDashboard';
+import { SlaReportManager } from './components/SlaReportManager';
+import { MikrotikDashboard } from './components/MikrotikDashboard';
+import { Router as RouterIcon } from 'lucide-react';
 import { initGlobalErrorLogging } from './utils/clientLogger';
 import type { GenieACSDevice } from './types';
 
@@ -95,14 +91,12 @@ export default function App() {
   const [tasks, setTasks] = useState<DailyTask[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
-  const [tempLogs, setTempLogs] = useState<TemperatureLog[]>([]);
   const [dailyTodos, setDailyTodos] = useState<DailyTodo[]>([]);
   const [customMissions, setCustomMissions] = useState<CustomMission[]>([]);
   const [categories, setCategories] = useState<DeviceCategory[]>([]);
   
   const [currentMenu, setCurrentMenu] = useState<string>('dashboard');
   const [telegramOpen, setTelegramOpen] = useState<boolean>(true);
-  const [currentTemp, setCurrentTemp] = useState<number>(24.5);
   const [showPublicHelpdesk, setShowPublicHelpdesk] = useState<boolean>(true);
   const [selectedGacsDevice, setSelectedGacsDevice] = useState<GenieACSDevice | null>(null);
 
@@ -165,15 +159,6 @@ export default function App() {
       const catRes = await fetch(`${BACKEND_URL}/api/categories`);
       const catData = await catRes.json();
       if (!catData.error) setCategories(catData);
-
-      const tempRes = await fetch(`${BACKEND_URL}/api/temp-logs`, { headers });
-      const tempData = await tempRes.json();
-      if (!tempData.error) {
-        setTempLogs(tempData);
-        if (tempData.length > 0) {
-          setCurrentTemp(tempData[0].temperature);
-        }
-      }
     } catch (err) {
       console.error('Failed to fetch data from backend:', err);
     }
@@ -193,31 +178,6 @@ export default function App() {
       socket.off('data_changed');
     };
   }, [token]);
-
-  // Periodic temperature logger simulation (sending to backend)
-  useEffect(() => {
-    if (!token) return;
-
-    const timer = setInterval(async () => {
-      const change = (Math.random() - 0.5) * 0.8;
-      const nextTemp = parseFloat((currentTemp + change).toFixed(1));
-      
-      try {
-        await fetch(`${BACKEND_URL}/api/temp/update`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ temperature: nextTemp })
-        });
-      } catch (err) {
-        // fail silently
-      }
-    }, 10000);
-
-    return () => clearInterval(timer);
-  }, [currentTemp, token]);
 
   const handleLoginSuccess = (newToken: string, user: AuthUser) => {
     localStorage.setItem('nemesys_token', newToken);
@@ -303,15 +263,6 @@ export default function App() {
       });
       
       if (res.ok) {
-        await fetch(`${BACKEND_URL}/api/temp/update`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ temperature: currentTemp })
-        });
-        
         setTgMessages((prev) => [
           ...prev,
           { id: Date.now(), text: `✓ Tugas [${task.device_name}] selesai dikerjakan.` }
@@ -361,23 +312,17 @@ export default function App() {
         return <MissionPage customMissions={customMissions} users={users} token={token || ''} onRefresh={fetchData} isAdmin={currentUser?.role === 'Administrator'} />;
       case 'team':
         return <Team users={users} token={token || ''} isAdmin={currentUser?.role === 'Administrator'} onRefresh={fetchData} />;
+      case 'service-desk':
       case 'civitas-tickets':
-        return <CivitasTickets token={token || ''} currentUser={currentUser!} users={users} onRefresh={fetchData} />;
       case 'open-tickets':
-        return <OpenTicket token={token || ''} userRole={currentUser?.role || 'Teknisi'} />;
       case 'open-tickets-dashboard':
-        return <OpenTicketDashboard token={token || ''} userRole={currentUser?.role || 'Manager'} />;
+        return <ServiceDeskManager token={token || ''} currentUser={currentUser!} users={users} onRefresh={fetchData} />;
       case 'netmap-core':
         return <NetMap devices={devices} isCoreOnly={true} categories={categories} />;
       case 'netmap-global':
         return <NetMap devices={devices} isCoreOnly={false} categories={categories} />;
       case 'netlist':
         return <NetList devices={devices} token={token || ''} onRefresh={fetchData} isAdmin={currentUser?.role === 'Administrator'} categories={categories} />;
-      case 'temp':
-      case 'solar':
-        return <TempSolar devices={devices} tempLogs={tempLogs} currentTemp={currentTemp} />;
-      case 'topology':
-        return <Topology devices={devices} token={token || ''} onRefresh={fetchData} isAdmin={currentUser?.role === 'Administrator'} />;
       case 'documentation':
         return <Documentation />;
       case 'statistics':
@@ -409,8 +354,6 @@ export default function App() {
         return <GacsConfig token={token || ''} />;
       case 'system-logs':
         return <SystemLogs token={token || ''} />;
-      case 'health-check':
-        return <HealthCheck token={token || ''} />;
       case 'eng-ops':
         return <EngOpsManager currentUserRole={currentUser?.role} currentUserName={currentUser?.name} />;
       case 'inventory':
@@ -419,6 +362,12 @@ export default function App() {
         return <ExecutiveReport />;
       case 'qr-manager':
         return <QRCodeManager devices={devices} />;
+      case 'noc-monitoring':
+        return <NocDashboard token={token || ''} currentUserRole={currentUser?.role} currentUserName={currentUser?.name} />;
+      case 'mikrotik-noc':
+        return <MikrotikDashboard />;
+      case 'sla-report':
+        return <SlaReportManager token={token || ''} currentUserRole={currentUser?.role} currentUserName={currentUser?.name} />;
       default:
         return <Dashboard devices={devices} tasks={tasks} onTriggerAlert={triggerAlert} onNavigate={setCurrentMenu} token={token || undefined} />;
     }
@@ -467,6 +416,60 @@ export default function App() {
           </a>
 
           <span className="menu-section-title">Monitoring</span>
+          <a
+            className={`menu-item noc-menu-highlight ${currentMenu === 'noc-monitoring' ? 'active' : ''}`}
+            onClick={() => setCurrentMenu('noc-monitoring')}
+            style={{
+              background: currentMenu === 'noc-monitoring' 
+                ? 'linear-gradient(135deg, rgba(6,182,212,0.25), rgba(16,185,129,0.25))' 
+                : 'rgba(6,182,212,0.06)',
+              border: currentMenu === 'noc-monitoring' 
+                ? '1px solid rgba(6,182,212,0.5)' 
+                : '1px solid rgba(6,182,212,0.15)',
+              margin: '4px 8px',
+              borderRadius: '8px'
+            }}
+          >
+            <Activity size={18} className="text-cyan-400" />
+            <span style={{ fontWeight: 700, color: currentMenu === 'noc-monitoring' ? '#38bdf8' : '#e2e8f0' }}>NOC Monitoring</span>
+            <span style={{ fontSize: '10px', background: 'rgba(6,182,212,0.3)', color: '#38bdf8', padding: '1px 6px', borderRadius: '4px', marginLeft: 'auto', fontWeight: 600 }}>ZABBIX</span>
+          </a>
+          <a
+            className={`menu-item ${currentMenu === 'mikrotik-noc' ? 'active' : ''}`}
+            onClick={() => setCurrentMenu('mikrotik-noc')}
+            style={{
+              background: currentMenu === 'mikrotik-noc'
+                ? 'linear-gradient(135deg, rgba(56,189,248,0.25), rgba(16,185,129,0.25))'
+                : 'rgba(56,189,248,0.06)',
+              border: currentMenu === 'mikrotik-noc'
+                ? '1px solid rgba(56,189,248,0.5)'
+                : '1px solid rgba(56,189,248,0.15)',
+              margin: '4px 8px',
+              borderRadius: '8px'
+            }}
+          >
+            <RouterIcon size={18} className="text-cyan-400" />
+            <span style={{ fontWeight: 700, color: currentMenu === 'mikrotik-noc' ? '#38bdf8' : '#e2e8f0' }}>MikroTik RouterOS</span>
+            <span style={{ fontSize: '10px', background: 'rgba(56,189,248,0.3)', color: '#38bdf8', padding: '1px 6px', borderRadius: '4px', marginLeft: 'auto', fontWeight: 600 }}>ROUTEROS</span>
+          </a>
+          <a
+            className={`menu-item ${currentMenu === 'sla-report' ? 'active' : ''}`}
+            onClick={() => setCurrentMenu('sla-report')}
+            style={{
+              background: currentMenu === 'sla-report'
+                ? 'linear-gradient(135deg, rgba(245,158,11,0.25), rgba(6,182,212,0.25))'
+                : 'rgba(245,158,11,0.04)',
+              border: currentMenu === 'sla-report'
+                ? '1px solid rgba(245,158,11,0.5)'
+                : '1px solid rgba(245,158,11,0.15)',
+              margin: '4px 8px',
+              borderRadius: '8px'
+            }}
+          >
+            <Award size={18} className="text-amber-400" />
+            <span style={{ fontWeight: 600, color: currentMenu === 'sla-report' ? '#fbbf24' : '#e2e8f0' }}>Laporan SLA &amp; Uptime</span>
+            <span style={{ fontSize: '10px', background: 'rgba(245,158,11,0.3)', color: '#fbbf24', padding: '1px 6px', borderRadius: '4px', marginLeft: 'auto', fontWeight: 600 }}>OFFICIAL</span>
+          </a>
           <a className={`menu-item ${currentMenu === 'netmap-core' ? 'active' : ''}`} onClick={() => setCurrentMenu('netmap-core')}>
             <Map size={18} /> NetMap Core
           </a>
@@ -476,31 +479,26 @@ export default function App() {
           <a className={`menu-item ${currentMenu === 'netlist' ? 'active' : ''}`} onClick={() => setCurrentMenu('netlist')}>
             <List size={18} /> NetList
           </a>
-          <a className={`menu-item ${currentMenu === 'temp' ? 'active' : ''}`} onClick={() => setCurrentMenu('temp')}>
-            <Thermometer size={18} /> Temp Sensor
-          </a>
-          <a className={`menu-item ${currentMenu === 'solar' ? 'active' : ''}`} onClick={() => setCurrentMenu('solar')}>
-            <Sun size={18} /> Solar Power
-          </a>
-          <a className={`menu-item ${currentMenu === 'health-check' ? 'active' : ''}`} onClick={() => setCurrentMenu('health-check')}>
-            <Activity size={18} /> Health Check
-          </a>
-          <a className={`menu-item ${currentMenu === 'topology' ? 'active' : ''}`} onClick={() => setCurrentMenu('topology')}>
-            <Network size={18} /> Topology
-          </a>
 
           <span className="menu-section-title">Supporting</span>
-          <a className={`menu-item ${currentMenu === 'civitas-tickets' ? 'active' : ''}`} onClick={() => setCurrentMenu('civitas-tickets')}>
-            <Ticket size={18} /> Tiket Civitas
+          <a
+            className={`menu-item ${currentMenu === 'service-desk' ? 'active' : ''}`}
+            onClick={() => setCurrentMenu('service-desk')}
+            style={{
+              background: currentMenu === 'service-desk'
+                ? 'linear-gradient(135deg, rgba(99,102,241,0.25), rgba(6,182,212,0.25))'
+                : 'rgba(99,102,241,0.06)',
+              border: currentMenu === 'service-desk'
+                ? '1px solid rgba(99,102,241,0.5)'
+                : '1px solid rgba(99,102,241,0.15)',
+              margin: '4px 8px',
+              borderRadius: '8px'
+            }}
+          >
+            <Ticket size={18} className="text-indigo-400" />
+            <span style={{ fontWeight: 600, color: currentMenu === 'service-desk' ? '#a5b4fc' : '#e2e8f0' }}>Service Desk &amp; SLA</span>
+            <span style={{ fontSize: '10px', background: 'rgba(99,102,241,0.3)', color: '#a5b4fc', padding: '1px 6px', borderRadius: '4px', marginLeft: 'auto', fontWeight: 600 }}>SLA MATRIX</span>
           </a>
-          <a className={`menu-item ${currentMenu === 'open-tickets' ? 'active' : ''}`} onClick={() => setCurrentMenu('open-tickets')}>
-            <Ticket size={18} /> Open Ticket
-          </a>
-          {currentUser.role !== 'Teknisi' && (
-            <a className={`menu-item ${currentMenu === 'open-tickets-dashboard' ? 'active' : ''}`} onClick={() => setCurrentMenu('open-tickets-dashboard')}>
-              <Ticket size={18} /> Ticket Dashboard
-            </a>
-          )}
           <a className={`menu-item ${currentMenu === 'documentation' ? 'active' : ''}`} onClick={() => setCurrentMenu('documentation')}>
             <BookOpen size={18} /> Documentation
           </a>
@@ -523,15 +521,9 @@ export default function App() {
             </>
           )}
 
-          <span className="menu-section-title">GenieACS</span>
-          <a className={`menu-item ${currentMenu === 'gacs-devices' ? 'active' : ''}`} onClick={() => { setCurrentMenu('gacs-devices'); setSelectedGacsDevice(null); }}>
-            <Wifi size={18} /> Perangkat ACS
-          </a>
-          <a className={`menu-item ${currentMenu === 'gacs-pon-map' ? 'active' : ''}`} onClick={() => setCurrentMenu('gacs-pon-map')}>
-            <GitBranch size={18} /> Peta PON
-          </a>
+          <span className="menu-section-title">Konfigurasi</span>
           <a className={`menu-item ${currentMenu === 'gacs-config' ? 'active' : ''}`} onClick={() => setCurrentMenu('gacs-config')}>
-            <Settings size={18} /> Konfigurasi
+            <Settings size={18} /> Konfigurasi Sistem
           </a>
 
         </nav>

@@ -43,12 +43,16 @@ import operationalRouter from './routes/operational';
 import reportsRouter from './routes/reports';
 import qrRouter from './routes/qr';
 import inventoryRouter from './routes/inventory';
+import nocMonitoringRouter from './routes/nocMonitoring';
+import { mikrotikDashboardRouter } from './routes/mikrotikDashboard';
 
 app.post('/api/login', handleLogin);
 app.use('/api/operational', operationalRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/qr', qrRouter);
 app.use('/api/inventory', inventoryRouter);
+app.use('/api/monitoring', nocMonitoringRouter);
+app.use('/api/mikrotik-dashboard', mikrotikDashboardRouter);
 
 // Broadcast database change helper (no-op on Vercel)
 async function broadcastUpdate() {
@@ -626,6 +630,29 @@ app.get('/api/public/tickets/status', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Database error fetching ticket status' });
+  }
+});
+
+// PUBLIC ENDPOINT: Submit CSAT Rating by Civitas (No Auth Required)
+app.post('/api/public/tickets/:id/csat', async (req, res) => {
+  const ticketId = parseInt(req.params.id);
+  const { csat_rating, csat_feedback } = req.body;
+
+  if (!csat_rating || csat_rating < 1 || csat_rating > 5) {
+    return res.status(400).json({ error: 'Rating harus antara 1 dan 5 bintang' });
+  }
+
+  try {
+    const now = new Date().toLocaleString('id-ID');
+    await pool.query(
+      'UPDATE open_tickets SET csat_rating = ?, csat_feedback = ?, csat_submitted_at = ?, updated_at = ? WHERE id = ?',
+      [csat_rating, csat_feedback || '', now, now, ticketId]
+    );
+    broadcastUpdate();
+    res.json({ message: 'Terima kasih atas penilaian kepuasan layanan Anda!' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Gagal menyimpan penilaian CSAT' });
   }
 });
 
@@ -1437,22 +1464,19 @@ app.get('/api/health/full', requireAuth, async (req, res) => {
     await pool.query('SELECT 1');
     checks.database = { status: 'ok', message: 'Connected' };
   } catch (e: any) { checks.database = { status: 'error', message: e.message }; overallStatus = 'unhealthy'; }
-  // 2. GenieACS
+  // 2. Zabbix API
   try {
-    const [cred]: any = await pool.query('SELECT host, port FROM genieacs_credentials WHERE is_connected = 1 LIMIT 1');
-    if (!cred.length) { checks.genieacs = { status: 'warning', message: 'Not configured' }; if (overallStatus === 'healthy') overallStatus = 'degraded'; }
-    else {
-      const start = Date.now();
-      try {
-        const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 5000);
-        const resp = await fetch(`http://${cred[0].host}:${cred[0].port}/devices?limit=1`, { signal: ctrl.signal });
-        clearTimeout(t);
-        checks.genieacs = { status: resp.ok ? 'ok' : 'error', message: resp.ok ? 'Reachable' : `HTTP ${resp.status}`, latency_ms: Date.now() - start };
-        if (!resp.ok && overallStatus === 'healthy') overallStatus = 'degraded';
-      } catch { checks.genieacs = { status: 'error', message: 'Unreachable / timeout' }; if (overallStatus !== 'unhealthy') overallStatus = 'degraded'; }
+    const start = Date.now();
+    const zbx = await testZabbixConnection();
+    if (zbx.success) {
+      checks.zabbix = { status: 'ok', message: `Connected (${zbx.hostsCount || 0} hosts)`, latency_ms: Date.now() - start };
+    } else {
+      checks.zabbix = { status: 'warning', message: zbx.error || 'Connection issue' };
+      if (overallStatus === 'healthy') overallStatus = 'degraded';
     }
-  } catch (e: any) { checks.genieacs = { status: 'error', message: e.message }; }
+  } catch (e: any) {
+    checks.zabbix = { status: 'error', message: e.message };
+  }
   // 3. MikroTik
   try {
     const [mt]: any = await pool.query('SELECT is_connected FROM mikrotik_credentials LIMIT 1');

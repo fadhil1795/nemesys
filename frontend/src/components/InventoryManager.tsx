@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import QRCode from 'qrcode';
 import {
   Boxes,
   Plus,
@@ -102,6 +103,25 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
 
   const [showQrModal, setShowQrModal] = useState<boolean>(false);
   const [selectedQrAsset, setSelectedQrAsset] = useState<ITAsset | null>(null);
+  const [assetQrImageSrc, setAssetQrImageSrc] = useState<string>('');
+
+  useEffect(() => {
+    if (selectedQrAsset?.asset_code) {
+      QRCode.toDataURL(selectedQrAsset.asset_code, {
+        width: 200,
+        margin: 1,
+        color: {
+          dark: '#000000',
+          light: '#ffffff'
+        },
+        errorCorrectionLevel: 'H'
+      }).then(url => {
+        setAssetQrImageSrc(url);
+      }).catch(err => {
+        console.error('Failed to generate asset QR code:', err);
+      });
+    }
+  }, [selectedQrAsset]);
 
   // Form states for Asset
   const [assetForm, setAssetForm] = useState({
@@ -2024,9 +2044,17 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                 {selectedQrAsset.asset_code}
               </div>
               
-              <div style={{ margin: '14px auto', width: '140px', height: '140px', background: '#000', padding: '10px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', color: '#fff' }}>
-                <QrCode size={105} />
-                <div style={{ fontSize: '8px', marginTop: '4px', fontFamily: 'monospace' }}>SCAN FOR ASSET SPECS</div>
+              {/* Real Scannable 2D QR Code Matrix */}
+              <div style={{ margin: '14px auto', width: '150px', height: '150px', background: '#fff', padding: '6px', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+                {assetQrImageSrc ? (
+                  <img 
+                    src={assetQrImageSrc} 
+                    alt={`QR Code ${selectedQrAsset.asset_code}`}
+                    style={{ width: '138px', height: '138px', display: 'block' }}
+                  />
+                ) : (
+                  <RefreshCw className="spin" size={24} color="#6366f1" />
+                )}
               </div>
 
               <div style={{ fontSize: '13px', fontWeight: 700 }}>{selectedQrAsset.name}</div>

@@ -1,76 +1,121 @@
 import TelegramBot from 'node-telegram-bot-api';
 import dotenv from 'dotenv';
 import { pool } from './db';
-import { getDevices, summonDevice, setWifiConfig, GenieACSConfig, parseDeviceData } from './genieacs';
+import { NocSlaService } from './services/nocSlaService';
+import { NocDiagnosticsService } from './services/nocDiagnosticsService';
 
 dotenv.config();
 
-const token = process.env.TELEGRAM_BOT_TOKEN;
 let bot: TelegramBot | null = null;
+let currentBotToken: string | null = null;
 
 // Session memory for multi-step interactive commands (e.g., editwifi)
 const sessionState: Record<string, { command: string; step: number; data: any }> = {};
 
+// Cache for tracking sent problem alerts to prevent duplicate spamming
+const sentAlertEventIds = new Set<string>();
+
 // Helper: Get user role from DB
-async function getUserRole(chatId: string | number): Promise<{ name: string; role: string } | null> {
-  const [rows]: any = await pool.query('SELECT name, role FROM users WHERE telegram_chat_id = ? LIMIT 1', [chatId.toString()]);
+async function getUserRole(chatId: string | number): Promise<{ id: number; name: string; username: string; role: string } | null> {
+  const [rows]: any = await pool.query('SELECT id, name, username, role FROM users WHERE telegram_chat_id = ? LIMIT 1', [chatId.toString()]);
   if (rows.length === 0) return null;
   return rows[0];
 }
 
 // Helper: Check RBAC permissions
-function hasPermission(userRole: string, action: 'view' | 'summon' | 'edit_wifi' | 'manage_users'): boolean {
-  if (userRole === 'Administrator') return true;
-  if (userRole === 'Manager') {
-    return ['view', 'summon'].includes(action);
-  }
+function hasPermission(userRole: string, action: 'view' | 'summon' | 'edit_wifi' | 'manage_users' | 'ack'): boolean {
+  if (userRole === 'Administrator' || userRole === 'Manager') return true;
   if (userRole === 'Teknisi') {
-    return ['view'].includes(action);
+    return ['view', 'ack'].includes(action);
   }
   return false;
 }
 
-// Helper: Get ACS Credentials
-async function getAcsCreds(): Promise<GenieACSConfig | null> {
-  const [credRows]: any = await pool.query('SELECT host, port, username, password FROM genieacs_credentials WHERE is_connected = 1 ORDER BY id DESC LIMIT 1');
-  if (credRows.length === 0) return null;
-  return credRows[0];
-}
+// Helper: Get Bot Token & Default Chat ID from DB or .env
+export async function getTelegramConfig(): Promise<{ token: string | null; chatId: string | null }> {
+  try {
+    const [rows]: any = await pool.query('SELECT bot_token, chat_id, is_connected FROM telegram_bot_config WHERE is_connected = 1 ORDER BY id DESC LIMIT 1');
+    if (rows && rows.length > 0 && rows[0].bot_token) {
+      return { token: rows[0].bot_token, chatId: rows[0].chat_id };
+    }
+  } catch {}
 
-export function initTelegramBot(onAction: (action: 'accept' | 'complete', taskId: number) => void) {
-  const IS_VERCEL = process.env.VERCEL === '1' || process.env.VERCEL_ENV !== undefined;
-
-  if (!token || token.includes('YOUR_TELEGRAM_BOT_TOKEN')) {
-    console.warn('⚠️ WARNING: Telegram Bot Token not set in .env. Bot features will run in simulation mode.');
-    return;
+  const envToken = process.env.TELEGRAM_BOT_TOKEN;
+  if (envToken && !envToken.includes('YOUR_TELEGRAM')) {
+    return { token: envToken, chatId: process.env.TELEGRAM_CHAT_ID || null };
   }
 
+  return { token: null, chatId: null };
+}
+
+export async function initTelegramBot(onAction?: (action: 'accept' | 'complete', taskId: number) => void) {
+  const IS_VERCEL = process.env.VERCEL === '1' || process.env.VERCEL_ENV !== undefined;
   if (IS_VERCEL) {
     console.log('ℹ️ Telegram Bot polling disabled on Vercel serverless.');
     return;
   }
 
+  const { token } = await getTelegramConfig();
+  if (!token) {
+    console.log('ℹ️ Telegram Bot token not configured. (Set via .env or System Settings)');
+    return;
+  }
+
+  if (bot && currentBotToken === token) {
+    return; // Already initialized with same token
+  }
+
+  if (bot) {
+    try {
+      await bot.stopPolling();
+    } catch {}
+    bot = null;
+  }
+
   try {
     bot = new TelegramBot(token, { polling: true });
-    console.log('🤖 Telegram Bot Service successfully initialized with Interactive Commands.');
+    currentBotToken = token;
+
+    // Suppress polling network glitches without crashing
+    bot.on('polling_error', (error) => {
+      // Ignored non-critical network blip
+    });
+
+    bot.on('error', (error) => {
+      // Catch general errors
+    });
+
+    console.log('🤖 NOC Smart Telegram Bot Service successfully initialized.');
 
     // --------------------------------------------------------
     // COMMAND: /start
     // --------------------------------------------------------
     bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
       const chatId = msg.chat.id.toString();
-      const usernameParam = match ? match[1] : null;
+      const usernameParam = match ? match[1]?.trim() : null;
 
       if (usernameParam) {
-        // Link Account
+        // Link Account with username
         try {
           const [rows]: any = await pool.query('SELECT * FROM users WHERE username = ?', [usernameParam]);
           if (rows.length === 0) {
-            bot?.sendMessage(chatId, `❌ Gagal menghubungkan: Username "${usernameParam}" tidak ditemukan di database.`);
+            bot?.sendMessage(chatId, `❌ Gagal menghubungkan: Username "${usernameParam}" tidak ditemukan di database NEMESYS.`);
             return;
           }
           await pool.query('UPDATE users SET telegram_chat_id = ? WHERE username = ?', [chatId, usernameParam]);
-          bot?.sendMessage(chatId, `✓ Halo ${rows[0].name}, akun Telegram Anda berhasil terhubung ke NEMESYS sebagai: ${rows[0].role}! Ketik /help untuk menu.`);
+          
+          const welcomeMsg = `✅ *Akun Berhasil Terhubung!*\n\nHalo *${rows[0].name}*, akun Telegram Anda telah ditautkan ke sistem *NEMESYS NOC UNTAG* sebagai *${rows[0].role}*.\n\nAnda sekarang akan menerima notifikasi real-time jika terjadi gangguan pada jaringan kampus.`;
+          
+          const opts = {
+            parse_mode: 'Markdown' as const,
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: '📊 Ringkasan NOC Live', callback_data: 'menu:noc' }, { text: '⚠️ Masalah Aktif', callback_data: 'menu:problems' }],
+                [{ text: '📈 Laporan SLA Bulanan', callback_data: 'menu:sla' }, { text: '❓ Bantuan Perintah', callback_data: 'menu:help' }]
+              ]
+            }
+          };
+          bot?.sendMessage(chatId, welcomeMsg, opts);
         } catch (err) {
           bot?.sendMessage(chatId, '❌ Terjadi kesalahan internal saat menghubungkan akun.');
         }
@@ -80,19 +125,23 @@ export function initTelegramBot(onAction: (action: 'accept' | 'complete', taskId
       // Check if already linked
       const user = await getUserRole(chatId);
       if (!user) {
-        bot?.sendMessage(chatId, 'Selamat datang di Nemesys Bot.\nSilakan gunakan perintah: `/start <username_dashboard>` untuk menghubungkan akun Anda.', { parse_mode: 'Markdown' });
+        const welcomeUnlinked = `🏛 *NOC COMMAND CENTER - UNTAG BANYUWANGI*\n\nSelamat datang di Bot Resmi Pemantauan Jaringan NEMESYS.\n\nSilakan hubungkan akun Anda dengan mengetik:\n\`/start <username_dashboard>\`\n\n_Contoh: \`/start dika_admin\`_`;
+        bot?.sendMessage(chatId, welcomeUnlinked, { parse_mode: 'Markdown' });
         return;
       }
 
+      const greeting = `🏛 *NOC COMMAND CENTER - UNTAG BANYUWANGI*\n\nHalo *${user.name}* (${user.role})!\nSilakan pilih menu pemantauan atau gunakan perintah di bawah:`;
       const opts = {
+        parse_mode: 'Markdown' as const,
         reply_markup: {
           inline_keyboard: [
-            [{ text: '📊 Dashboard', callback_data: 'menu:dashboard' }, { text: '🖧 Device List', callback_data: 'menu:list' }],
-            [{ text: '❓ Bantuan (Help)', callback_data: 'menu:help' }]
+            [{ text: '📊 Ringkasan NOC Live', callback_data: 'menu:noc' }, { text: '⚠️ Masalah Aktif', callback_data: 'menu:problems' }],
+            [{ text: '📈 Laporan SLA Bulanan', callback_data: 'menu:sla' }, { text: '👥 Sesi DHCP / Klien', callback_data: 'menu:leases' }],
+            [{ text: '❓ Bantuan & Perintah Lengkap', callback_data: 'menu:help' }]
           ]
         }
       };
-      bot?.sendMessage(chatId, `Halo *${user.name}* (${user.role})! Apa yang ingin Anda lakukan hari ini?`, { parse_mode: 'Markdown', ...opts });
+      bot?.sendMessage(chatId, greeting, opts);
     });
 
     // --------------------------------------------------------
@@ -101,14 +150,131 @@ export function initTelegramBot(onAction: (action: 'accept' | 'complete', taskId
     bot.onText(/\/help/, async (msg) => {
       const chatId = msg.chat.id.toString();
       const helpText = `
-*Daftar Perintah Nemesys Bot:*
-/status <SN> - Cek status detail ONU
-/list - Lihat daftar perangkat ONU
-/summon <SN> - Refresh/Summon ONU (Admin/Manager)
-/editwifi <SN> - Ubah SSID/Pass WiFi ONU (Admin)
-/cancel - Batalkan perintah yang sedang berjalan
+🏛 *DAFTAR PERINTAH NOC NEMESYS BOT:*
+
+🔹 *Pemantauan Jaringan & NOC:*
+• \`/noc\` atau \`/summary\` - Cek ringkasan live NOC (Uptime, Bandwidth, Alarms)
+• \`/masalah\` atau \`/problems\` - Lihat daftar alarm & problem aktif Zabbix
+• \`/perangkat\` atau \`/hosts\` - Daftar host & node jaringan dari Zabbix
+• \`/sla\` - Laporan ringkas pemenuhan SLA bulan ini
+• \`/dhcp\` atau \`/leases\` - Info sewa IP DHCP MikroTik
+• \`/rekap\` - Kirim rekapitulasi harian jaringan kampus
+
+🔹 *Diagnostik Jaringan:*
+• \`/ping <ip_atau_host>\` - Uji latensi & ping ke target (Contoh: \`/ping 103.92.209.1\`)
+
+🔹 *Bantuan:*
+• \`/help\` - Tampilkan panduan perintah
+• \`/cancel\` - Batalkan operasi yang sedang berjalan
       `;
       bot?.sendMessage(chatId, helpText, { parse_mode: 'Markdown' });
+    });
+
+    // --------------------------------------------------------
+    // COMMAND: /noc /summary
+    // --------------------------------------------------------
+    bot.onText(/\/(?:noc|summary|ringkasan)/, async (msg) => {
+      const chatId = msg.chat.id.toString();
+      await sendNocSummaryMessage(chatId);
+    });
+
+    // --------------------------------------------------------
+    // COMMAND: /masalah /problems
+    // --------------------------------------------------------
+    bot.onText(/\/(?:masalah|problems|alarm)/, async (msg) => {
+      const chatId = msg.chat.id.toString();
+      await sendActiveProblemsMessage(chatId);
+    });
+
+    // --------------------------------------------------------
+    // COMMAND: /perangkat /hosts /nodes
+    // --------------------------------------------------------
+    bot.onText(/\/(?:perangkat|hosts|nodes|devices)/, async (msg) => {
+      const chatId = msg.chat.id.toString();
+      try {
+        const { NocZabbixService } = await import('./services/nocZabbixService');
+        const devices = await NocZabbixService.getDevices();
+        if (!devices || devices.length === 0) {
+          return bot?.sendMessage(chatId, 'ℹ️ Tidak ada perangkat yang terdaftar di Zabbix.');
+        }
+
+        let text = `🖥 *DAFTAR HOST & NODE JARINGAN (ZABBIX)*\n━━━━━━━━━━━━━━━━━━━━\n`;
+        devices.slice(0, 15).forEach((d) => {
+          const statusEmoji = d.status === 'healthy' ? '🟢' : d.status === 'warning' ? '🟡' : '🔴';
+          text += `${statusEmoji} *${d.name}* (\`${d.ip}\`)\n   └ *Tipe:* ${d.category.toUpperCase()} • Ping: \`${d.pingMs}ms\` • Traffic: \`${d.trafficInMbps}/${d.trafficOutMbps} Mbps\`\n`;
+        });
+        text += `\n_Total: ${devices.length} perangkat terdata_`;
+
+        bot?.sendMessage(chatId, text, { parse_mode: 'Markdown' });
+      } catch (err: any) {
+        bot?.sendMessage(chatId, `❌ Gagal mengambil daftar perangkat: ${err.message}`);
+      }
+    });
+
+    // --------------------------------------------------------
+    // COMMAND: /sla
+    // --------------------------------------------------------
+    bot.onText(/\/sla/, async (msg) => {
+      const chatId = msg.chat.id.toString();
+      await sendSlaSummaryMessage(chatId);
+    });
+
+    // --------------------------------------------------------
+    // COMMAND: /dhcp /leases
+    // --------------------------------------------------------
+    bot.onText(/\/(?:dhcp|leases|klien)/, async (msg) => {
+      const chatId = msg.chat.id.toString();
+      await sendDhcpLeasesMessage(chatId);
+    });
+
+    // --------------------------------------------------------
+    // COMMAND: /rekap
+    // --------------------------------------------------------
+    bot.onText(/\/(?:rekap|digest|laporan)/, async (msg) => {
+      const chatId = msg.chat.id.toString();
+      await sendDigestReportToChat(chatId);
+    });
+
+    // --------------------------------------------------------
+    // COMMAND: /ping <host>
+    // --------------------------------------------------------
+    bot.onText(/\/ping(?:\s+(.+))?/, async (msg, match) => {
+      const chatId = msg.chat.id.toString();
+      const target = match ? match[1]?.trim() : null;
+
+      if (!target) {
+        return bot?.sendMessage(chatId, 'Gunakan format: `/ping <ip_address_atau_domain>`\nContoh: `/ping 103.92.209.1` atau `/ping google.com`', { parse_mode: 'Markdown' });
+      }
+
+      const waitMsg = await bot?.sendMessage(chatId, `⚡ Sedang melakukan *Ping Diagnostics* ke \`${target}\` (4 paket)...`, { parse_mode: 'Markdown' });
+
+      try {
+        const pingRes = await NocDiagnosticsService.runPing(target, 4);
+        const lossEmoji = pingRes.packetLossPercent === 0 ? '🟢' : pingRes.packetLossPercent < 50 ? '🟡' : '🔴';
+
+        const resultText = `
+📡 *HASIL PING DIAGNOSTICS*
+━━━━━━━━━━━━━━━━━━━━
+🎯 *Target:* \`${pingRes.target}\`
+${lossEmoji} *Packet Loss:* \`${pingRes.packetLossPercent}%\` (${pingRes.packetsReceived}/${pingRes.packetsTransmitted} diterima)
+
+⏱ *Statistik RTT Latensi:*
+• *Min:* ${pingRes.minRttMs} ms
+• *Avg:* *${pingRes.avgRttMs} ms*
+• *Max:* ${pingRes.maxRttMs} ms
+• *Jitter:* ${pingRes.jitterMs} ms
+━━━━━━━━━━━━━━━━━━━━
+_Server Source: UNTAG NOC Core_
+        `;
+
+        if (waitMsg && bot) {
+          await bot.editMessageText(resultText, { chat_id: chatId, message_id: waitMsg.message_id, parse_mode: 'Markdown' });
+        } else {
+          bot?.sendMessage(chatId, resultText, { parse_mode: 'Markdown' });
+        }
+      } catch (err: any) {
+        bot?.sendMessage(chatId, `❌ Gagal melakukan ping ke \`${target}\`: ${err.message || 'Host Unreachable'}`, { parse_mode: 'Markdown' });
+      }
     });
 
     // --------------------------------------------------------
@@ -125,190 +291,6 @@ export function initTelegramBot(onAction: (action: 'accept' | 'complete', taskId
     });
 
     // --------------------------------------------------------
-    // COMMAND: /status <SN>
-    // --------------------------------------------------------
-    bot.onText(/\/status(?:\s+(.+))?/, async (msg, match) => {
-      const chatId = msg.chat.id.toString();
-      const serial = match ? match[1]?.trim() : null;
-      
-      const user = await getUserRole(chatId);
-      if (!user) return; // Silent if not registered
-      if (!hasPermission(user.role, 'view')) return bot!.sendMessage(chatId, '❌ Anda tidak memiliki akses untuk perintah ini.');
-
-      if (!serial) {
-        return bot!.sendMessage(chatId, 'Gunakan format: `/status <SerialNumber>`', { parse_mode: 'Markdown' });
-      }
-
-      bot!.sendMessage(chatId, `🔍 Mencari perangkat dengan SN: ${serial}...`);
-      
-      const creds = await getAcsCreds();
-      if (!creds) return bot!.sendMessage(chatId, '❌ Konfigurasi GenieACS belum diatur di sistem.');
-
-      const res = await getDevices(creds, { 'summary.serialNumber': serial }, 1);
-      if (!res.success || !res.data || res.data.length === 0) {
-        return bot!.sendMessage(chatId, '❌ Perangkat tidak ditemukan atau sedang offline dari ACS.');
-      }
-
-      const d = parseDeviceData(res.data[0]);
-      const statusIcon = d.status === 'online' ? '✅' : '❌';
-      
-      const text = `
-*STATUS PERANGKAT*
-SN: \`${d.serialNumber}\`
-Pabrikan: ${d.manufacturer} ${d.productClass}
-Status: ${statusIcon} *${d.status.toUpperCase()}*
-
-*Parameter Jaringan:*
-IP Address: ${d.ipAddress || '-'}
-IP TR069: ${d.ipTr069 || '-'}
-MAC Address: ${d.macAddress || '-'}
-
-*Optik & Suhu:*
-Rx Power: ${d.rxPower ? d.rxPower + ' dBm' : '-'}
-Suhu: ${d.temperature ? d.temperature + ' °C' : '-'}
-
-*WiFi Info:*
-SSID: ${d.wifiSsid || '-'}
-Password: ${d.wifiPassword ? '`' + d.wifiPassword + '`' : '-'}
-      `;
-
-      const inline_keyboard = [];
-      if (hasPermission(user.role, 'summon')) {
-        inline_keyboard.push([{ text: '⚡ Summon Device', callback_data: `action:summon:${d._id}` }]);
-      }
-      if (hasPermission(user.role, 'edit_wifi')) {
-        inline_keyboard.push([{ text: '📶 Edit WiFi', callback_data: `action:editwifi:${d._id}` }]);
-      }
-
-      bot!.sendMessage(chatId, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard } });
-    });
-
-    // --------------------------------------------------------
-    // COMMAND: /list
-    // --------------------------------------------------------
-    bot.onText(/\/list/, async (msg) => {
-      const chatId = msg.chat.id.toString();
-      const user = await getUserRole(chatId);
-      if (!user) return;
-      if (!hasPermission(user.role, 'view')) return bot!.sendMessage(chatId, '❌ Anda tidak memiliki akses.');
-
-      bot!.sendMessage(chatId, 'Sedang mengambil daftar perangkat...');
-      const creds = await getAcsCreds();
-      if (!creds) return bot!.sendMessage(chatId, '❌ Konfigurasi GenieACS belum diatur.');
-
-      const res = await getDevices(creds, {}, 10, 0);
-      if (!res.success || !res.data) return bot!.sendMessage(chatId, '❌ Gagal mengambil data.');
-
-      let text = '*10 Perangkat Terakhir:*\n\n';
-      res.data.forEach((device) => {
-        const d = parseDeviceData(device);
-        text += `${d.status === 'online' ? '🟢' : '🔴'} \`${d.serialNumber}\` - ${d.ipAddress || '-'}\n`;
-      });
-
-      bot!.sendMessage(chatId, text, { parse_mode: 'Markdown' });
-    });
-
-    // --------------------------------------------------------
-    // COMMAND: /summon <SN>
-    // --------------------------------------------------------
-    bot.onText(/\/summon(?:\s+(.+))?/, async (msg, match) => {
-      const chatId = msg.chat.id.toString();
-      const serial = match ? match[1]?.trim() : null;
-      
-      const user = await getUserRole(chatId);
-      if (!user) return;
-      if (!hasPermission(user.role, 'summon')) return bot!.sendMessage(chatId, '❌ Akses ditolak. Hanya Admin/Manager.');
-
-      if (!serial) return bot!.sendMessage(chatId, 'Gunakan format: `/summon <SerialNumber>`', { parse_mode: 'Markdown' });
-
-      // First find device_id
-      const creds = await getAcsCreds();
-      if (!creds) return;
-      const res = await getDevices(creds, { 'summary.serialNumber': serial }, 1);
-      if (!res.success || !res.data || res.data.length === 0) {
-        return bot!.sendMessage(chatId, '❌ Perangkat tidak ditemukan.');
-      }
-      
-      const d = parseDeviceData(res.data[0]);
-      bot!.sendMessage(chatId, `⚠️ Konfirmasi Summon untuk perangkat ${d.serialNumber}?`, {
-        reply_markup: {
-          inline_keyboard: [[
-            { text: 'Ya, Summon', callback_data: `confirm:summon:${d._id}` },
-            { text: 'Batal', callback_data: `confirm:cancel` }
-          ]]
-        }
-      });
-    });
-
-    // --------------------------------------------------------
-    // COMMAND: /editwifi <SN>
-    // --------------------------------------------------------
-    bot.onText(/\/editwifi(?:\s+(.+))?/, async (msg, match) => {
-      const chatId = msg.chat.id.toString();
-      const serial = match ? match[1]?.trim() : null;
-      
-      const user = await getUserRole(chatId);
-      if (!user) return;
-      if (!hasPermission(user.role, 'edit_wifi')) return bot!.sendMessage(chatId, '❌ Akses ditolak. Hanya Admin.');
-
-      if (!serial) return bot!.sendMessage(chatId, 'Gunakan format: `/editwifi <SerialNumber>`', { parse_mode: 'Markdown' });
-
-      const creds = await getAcsCreds();
-      if (!creds) return;
-      const res = await getDevices(creds, { 'summary.serialNumber': serial }, 1);
-      if (!res.success || !res.data || res.data.length === 0) return bot!.sendMessage(chatId, '❌ Perangkat tidak ditemukan.');
-      
-      const d = parseDeviceData(res.data[0]);
-      
-      // Start Session
-      sessionState[chatId] = { command: 'editwifi', step: 1, data: { deviceId: d._id, serial: d.serialNumber } };
-      
-      bot!.sendMessage(chatId, `📶 *Edit WiFi* untuk ONU \`${d.serialNumber}\`\n\nMasukkan *SSID (Nama WiFi)* baru:\n\n_(Atau ketik /cancel untuk membatalkan)_`, { parse_mode: 'Markdown' });
-    });
-
-    // --------------------------------------------------------
-    // Catch-all for Session States (Multi-step)
-    // --------------------------------------------------------
-    bot.on('message', async (msg) => {
-      const chatId = msg.chat.id.toString();
-      const text = msg.text || '';
-      
-      if (text.startsWith('/')) return; // Ignore commands
-      
-      if (sessionState[chatId] && sessionState[chatId].command === 'editwifi') {
-        const state = sessionState[chatId];
-        
-        if (state.step === 1) {
-          state.data.ssid = text;
-          state.step = 2;
-          bot!.sendMessage(chatId, `✅ SSID diset ke: *${text}*\n\nSekarang masukkan *Password WiFi* baru (minimal 8 karakter):\n\n_(Ketik 'skip' jika tidak ingin pakai password, atau /cancel)_`, { parse_mode: 'Markdown' });
-        } 
-        else if (state.step === 2) {
-          const pass = text.toLowerCase() === 'skip' ? '' : text;
-          if (pass !== '' && pass.length < 8) {
-            return bot!.sendMessage(chatId, '❌ Password harus minimal 8 karakter. Silakan masukkan lagi:');
-          }
-          
-          state.data.password = pass;
-          const { deviceId, serial, ssid, password } = state.data;
-          
-          bot!.sendMessage(chatId, `⏳ Mengirim perintah TR-069 ke perangkat \`${serial}\`...`, { parse_mode: 'Markdown' });
-          delete sessionState[chatId]; // Clear session
-          
-          const creds = await getAcsCreds();
-          if (creds) {
-            const res = await setWifiConfig(creds, deviceId, ssid, password);
-            if (res.success) {
-              bot!.sendMessage(chatId, `🎉 *Berhasil!* Konfigurasi WiFi telah dikirim ke perangkat. Membutuhkan waktu 1-2 menit untuk teraplikasi pada router.`, { parse_mode: 'Markdown' });
-            } else {
-              bot!.sendMessage(chatId, `❌ Gagal mengirim konfigurasi: ${res.error}`);
-            }
-          }
-        }
-      }
-    });
-
-    // --------------------------------------------------------
     // CALLBACK QUERY HANDLER
     // --------------------------------------------------------
     bot.on('callback_query', async (query) => {
@@ -318,71 +300,54 @@ Password: ${d.wifiPassword ? '`' + d.wifiPassword + '`' : '-'}
       if (!chatId) return;
 
       const user = await getUserRole(chatId);
-      if (!user) return bot?.answerCallbackQuery(query.id, { text: 'Akses Ditolak', show_alert: true });
-
       const parts = data.split(':');
       const action = parts[0];
 
-      if (action === 'accept') {
-        // Zabbix tasks
-        onAction('accept', parseInt(parts[1]));
+      if (action === 'ack') {
+        // Acknowledge Zabbix Alarm
+        const eventId = parts[1];
+        try {
+          const { NocZabbixService } = await import('./services/nocZabbixService');
+          await NocZabbixService.acknowledgeProblem(
+            eventId,
+            user?.name || 'Teknisi Telegram',
+            'Diakui via Telegram Bot'
+          );
+          
+          bot?.answerCallbackQuery(query.id, { text: `✅ Alarm #${eventId} berhasil diakui!` });
+          
+          if (query.message) {
+            await bot?.editMessageText(`${query.message.text}\n\n✅ *Status:* Diakui oleh ${user?.name || 'Teknisi'} via Telegram Bot`, {
+              chat_id: chatId,
+              message_id: query.message.message_id,
+            });
+          }
+        } catch (err: any) {
+          bot?.answerCallbackQuery(query.id, { text: `Gagal mengakui: ${err.message || err}`, show_alert: true });
+        }
+      }
+      else if (action === 'accept') {
+        if (onAction) onAction('accept', parseInt(parts[1]));
         bot?.answerCallbackQuery(query.id, { text: 'Tugas diterima!' });
       } 
       else if (action === 'complete') {
-        onAction('complete', parseInt(parts[1]));
+        if (onAction) onAction('complete', parseInt(parts[1]));
         bot?.answerCallbackQuery(query.id, { text: 'Tugas diselesaikan!' });
       }
       else if (action === 'menu') {
         bot?.answerCallbackQuery(query.id);
-        if (parts[1] === 'dashboard') {
-          // just send static summary
-          bot?.sendMessage(chatId, '📊 Untuk melihat Dashboard secara lengkap, silakan buka Web Interface Nemesys.');
-        } else if (parts[1] === 'help') {
-          bot?.sendMessage(chatId, 'Gunakan /status <SN> untuk melihat detail alat, atau /list untuk melihat daftar.');
-        } else if (parts[1] === 'list') {
-          bot?.sendMessage(chatId, 'Ketik perintah /list');
+        const sub = parts[1];
+        if (sub === 'noc') await sendNocSummaryMessage(chatId);
+        else if (sub === 'problems') await sendActiveProblemsMessage(chatId);
+        else if (sub === 'sla') await sendSlaSummaryMessage(chatId);
+        else if (sub === 'leases') await sendDhcpLeasesMessage(chatId);
+        else if (sub === 'help') {
+          bot?.sendMessage(chatId, 'Ketik `/help` untuk panduan perintah lengkap.', { parse_mode: 'Markdown' });
         }
       }
-      else if (action === 'action') {
-        bot?.answerCallbackQuery(query.id);
-        const subAction = parts[1];
-        const deviceId = parts[2];
-        
-        if (subAction === 'summon') {
-          if (!hasPermission(user.role, 'summon')) return bot?.sendMessage(chatId, '❌ Anda tidak memiliki hak akses.');
-          bot?.sendMessage(chatId, `⚠️ Konfirmasi Summon perangkat?`, {
-            reply_markup: {
-              inline_keyboard: [[
-                { text: 'Ya, Summon', callback_data: `confirm:summon:${deviceId}` },
-                { text: 'Batal', callback_data: `confirm:cancel` }
-              ]]
-            }
-          });
-        }
-        else if (subAction === 'editwifi') {
-          if (!hasPermission(user.role, 'edit_wifi')) return bot?.sendMessage(chatId, '❌ Anda tidak memiliki hak akses.');
-          sessionState[chatId] = { command: 'editwifi', step: 1, data: { deviceId, serial: deviceId } }; // deviceId matches serial mostly, or query it
-          bot?.sendMessage(chatId, `📶 *Edit WiFi*\n\nMasukkan *SSID (Nama WiFi)* baru:\n\n_(Atau ketik /cancel)_`, { parse_mode: 'Markdown' });
-        }
-      }
-      else if (action === 'confirm') {
-        if (parts[1] === 'cancel') {
-          bot?.answerCallbackQuery(query.id, { text: 'Dibatalkan' });
-          bot?.sendMessage(chatId, '🚫 Perintah dibatalkan.');
-        }
-        else if (parts[1] === 'summon') {
-          bot?.answerCallbackQuery(query.id, { text: 'Mengirim Summon...' });
-          bot?.sendMessage(chatId, '⏳ Mengirim Connection Request...');
-          const creds = await getAcsCreds();
-          if (creds) {
-            const res = await summonDevice(creds, parts[2]);
-            if (res.success) {
-              bot?.sendMessage(chatId, '✅ Summon berhasil dikirim (200 OK).');
-            } else {
-              bot?.sendMessage(chatId, `❌ Gagal summon: ${res.error}`);
-            }
-          }
-        }
+      else if (action === 'noc' && parts[1] === 'refresh') {
+        bot?.answerCallbackQuery(query.id, { text: 'Memperbarui data...' });
+        await sendNocSummaryMessage(chatId, query.message?.message_id);
       }
     });
 
@@ -391,7 +356,324 @@ Password: ${d.wifiPassword ? '`' + d.wifiPassword + '`' : '-'}
   }
 }
 
-// Push alert to all registered technicians or specific assigned tech
+// -------------------------------------------------------------
+// HELPER TELEGRAM MESSAGE GENERATORS
+// -------------------------------------------------------------
+
+// 1. NOC Live Summary
+async function sendNocSummaryMessage(chatId: string, messageIdToEdit?: number) {
+  if (!bot) return;
+  try {
+    const { NocZabbixService } = await import('./services/nocZabbixService');
+    const kpi = await NocZabbixService.getSummaryKPI();
+    const liveStatus = await NocZabbixService.isLiveZabbixConnected();
+
+    const text = `
+🏛 *NOC COMMAND CENTER — LIVE STATUS*
+*Universitas 17 Agustus 1945 Banyuwangi*
+━━━━━━━━━━━━━━━━━━━━
+⚡ *Zabbix JSON-RPC:* ${liveStatus.connected ? '🟢 *LIVE CONNECTED*' : '🟡 *STANDBY*'}
+📈 *Overall Network Uptime:* *${kpi.overallUptimePercent}%*
+
+🌐 *Trafik & Bandwidth:*
+• Inbound Traffic: *${kpi.totalBandwidthGbps} Gbps*
+
+🖥 *Status Node Perangkat:*
+• Router MikroTik: *${kpi.mikrotik.healthy}/${kpi.mikrotik.total}* Normal 🟢
+• Servers & Core: *${kpi.servers?.healthy || 0}/${kpi.servers?.total || 1}* Normal
+• Total Klien DHCP: *${kpi.dhcpLeases?.total || kpi.dhcpLeasesCount || 0}* Leases (${kpi.dhcpLeases?.active || 0} Aktif)
+
+⚠️ *Alarm & Problem Aktif:*
+• 🔴 Disaster: ${kpi.problemsSummary.disaster}
+• 🟠 High: ${kpi.problemsSummary.high}
+• 🟡 Warning: ${kpi.problemsSummary.warning}
+• Total Problem: *${kpi.problemsSummary.total}* (${kpi.problemsSummary.unackedCount} Belum Diakui)
+━━━━━━━━━━━━━━━━━━━━
+_Waktu: ${new Date().toLocaleTimeString('id-ID')} WIB_
+    `;
+
+    const opts = {
+      parse_mode: 'Markdown' as const,
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '🔄 Refresh Status', callback_data: 'noc:refresh' }, { text: '⚠️ Lihat Masalah', callback_data: 'menu:problems' }],
+          [{ text: '📈 Laporan SLA', callback_data: 'menu:sla' }]
+        ]
+      }
+    };
+
+    if (messageIdToEdit) {
+      await bot.editMessageText(text, { chat_id: chatId, message_id: messageIdToEdit, ...opts });
+    } else {
+      await bot.sendMessage(chatId, text, opts);
+    }
+  } catch (err: any) {
+    bot?.sendMessage(chatId, `❌ Gagal mengambil status NOC: ${err.message || err}`);
+  }
+}
+
+// 2. Active Problems List
+async function sendActiveProblemsMessage(chatId: string) {
+  if (!bot) return;
+  try {
+    const { NocZabbixService } = await import('./services/nocZabbixService');
+    const problems = await NocZabbixService.getActiveProblems();
+
+    if (problems.length === 0) {
+      const text = `✅ *SEMUA SISTEM NORMAL*\n\nTidak ada alarm atau pemadaman aktif yang terdeteksi di Zabbix saat ini.\nSemua link backbone dan access point kampus beroperasi lancar.`;
+      return bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
+    }
+
+    let text = `🚨 *DAFTAR GANGGUAN / ALARM AKTIF (${problems.length})*\n━━━━━━━━━━━━━━━━━━━━\n\n`;
+    const inline_keyboard: any[] = [];
+
+    problems.slice(0, 5).forEach((p, idx) => {
+      const sevIcon = p.severity === 5 ? '🔴' : p.severity === 4 ? '🟠' : '🟡';
+      const ackIcon = p.acknowledged ? '✓ (Diakui)' : '⚠️ (Belum Diakui)';
+      
+      text += `${idx + 1}. ${sevIcon} *${p.name}*\n`;
+      text += `   📍 *Target:* ${p.deviceName} (\`${p.deviceIp}\`)\n`;
+      text += `   ⏱ *Durasi:* ${p.durationText} | ${ackIcon}\n\n`;
+
+      if (!p.acknowledged) {
+        inline_keyboard.push([{ text: `⚡ Akui #${p.eventId} (${p.deviceName})`, callback_data: `ack:${p.eventId}` }]);
+      }
+    });
+
+    if (problems.length > 5) {
+      text += `_...dan ${problems.length - 5} alarm lainnya. Buka Dashboard Web untuk melihat seluruhnya._\n`;
+    }
+
+    text += `━━━━━━━━━━━━━━━━━━━━\n_Waktu: ${new Date().toLocaleTimeString('id-ID')} WIB_`;
+
+    inline_keyboard.push([{ text: '📊 Kembali ke Ringkasan', callback_data: 'menu:noc' }]);
+
+    await bot.sendMessage(chatId, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard } });
+  } catch (err: any) {
+    bot?.sendMessage(chatId, `❌ Gagal memuat daftar masalah: ${err.message || err}`);
+  }
+}
+
+// 3. SLA Summary
+async function sendSlaSummaryMessage(chatId: string) {
+  if (!bot) return;
+  try {
+    const report = await NocSlaService.getSlaReport({ period: 'this_month' });
+    const complianceColor = report.slaComplianceRatePercent >= 95 ? '🟢' : '🔴';
+
+    const text = `
+📈 *LAPORAN SLA & DOWNTIME BULAN INI*
+*Periode:* ${report.periodLabel}
+━━━━━━━━━━━━━━━━━━━━
+🎯 *Overall Uptime Aktual:* *${report.overallUptimePercent}%*
+${complianceColor} *SLA Compliance:* *${report.slaComplianceRatePercent}%* (${report.nodesMetCount} Sesuai / ${report.nodesBreachedCount} Terlanggar)
+
+⏱ *Metrik Pemulihan:*
+• Total Downtime: *${report.totalDowntimeMinutes} Menit*
+• Rata-rata Pemulihan (MTTR): *${report.mttrMinutes} Menit*
+• Total Insiden: *${report.totalIncidents} Insiden*
+• Pemadaman Aktif (Live): *${report.liveOutageCount} Perangkat*
+
+🏢 *POP / Gedung Terbanyak Insiden:*
+${(report.pops || []).slice(0, 3).map((p) => `• ${p.popName}: ${p.actualUptimePercent}% Uptime (${p.incidentCount} Insiden)`).join('\n')}
+━━━━━━━━━━━━━━━━━━━━
+_NOC Management System UNTAG_
+    `;
+
+    await bot.sendMessage(chatId, text, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [[{ text: '📊 Dashboard NOC', callback_data: 'menu:noc' }]]
+      }
+    });
+  } catch (err: any) {
+    bot?.sendMessage(chatId, `❌ Gagal membuat laporan SLA: ${err.message || err}`);
+  }
+}
+
+// 4. DHCP Leases Summary
+async function sendDhcpLeasesMessage(chatId: string) {
+  if (!bot) return;
+  try {
+    const { NocZabbixService } = await import('./services/nocZabbixService');
+    const kpi = await NocZabbixService.getSummaryKPI();
+    const leases = kpi.dhcpLeases;
+
+    const text = `
+👥 *MIKROTIK DHCP SERVER & KLIEN AKTIF*
+━━━━━━━━━━━━━━━━━━━━
+📦 *Total Sewa IP (Leases):* *${leases?.total || kpi.dhcpLeasesCount || 0} Perangkat*
+🟢 *Aktif / Bound:* *${leases?.active || 0} Klien*
+⚡ *Dynamic Leases:* *${leases?.dynamic || 0}*
+🔒 *Static Leases:* *${leases?.static || 0}*
+🔌 *Status Sumber:* \`${leases?.source || 'mikrotik'}\`
+
+_Router: RB1100AHx4 Dude Edition (103.92.209.1)_
+━━━━━━━━━━━━━━━━━━━━
+_Waktu: ${new Date().toLocaleTimeString('id-ID')} WIB_
+    `;
+
+    await bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
+  } catch (err: any) {
+    bot?.sendMessage(chatId, `❌ Gagal mengambil data DHCP: ${err.message || err}`);
+  }
+}
+
+// 5. Daily Digest Report
+async function sendDigestReportToChat(chatId: string) {
+  if (!bot) return;
+  try {
+    const { NocZabbixService } = await import('./services/nocZabbixService');
+    const kpi = await NocZabbixService.getSummaryKPI();
+    const report = await NocSlaService.getSlaReport({ period: 'this_month' });
+    const problems = await NocZabbixService.getActiveProblems();
+
+    const todayStr = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    const text = `
+🌅 *REKAPITULASI HARIAN JARINGAN (NOC UNTAG)*
+📅 *${todayStr}*
+━━━━━━━━━━━━━━━━━━━━
+📊 *Kinerja Jaringan:*
+• Uptime SLA Bulan Ini: *${report.overallUptimePercent}%*
+• Kepatuhan Target SLA: *${report.slaComplianceRatePercent}%*
+• Rata-rata MTTR: *${report.mttrMinutes} Menit*
+• Total Bandwidth Inbound: *${kpi.totalBandwidthGbps} Gbps*
+• Klien DHCP Aktif: *${kpi.dhcpLeases?.total || 0} Klien*
+
+⚠️ *Status Alarm Pagi Ini:*
+• Alarm Aktif: *${problems.length} Problem* ${problems.length > 0 ? '⚠️' : '✅'}
+• Router MikroTik: *${kpi.mikrotik.healthy}/${kpi.mikrotik.total} Online*
+• Server & Core: *${kpi.servers?.healthy || 0}/${kpi.servers?.total || 1} Online*
+
+━━━━━━━━━━━━━━━━━━━━
+_Tim NOC & Pusat Jaringan UNTAG Banyuwangi_
+    `;
+
+    await bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
+  } catch (err: any) {
+    bot?.sendMessage(chatId, `❌ Gagal membuat rekap harian: ${err.message || err}`);
+  }
+}
+
+// -------------------------------------------------------------
+// BROADCAST ALERT FUNCTIONS
+// -------------------------------------------------------------
+
+// Push real-time Zabbix Problem Alert to all linked NOC personnel
+export async function sendNocProblemAlert(problem: {
+  eventId: string;
+  name: string;
+  severity: number;
+  severityLabel: string;
+  deviceName: string;
+  deviceIp: string;
+  durationText?: string;
+}) {
+  if (!bot) return;
+  if (sentAlertEventIds.has(problem.eventId)) return; // Avoid duplicate spam
+  sentAlertEventIds.add(problem.eventId);
+
+  try {
+    const [users]: any = await pool.query('SELECT telegram_chat_id FROM users WHERE telegram_chat_id IS NOT NULL');
+    const { chatId: defaultChatId } = await getTelegramConfig();
+
+    const targetChatIds = new Set<string>();
+    if (defaultChatId) targetChatIds.add(defaultChatId);
+    for (const u of users) {
+      if (u.telegram_chat_id) targetChatIds.add(u.telegram_chat_id.toString());
+    }
+
+    if (targetChatIds.size === 0) return;
+
+    const sevIcon = problem.severity >= 4 ? '🔴' : '🟠';
+    const msg = `
+🚨 *[ALERT GANGGUAN NOC UNTAG]*
+━━━━━━━━━━━━━━━━━━━━
+${sevIcon} *Masalah:* *${problem.name}*
+📍 *Perangkat:* *${problem.deviceName}*
+🌐 *IP Address:* \`${problem.deviceIp}\`
+⚡ *Tingkat Bahaya:* *${problem.severityLabel.toUpperCase()}*
+🕒 *Waktu Deteksi:* ${new Date().toLocaleTimeString('id-ID')} WIB
+🆔 *Event ID:* \`#${problem.eventId}\`
+━━━━━━━━━━━━━━━━━━━━
+Silakan tangani atau akui alarm ini:
+    `;
+
+    const opts = {
+      parse_mode: 'Markdown' as const,
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '⚡ Akui Gangguan Ini', callback_data: `ack:${problem.eventId}` }],
+          [{ text: '📊 Buka Dashboard NOC', callback_data: 'menu:noc' }]
+        ]
+      }
+    };
+
+    for (const cid of targetChatIds) {
+      await bot.sendMessage(cid, msg, opts).catch(() => {});
+    }
+  } catch (err) {
+    console.error('Failed to send NOC problem alert:', err);
+  }
+}
+
+// Push resolution alert
+export async function sendNocRecoveryAlert(problem: {
+  name: string;
+  deviceName: string;
+  deviceIp: string;
+}) {
+  if (!bot) return;
+  try {
+    const [users]: any = await pool.query('SELECT telegram_chat_id FROM users WHERE telegram_chat_id IS NOT NULL');
+    const { chatId: defaultChatId } = await getTelegramConfig();
+
+    const targetChatIds = new Set<string>();
+    if (defaultChatId) targetChatIds.add(defaultChatId);
+    for (const u of users) {
+      if (u.telegram_chat_id) targetChatIds.add(u.telegram_chat_id.toString());
+    }
+
+    const msg = `
+✅ *[PULIH - RECOVERED]*
+━━━━━━━━━━━━━━━━━━━━
+Perangkat: *${problem.deviceName}* (\`${problem.deviceIp}\`)
+Gangguan: *${problem.name}*
+Status: *TELAH NORMAL KEMBALI 🟢*
+Waktu: ${new Date().toLocaleTimeString('id-ID')} WIB
+━━━━━━━━━━━━━━━━━━━━
+_Sistem monitoring otomatis NOC UNTAG_
+    `;
+
+    for (const cid of targetChatIds) {
+      await bot.sendMessage(cid, msg, { parse_mode: 'Markdown' }).catch(() => {});
+    }
+  } catch (err) {}
+}
+
+// Push Daily Morning Digest to all personnel
+export async function sendDailyDigestReport() {
+  if (!bot) return;
+  try {
+    const [users]: any = await pool.query('SELECT telegram_chat_id FROM users WHERE telegram_chat_id IS NOT NULL');
+    const { chatId: defaultChatId } = await getTelegramConfig();
+
+    const targetChatIds = new Set<string>();
+    if (defaultChatId) targetChatIds.add(defaultChatId);
+    for (const u of users) {
+      if (u.telegram_chat_id) targetChatIds.add(u.telegram_chat_id.toString());
+    }
+
+    for (const cid of targetChatIds) {
+      await sendDigestReportToChat(cid);
+    }
+  } catch (err) {
+    console.error('Failed to broadcast daily digest report:', err);
+  }
+}
+
+// Legacy task alert for compatibility
 export async function sendTelegramAlert(task: { id: number; device_name: string; ip_address: string; location: string; severity: string }) {
   if (!bot) return;
   try {
@@ -426,3 +708,4 @@ export async function updateTelegramMessage(task: { id: number; device_name: str
     }
   } catch (err) {}
 }
+
