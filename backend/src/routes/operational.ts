@@ -1,7 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { pool } from '../db';
+import { requireAuth, requireRole } from '../auth';
 
 const router = Router();
+
+// Apply auth middleware to all operational routes
+router.use(requireAuth);
 
 // ==========================================
 // 1. Operational Incidents API
@@ -16,7 +20,7 @@ router.get('/incidents', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/incidents', async (req: Request, res: Response) => {
+router.post('/incidents', requireRole('Administrator', 'Manager'), async (req: Request, res: Response) => {
   try {
     const {
       incident_date,

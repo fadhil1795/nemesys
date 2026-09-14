@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { pool } from '../db';
-import { requireAuth } from '../auth';
+import { requireAuth, requireRole } from '../auth';
 
 const router = Router();
 
@@ -8,10 +8,126 @@ const router = Router();
 router.use(requireAuth);
 
 // ----------------------------------------------------
-// USER CRUD
+// USER PROFILE (Self-service for logged in user)
 // ----------------------------------------------------
 
-router.post('/users', async (req, res) => {
+router.get('/user/profile', async (req, res) => {
+  const reqUser = (req as any).user;
+  if (!reqUser) {
+    return res.status(401).json({ error: 'Pengguna tidak terotentikasi' });
+  }
+
+  try {
+    const [rows]: any = await pool.query(
+      'SELECT id, username, name, role, telegram_chat_id, status, daily_tasks_count, mission_completed, mission_incompleted, nipp, division, jabatan, phone, email, location FROM users WHERE id = ?',
+      [reqUser.id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'User tidak ditemukan' });
+    }
+
+    res.json(rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: 'Database error fetching user profile' });
+  }
+});
+
+router.put('/user/profile', async (req, res) => {
+  const reqUser = (req as any).user;
+  if (!reqUser) {
+    return res.status(401).json({ error: 'Pengguna tidak terotentikasi' });
+  }
+
+  const {
+    name,
+    current_password,
+    new_password,
+    telegram_chat_id,
+    status,
+    nipp,
+    division,
+    jabatan,
+    phone,
+    email,
+    location
+  } = req.body;
+
+  try {
+    const [rows]: any = await pool.query('SELECT * FROM users WHERE id = ?', [reqUser.id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'User tidak ditemukan' });
+    }
+    const user = rows[0];
+
+    // If changing password, verify current password
+    if (new_password) {
+      if (!current_password) {
+        return res.status(400).json({ error: 'Password saat ini harus diisi untuk mengubah password' });
+      }
+      if (user.password !== current_password) {
+        return res.status(400).json({ error: 'Password saat ini salah' });
+      }
+      await pool.query('UPDATE users SET password = ? WHERE id = ?', [new_password, user.id]);
+    }
+
+    // Update fields
+    const updatedName = name || user.name;
+    const updatedTelegram = telegram_chat_id !== undefined ? telegram_chat_id : user.telegram_chat_id;
+    const updatedStatus = status || user.status;
+    const updatedNipp = nipp !== undefined ? nipp : (user.nipp || '');
+    const updatedDivision = division !== undefined ? division : (user.division || '');
+    const updatedJabatan = jabatan !== undefined ? jabatan : (user.jabatan || '');
+    const updatedPhone = phone !== undefined ? phone : (user.phone || '');
+    const updatedEmail = email !== undefined ? email : (user.email || '');
+    const updatedLocation = location !== undefined ? location : (user.location || '');
+
+    await pool.query(
+      `UPDATE users SET 
+        name = ?, 
+        telegram_chat_id = ?, 
+        status = ?, 
+        nipp = ?, 
+        division = ?, 
+        jabatan = ?, 
+        phone = ?, 
+        email = ?, 
+        location = ? 
+       WHERE id = ?`,
+      [
+        updatedName,
+        updatedTelegram,
+        updatedStatus,
+        updatedNipp,
+        updatedDivision,
+        updatedJabatan,
+        updatedPhone,
+        updatedEmail,
+        updatedLocation,
+        user.id
+      ]
+    );
+
+    const [updatedRows]: any = await pool.query(
+      'SELECT id, username, name, role, telegram_chat_id, status, daily_tasks_count, mission_completed, nipp, division, jabatan, phone, email, location FROM users WHERE id = ?',
+      [user.id]
+    );
+
+    res.json({
+      message: 'Profil berhasil diperbarui',
+      user: updatedRows[0]
+    });
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    res.status(500).json({ error: 'Database error updating profile' });
+  }
+});
+
+// ----------------------------------------------------
+// USER CRUD (Administrator Only)
+// ----------------------------------------------------
+
+router.post('/users', requireRole('Administrator'), async (req, res) => {
   const { username, password, name, role } = req.body;
 
   try {
@@ -28,7 +144,7 @@ router.post('/users', async (req, res) => {
   }
 });
 
-router.put('/users/:id', async (req, res) => {
+router.put('/users/:id', requireRole('Administrator'), async (req, res) => {
   const id = parseInt(req.params.id);
   const { username, name, role, password, status, daily_tasks_count, mission_completed, mission_incompleted } = req.body;
 
@@ -51,7 +167,7 @@ router.put('/users/:id', async (req, res) => {
   }
 });
 
-router.delete('/users/:id', async (req, res) => {
+router.delete('/users/:id', requireRole('Administrator'), async (req, res) => {
   const id = parseInt(req.params.id);
 
   try {

@@ -71,3 +71,14 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
     })
     .catch(() => next());
 }
+
+// Role-based authorization middleware
+export function requireRole(...roles: Array<'Administrator' | 'Manager' | 'Teknisi'>) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const user = (req as any).user;
+    if (!user || !roles.includes(user.role)) {
+      return res.status(403).json({ error: 'Akses ditolak: Anda tidak memiliki wewenang (role) untuk tindakan ini' });
+    }
+    next();
+  };
+}

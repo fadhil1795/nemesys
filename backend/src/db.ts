@@ -61,6 +61,14 @@ export async function initializeDatabase() {
       // ignore
     }
 
+    // Migration: Add user profile fields (nipp, division, jabatan, phone, email, location)
+    try { await pool.query('ALTER TABLE users ADD COLUMN nipp VARCHAR(100) NULL'); } catch (e) {}
+    try { await pool.query('ALTER TABLE users ADD COLUMN division VARCHAR(150) NULL'); } catch (e) {}
+    try { await pool.query('ALTER TABLE users ADD COLUMN jabatan VARCHAR(150) NULL'); } catch (e) {}
+    try { await pool.query('ALTER TABLE users ADD COLUMN phone VARCHAR(50) NULL'); } catch (e) {}
+    try { await pool.query('ALTER TABLE users ADD COLUMN email VARCHAR(150) NULL'); } catch (e) {}
+    try { await pool.query('ALTER TABLE users ADD COLUMN location VARCHAR(150) NULL'); } catch (e) {}
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS devices (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -464,6 +472,21 @@ export async function initializeDatabase() {
         last_test DATETIME NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB;
+    `);
+
+    // System Notifications Table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NULL,
+        title VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        category ENUM('network','ticket','system','alarm') NOT NULL DEFAULT 'system',
+        severity ENUM('info','warning','critical','success') NOT NULL DEFAULT 'info',
+        link_url VARCHAR(255) NULL,
+        is_read TINYINT(1) NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       ) ENGINE=InnoDB;
     `);
 
@@ -1200,3 +1223,45 @@ export const writeLog = async (userId: number | null, action: string, details: s
     console.error('Failed to write system log:', error);
   }
 };
+
+export interface CreateNotificationInput {
+  userId?: number | null;
+  title: string;
+  message: string;
+  category?: 'network' | 'ticket' | 'system' | 'alarm';
+  severity?: 'info' | 'warning' | 'critical' | 'success';
+  linkUrl?: string | null;
+  io?: any;
+}
+
+export const createNotification = async (input: CreateNotificationInput) => {
+  try {
+    const { userId = null, title, message, category = 'system', severity = 'info', linkUrl = null, io } = input;
+    const [result]: any = await pool.query(
+      `INSERT INTO notifications (user_id, title, message, category, severity, link_url) VALUES (?, ?, ?, ?, ?, ?)`,
+      [userId, title, message, category, severity, linkUrl]
+    );
+
+    const payload = {
+      id: result.insertId,
+      user_id: userId,
+      title,
+      message,
+      category,
+      severity,
+      link_url: linkUrl,
+      is_read: 0,
+      created_at: new Date().toISOString()
+    };
+
+    if (io) {
+      io.emit('new_notification', payload);
+      io.emit('data_changed');
+    }
+    return payload;
+  } catch (error) {
+    console.error('Failed to create notification:', error);
+    return null;
+  }
+};
+

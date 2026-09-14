@@ -322,10 +322,13 @@ router.post('/campus/fiber-links', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/monitoring/telegram/test-alert - Send test alarm to Telegram
+// POST /api/monitoring/telegram/test-alert - Send test alarm to Telegram & In-App Notification
 router.post('/telegram/test-alert', async (req: Request, res: Response) => {
   try {
     const { sendNocProblemAlert } = await import('../telegram');
+    const { createNotification } = await import('../db');
+    const io = req.app.get('socketio');
+
     await sendNocProblemAlert({
       eventId: 'TEST-' + Date.now().toString().slice(-4),
       name: 'UJI COBA NOTIFIKASI: Link Backbone FO Rektorat Flapping',
@@ -334,7 +337,17 @@ router.post('/telegram/test-alert', async (req: Request, res: Response) => {
       deviceName: 'Router Mikrotik UNTAG',
       deviceIp: '103.92.209.1',
     });
-    res.json({ success: true, message: 'Test alert sent to Telegram successfully' });
+
+    await createNotification({
+      title: '🚨 ALARM NOC: Link Backbone FO Flapping',
+      message: 'Deteksi anomali pada Router Mikrotik UNTAG (103.92.209.1). Status: High Severity.',
+      category: 'alarm',
+      severity: 'critical',
+      linkUrl: 'noc-dashboard',
+      io
+    });
+
+    res.json({ success: true, message: 'Test alert sent to Telegram & System Notifications successfully' });
   } catch (err: any) {
     res.status(500).json({ error: 'Failed to send test alert: ' + err.message });
   }

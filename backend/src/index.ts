@@ -49,7 +49,10 @@ import reportsRouter from './routes/reports';
 import qrRouter from './routes/qr';
 import inventoryRouter from './routes/inventory';
 import nocMonitoringRouter from './routes/nocMonitoring';
+import notificationRouter from './routes/notifications';
 import { mikrotikDashboardRouter } from './routes/mikrotikDashboard';
+
+app.set('socketio', io);
 
 app.post('/api/login', handleLogin);
 app.use('/api/operational', operationalRouter);
@@ -57,6 +60,7 @@ app.use('/api/reports', reportsRouter);
 app.use('/api/qr', qrRouter);
 app.use('/api/inventory', inventoryRouter);
 app.use('/api/monitoring', nocMonitoringRouter);
+app.use('/api/notifications', requireAuth, notificationRouter);
 app.use('/api/mikrotik-dashboard', mikrotikDashboardRouter);
 
 // Broadcast database change helper (no-op on Vercel)

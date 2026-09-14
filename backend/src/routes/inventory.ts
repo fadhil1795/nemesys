@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { pool, writeLog } from '../db';
-import { requireAuth } from '../auth';
+import { requireAuth, requireRole } from '../auth';
 
 const router = Router();
 
@@ -75,7 +75,7 @@ router.get('/assets/:id', async (req: Request, res: Response) => {
 });
 
 // POST /api/inventory/assets - Create new IT asset
-router.post('/assets', async (req: Request, res: Response) => {
+router.post('/assets', requireRole('Administrator', 'Manager'), async (req: Request, res: Response) => {
   const {
     asset_code,
     name,
@@ -175,7 +175,7 @@ router.post('/assets', async (req: Request, res: Response) => {
 });
 
 // PUT /api/inventory/assets/:id - Update IT asset
-router.put('/assets/:id', async (req: Request, res: Response) => {
+router.put('/assets/:id', requireRole('Administrator', 'Manager'), async (req: Request, res: Response) => {
   const assetId = parseInt(req.params.id);
   const {
     asset_code,
@@ -259,7 +259,7 @@ router.put('/assets/:id', async (req: Request, res: Response) => {
 });
 
 // DELETE /api/inventory/assets/:id - Delete IT asset
-router.delete('/assets/:id', async (req: Request, res: Response) => {
+router.delete('/assets/:id', requireRole('Administrator', 'Manager'), async (req: Request, res: Response) => {
   const assetId = parseInt(req.params.id);
 
   try {
@@ -347,7 +347,7 @@ router.get('/components/:id', async (req: Request, res: Response) => {
 });
 
 // POST /api/inventory/components - Create new component
-router.post('/components', async (req: Request, res: Response) => {
+router.post('/components', requireRole('Administrator', 'Manager'), async (req: Request, res: Response) => {
   const {
     component_code,
     name,
@@ -421,7 +421,7 @@ router.post('/components', async (req: Request, res: Response) => {
 });
 
 // PUT /api/inventory/components/:id - Update component info
-router.put('/components/:id', async (req: Request, res: Response) => {
+router.put('/components/:id', requireRole('Administrator', 'Manager'), async (req: Request, res: Response) => {
   const componentId = parseInt(req.params.id);
   const {
     component_code,
@@ -471,7 +471,7 @@ router.put('/components/:id', async (req: Request, res: Response) => {
 });
 
 // DELETE /api/inventory/components/:id - Delete component
-router.delete('/components/:id', async (req: Request, res: Response) => {
+router.delete('/components/:id', requireRole('Administrator', 'Manager'), async (req: Request, res: Response) => {
   const componentId = parseInt(req.params.id);
 
   try {

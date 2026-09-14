@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import type { DailyTask as ITask, User, Mission, DailyTodo, Device } from '../types';
-import { ClipboardList, Target, Award, CheckCircle, AlertTriangle, X, Download } from 'lucide-react';
+import { ClipboardList, Target, Award, CheckCircle, AlertTriangle, X, Download, Phone } from 'lucide-react';
 import { BACKEND_URL } from '../App';
+import { openWhatsAppChat, WATemplates } from '../utils/whatsapp';
 
 interface DailyTaskProps {
   tasks: ITask[];
@@ -785,30 +786,84 @@ export const DailyTaskComponent: React.FC<DailyTaskProps> = ({ tasks, users, mis
                             ) : task.status === 'Open' ? (
                               <span style={{ color: 'var(--text-muted)', fontSize: '12.5px', fontStyle: 'italic' }}>Menunggu approval Manager</span>
                             ) : canManage && (task.status === 'Approved' || task.status === 'In Progress') ? (
-                              <select
-                                value={task.assigned_user_id || ''}
-                                onChange={(e) => onAssignTask(task.id, Number(e.target.value))}
-                                style={{
-                                  backgroundColor: 'var(--bg-secondary)',
-                                  color: '#fff',
-                                  border: '1px solid var(--border-color)',
-                                  borderRadius: '6px',
-                                  padding: '6px 10px',
-                                  fontSize: '13px',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                <option value="">-- Pilih Teknisi --</option>
-                                {technicians.map((t) => (
-                                  <option key={t.id} value={t.id}>
-                                    {t.name} ({t.status === 'Available' ? 'Available' : 'Busy'})
-                                  </option>
-                                ))}
-                              </select>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                <select
+                                  value={task.assigned_user_id || ''}
+                                  onChange={(e) => onAssignTask(task.id, Number(e.target.value))}
+                                  style={{
+                                    backgroundColor: 'var(--bg-secondary)',
+                                    color: '#fff',
+                                    border: '1px solid var(--border-color)',
+                                    borderRadius: '6px',
+                                    padding: '6px 10px',
+                                    fontSize: '13px',
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  <option value="">-- Pilih Teknisi --</option>
+                                  {technicians.map((t) => (
+                                    <option key={t.id} value={t.id}>
+                                      {t.name} ({t.status === 'Available' ? 'Available' : 'Busy'})
+                                    </option>
+                                  ))}
+                                </select>
+                                {task.assigned_user_name && (
+                                  <button
+                                    onClick={() => {
+                                      const tech = users.find(u => u.id === task.assigned_user_id || u.name === task.assigned_user_name);
+                                      const phoneNum = tech?.phone || '081234567890';
+                                      openWhatsAppChat(phoneNum, WATemplates.taskDispatch(task, task.assigned_user_name || 'Teknisi'));
+                                    }}
+                                    style={{
+                                      background: 'rgba(16, 185, 129, 0.15)',
+                                      border: '1px solid rgba(16, 185, 129, 0.4)',
+                                      borderRadius: '4px',
+                                      color: '#34d399',
+                                      fontSize: '11px',
+                                      fontWeight: 700,
+                                      padding: '4px 8px',
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
+                                    }}
+                                    title="Dispatch tugas via WhatsApp Direct (Tanpa API)"
+                                  >
+                                    <Phone size={12} /> Dispatch WA
+                                  </button>
+                                )}
+                              </div>
                             ) : (
-                              <span style={{ color: 'var(--text-secondary)', fontSize: '13.5px' }}>
-                                {task.assigned_user_name || 'Belum di-assign'}
-                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ color: 'var(--text-secondary)', fontSize: '13.5px' }}>
+                                  {task.assigned_user_name || 'Belum di-assign'}
+                                </span>
+                                {task.assigned_user_name && (
+                                  <button
+                                    onClick={() => {
+                                      const tech = users.find(u => u.id === task.assigned_user_id || u.name === task.assigned_user_name);
+                                      const phoneNum = tech?.phone || '081234567890';
+                                      openWhatsAppChat(phoneNum, WATemplates.taskDispatch(task, task.assigned_user_name || 'Teknisi'));
+                                    }}
+                                    style={{
+                                      background: 'rgba(16, 185, 129, 0.15)',
+                                      border: '1px solid rgba(16, 185, 129, 0.4)',
+                                      borderRadius: '4px',
+                                      color: '#34d399',
+                                      fontSize: '11px',
+                                      fontWeight: 700,
+                                      padding: '2px 6px',
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '3px'
+                                    }}
+                                    title="Kirim ke WA Teknisi (Tanpa API)"
+                                  >
+                                    <Phone size={11} /> WA
+                                  </button>
+                                )}
+                              </div>
                             )}
                           </td>
                           <td>

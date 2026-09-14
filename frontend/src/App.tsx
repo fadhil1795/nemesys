@@ -20,7 +20,10 @@ import {
   FileText,
   QrCode,
   Boxes,
-  Award
+  Award,
+  Globe,
+  MapPin,
+  User as UserIcon
 } from 'lucide-react';
 import { io } from 'socket.io-client';
 import type { Device, DailyTask, User, Mission, DailyTodo, CustomMission, DeviceCategory } from './types';
@@ -51,7 +54,11 @@ import { Activity } from 'lucide-react';
 import { NocDashboard } from './components/NocMonitoring/NocDashboard';
 import { SlaReportManager } from './components/SlaReportManager';
 import { MikrotikDashboard } from './components/MikrotikDashboard';
-import { Router as RouterIcon } from 'lucide-react';
+import { UserProfile } from './components/UserProfile';
+import { NotificationCenter } from './components/NotificationCenter';
+import { PwaInstallPrompt } from './components/PwaInstallPrompt';
+import { MobileBottomBar } from './components/MobileBottomBar';
+import { Router as RouterIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { initGlobalErrorLogging } from './utils/clientLogger';
 import type { GenieACSDevice } from './types';
 
@@ -75,11 +82,21 @@ socket.on('connect_error', () => {
   }
 });
 
-interface AuthUser {
+export interface AuthUser {
   id: number;
   username: string;
   name: string;
   role: 'Administrator' | 'Manager' | 'Teknisi';
+  status?: 'Available' | 'Busy';
+  telegram_chat_id?: string;
+  daily_tasks_count?: number;
+  mission_completed?: number;
+  nipp?: string;
+  division?: string;
+  jabatan?: string;
+  phone?: string;
+  email?: string;
+  location?: string;
 }
 
 export default function App() {
@@ -92,8 +109,23 @@ export default function App() {
     return (localStorage.getItem('nemesys_theme') as 'dark' | 'light') || 'dark';
   });
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    return localStorage.getItem('nemesys_sidebar_collapsed') === 'true';
+  });
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('nemesys_sidebar_collapsed', String(next));
+      return next;
+    });
+  };
+
   useEffect(() => {
     initGlobalErrorLogging();
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
     if (theme === 'light') {
       document.body.classList.add('light-mode');
     } else {
@@ -380,9 +412,20 @@ export default function App() {
       case 'noc-monitoring':
         return <NocDashboard token={token || ''} currentUserRole={currentUser?.role} currentUserName={currentUser?.name} />;
       case 'mikrotik-noc':
-        return <MikrotikDashboard />;
+        return <MikrotikDashboard token={token || ''} />;
       case 'sla-report':
         return <SlaReportManager token={token || ''} currentUserRole={currentUser?.role} currentUserName={currentUser?.name} />;
+      case 'profile':
+        return (
+          <UserProfile
+            token={token || ''}
+            currentUser={currentUser!}
+            onUserUpdate={(updatedUser) => {
+              setCurrentUser(updatedUser);
+              localStorage.setItem('nemesys_user', JSON.stringify(updatedUser));
+            }}
+          />
+        );
       default:
         return <Dashboard devices={devices} tasks={tasks} onTriggerAlert={triggerAlert} onNavigate={setCurrentMenu} token={token || undefined} />;
     }
@@ -398,149 +441,116 @@ export default function App() {
   return (
     <div className="app-container">
       {/* Sidebar */}
-      <aside className="sidebar">
+      {/* Desktop Sidebar (Collapsible Mode) */}
+      <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-brand">
-          <span className="brand-logo">NEMESYS</span>
+          <div className="brand-icon-box">
+            <ShieldAlert size={20} />
+          </div>
+          <div className="brand-text-container">
+            <span className="brand-logo">NEMESYS</span>
+            <span className="brand-subtext">IT Helpdesk &amp; NOC</span>
+          </div>
           <span className="brand-version">v1.3</span>
+
+          <button
+            onClick={toggleSidebar}
+            className="hidden md:flex p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 ml-auto transition-colors"
+            title={sidebarCollapsed ? 'Kembangkan Sidebar' : 'Ciutkan Sidebar'}
+          >
+            {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          </button>
         </div>
+
         <nav className="sidebar-menu">
-          <span className="menu-section-title">Core Task</span>
-          <a className={`menu-item ${currentMenu === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentMenu('dashboard')}>
-            <LayoutDashboard size={18} /> Dashboard
+          {/* 1. Core / Utama */}
+          <span className="menu-section-title">Utama</span>
+          <a className={`menu-item ${currentMenu === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentMenu('dashboard')} title="Dashboard">
+            <LayoutDashboard size={17} /> <span className="menu-item-text">Dashboard</span>
           </a>
-          <a className={`menu-item ${currentMenu === 'inventory' ? 'active' : ''}`} onClick={() => setCurrentMenu('inventory')}>
-            <Boxes size={18} /> Inventaris IT
+          <a className={`menu-item ${currentMenu === 'tasks' ? 'active' : ''}`} onClick={() => setCurrentMenu('tasks')} title="Daily Task">
+            <ClipboardList size={17} /> <span className="menu-item-text">Daily Task</span>
           </a>
-          <a className={`menu-item ${currentMenu === 'tasks' ? 'active' : ''}`} onClick={() => setCurrentMenu('tasks')}>
-            <ClipboardList size={18} /> Daily Task
+          <a className={`menu-item ${currentMenu === 'mission-view' ? 'active' : ''}`} onClick={() => setCurrentMenu('mission-view')} title="Mission">
+            <Target size={17} /> <span className="menu-item-text">Mission</span>
           </a>
-          <a className={`menu-item ${currentMenu === 'eng-ops' ? 'active' : ''}`} onClick={() => setCurrentMenu('eng-ops')}>
-            <FileSpreadsheet size={18} /> NEO Suite (Excel)
-          </a>
-          <a className={`menu-item ${currentMenu === 'executive-report' ? 'active' : ''}`} onClick={() => setCurrentMenu('executive-report')}>
-            <FileText size={18} /> Laporan Eksekutif
-          </a>
-          <a className={`menu-item ${currentMenu === 'qr-manager' ? 'active' : ''}`} onClick={() => setCurrentMenu('qr-manager')}>
-            <QrCode size={18} /> QR Asset Scanner
-          </a>
-          <a className={`menu-item ${currentMenu === 'mission-view' ? 'active' : ''}`} onClick={() => setCurrentMenu('mission-view')}>
-            <Target size={18} /> Mission
-          </a>
-          <a className={`menu-item ${currentMenu === 'team' ? 'active' : ''}`} onClick={() => setCurrentMenu('team')}>
-            <Users size={18} /> Team
+          <a className={`menu-item ${currentMenu === 'team' ? 'active' : ''}`} onClick={() => setCurrentMenu('team')} title="Team">
+            <Users size={17} /> <span className="menu-item-text">Team</span>
           </a>
 
-          <span className="menu-section-title">Monitoring</span>
-          <a
-            className={`menu-item noc-menu-highlight ${currentMenu === 'noc-monitoring' ? 'active' : ''}`}
-            onClick={() => setCurrentMenu('noc-monitoring')}
-            style={{
-              background: currentMenu === 'noc-monitoring' 
-                ? 'linear-gradient(135deg, rgba(6,182,212,0.25), rgba(16,185,129,0.25))' 
-                : 'rgba(6,182,212,0.06)',
-              border: currentMenu === 'noc-monitoring' 
-                ? '1px solid rgba(6,182,212,0.5)' 
-                : '1px solid rgba(6,182,212,0.15)',
-              margin: '4px 8px',
-              borderRadius: '8px'
-            }}
-          >
-            <Activity size={18} className="text-cyan-400" />
-            <span style={{ fontWeight: 700, color: currentMenu === 'noc-monitoring' ? '#38bdf8' : '#e2e8f0' }}>NOC Monitoring</span>
-            <span style={{ fontSize: '10px', background: 'rgba(6,182,212,0.3)', color: '#38bdf8', padding: '1px 6px', borderRadius: '4px', marginLeft: 'auto', fontWeight: 600 }}>ZABBIX</span>
+          {/* 2. Monitoring & NOC */}
+          <span className="menu-section-title">Monitoring &amp; NOC</span>
+          <a className={`menu-item ${currentMenu === 'noc-monitoring' ? 'active' : ''}`} onClick={() => setCurrentMenu('noc-monitoring')} title="NOC Monitoring">
+            <Activity size={17} /> <span className="menu-item-text">NOC Monitoring</span>
+            <span className="menu-item-badge badge-cyan">ZABBIX</span>
           </a>
-          <a
-            className={`menu-item ${currentMenu === 'mikrotik-noc' ? 'active' : ''}`}
-            onClick={() => setCurrentMenu('mikrotik-noc')}
-            style={{
-              background: currentMenu === 'mikrotik-noc'
-                ? 'linear-gradient(135deg, rgba(56,189,248,0.25), rgba(16,185,129,0.25))'
-                : 'rgba(56,189,248,0.06)',
-              border: currentMenu === 'mikrotik-noc'
-                ? '1px solid rgba(56,189,248,0.5)'
-                : '1px solid rgba(56,189,248,0.15)',
-              margin: '4px 8px',
-              borderRadius: '8px'
-            }}
-          >
-            <RouterIcon size={18} className="text-cyan-400" />
-            <span style={{ fontWeight: 700, color: currentMenu === 'mikrotik-noc' ? '#38bdf8' : '#e2e8f0' }}>MikroTik RouterOS</span>
-            <span style={{ fontSize: '10px', background: 'rgba(56,189,248,0.3)', color: '#38bdf8', padding: '1px 6px', borderRadius: '4px', marginLeft: 'auto', fontWeight: 600 }}>ROUTEROS</span>
+          <a className={`menu-item ${currentMenu === 'mikrotik-noc' ? 'active' : ''}`} onClick={() => setCurrentMenu('mikrotik-noc')} title="MikroTik RouterOS">
+            <RouterIcon size={17} /> <span className="menu-item-text">MikroTik RouterOS</span>
+            <span className="menu-item-badge badge-sky">ROUTEROS</span>
           </a>
-          <a
-            className={`menu-item ${currentMenu === 'sla-report' ? 'active' : ''}`}
-            onClick={() => setCurrentMenu('sla-report')}
-            style={{
-              background: currentMenu === 'sla-report'
-                ? 'linear-gradient(135deg, rgba(245,158,11,0.25), rgba(6,182,212,0.25))'
-                : 'rgba(245,158,11,0.04)',
-              border: currentMenu === 'sla-report'
-                ? '1px solid rgba(245,158,11,0.5)'
-                : '1px solid rgba(245,158,11,0.15)',
-              margin: '4px 8px',
-              borderRadius: '8px'
-            }}
-          >
-            <Award size={18} className="text-amber-400" />
-            <span style={{ fontWeight: 600, color: currentMenu === 'sla-report' ? '#fbbf24' : '#e2e8f0' }}>Laporan SLA &amp; Uptime</span>
-            <span style={{ fontSize: '10px', background: 'rgba(245,158,11,0.3)', color: '#fbbf24', padding: '1px 6px', borderRadius: '4px', marginLeft: 'auto', fontWeight: 600 }}>OFFICIAL</span>
+          <a className={`menu-item ${currentMenu === 'sla-report' ? 'active' : ''}`} onClick={() => setCurrentMenu('sla-report')} title="Laporan SLA & Uptime">
+            <Award size={17} /> <span className="menu-item-text">Laporan SLA</span>
+            <span className="menu-item-badge badge-amber">OFFICIAL</span>
           </a>
-          <a className={`menu-item ${currentMenu === 'netmap-core' ? 'active' : ''}`} onClick={() => setCurrentMenu('netmap-core')}>
-            <Map size={18} /> NetMap Core
+          <a className={`menu-item ${currentMenu === 'netmap-core' ? 'active' : ''}`} onClick={() => setCurrentMenu('netmap-core')} title="NetMap Core">
+            <Map size={17} /> <span className="menu-item-text">NetMap Core</span>
           </a>
-          <a className={`menu-item ${currentMenu === 'netmap-global' ? 'active' : ''}`} onClick={() => setCurrentMenu('netmap-global')}>
-            <Map size={18} /> NetMap Global
+          <a className={`menu-item ${currentMenu === 'netmap-global' ? 'active' : ''}`} onClick={() => setCurrentMenu('netmap-global')} title="NetMap Global">
+            <Globe size={17} /> <span className="menu-item-text">NetMap Global</span>
           </a>
-          <a className={`menu-item ${currentMenu === 'netlist' ? 'active' : ''}`} onClick={() => setCurrentMenu('netlist')}>
-            <List size={18} /> NetList
+          <a className={`menu-item ${currentMenu === 'netlist' ? 'active' : ''}`} onClick={() => setCurrentMenu('netlist')} title="NetList Perangkat">
+            <List size={17} /> <span className="menu-item-text">NetList Perangkat</span>
           </a>
 
-          <span className="menu-section-title">Supporting</span>
-          <a
-            className={`menu-item ${currentMenu === 'service-desk' ? 'active' : ''}`}
-            onClick={() => setCurrentMenu('service-desk')}
-            style={{
-              background: currentMenu === 'service-desk'
-                ? 'linear-gradient(135deg, rgba(99,102,241,0.25), rgba(6,182,212,0.25))'
-                : 'rgba(99,102,241,0.06)',
-              border: currentMenu === 'service-desk'
-                ? '1px solid rgba(99,102,241,0.5)'
-                : '1px solid rgba(99,102,241,0.15)',
-              margin: '4px 8px',
-              borderRadius: '8px'
-            }}
-          >
-            <Ticket size={18} className="text-indigo-400" />
-            <span style={{ fontWeight: 600, color: currentMenu === 'service-desk' ? '#a5b4fc' : '#e2e8f0' }}>Service Desk &amp; SLA</span>
-            <span style={{ fontSize: '10px', background: 'rgba(99,102,241,0.3)', color: '#a5b4fc', padding: '1px 6px', borderRadius: '4px', marginLeft: 'auto', fontWeight: 600 }}>SLA MATRIX</span>
+          {/* 3. Layanan & Aset */}
+          <span className="menu-section-title">Layanan &amp; Aset</span>
+          <a className={`menu-item ${currentMenu === 'service-desk' ? 'active' : ''}`} onClick={() => setCurrentMenu('service-desk')} title="Service Desk">
+            <Ticket size={17} /> <span className="menu-item-text">Service Desk</span>
+            <span className="menu-item-badge badge-indigo">CIVITAS</span>
           </a>
-          <a className={`menu-item ${currentMenu === 'documentation' ? 'active' : ''}`} onClick={() => setCurrentMenu('documentation')}>
-            <BookOpen size={18} /> Documentation
+          <a className={`menu-item ${currentMenu === 'inventory' ? 'active' : ''}`} onClick={() => setCurrentMenu('inventory')} title="Inventaris IT">
+            <Boxes size={17} /> <span className="menu-item-text">Inventaris IT</span>
           </a>
-          <a className={`menu-item ${currentMenu === 'statistics' ? 'active' : ''}`} onClick={() => setCurrentMenu('statistics')}>
-            <BarChart3 size={18} /> Statistic
+          <a className={`menu-item ${currentMenu === 'eng-ops' ? 'active' : ''}`} onClick={() => setCurrentMenu('eng-ops')} title="NEO Suite">
+            <FileSpreadsheet size={17} /> <span className="menu-item-text">NEO Suite</span>
+          </a>
+          <a className={`menu-item ${currentMenu === 'executive-report' ? 'active' : ''}`} onClick={() => setCurrentMenu('executive-report')} title="Laporan Eksekutif">
+            <FileText size={17} /> <span className="menu-item-text">Laporan Eksekutif</span>
+          </a>
+          <a className={`menu-item ${currentMenu === 'qr-manager' ? 'active' : ''}`} onClick={() => setCurrentMenu('qr-manager')} title="QR Scanner">
+            <QrCode size={17} /> <span className="menu-item-text">QR Scanner</span>
           </a>
 
+          {/* 4. Admin Panel */}
           {currentUser.role === 'Administrator' && (
             <>
               <span className="menu-section-title">Admin Panel</span>
-              <a className={`menu-item ${currentMenu === 'manage' ? 'active' : ''}`} onClick={() => setCurrentMenu('manage')}>
-                <ShieldAlert size={18} /> Manage System
+              <a className={`menu-item ${currentMenu === 'manage' ? 'active' : ''}`} onClick={() => setCurrentMenu('manage')} title="Manage System">
+                <ShieldAlert size={17} /> <span className="menu-item-text">Manage System</span>
               </a>
-              <a className={`menu-item ${currentMenu === 'edit-location' ? 'active' : ''}`} onClick={() => setCurrentMenu('edit-location')}>
-                <Map size={18} /> Edit Location
+              <a className={`menu-item ${currentMenu === 'edit-location' ? 'active' : ''}`} onClick={() => setCurrentMenu('edit-location')} title="Edit Location">
+                <MapPin size={17} /> <span className="menu-item-text">Edit Location</span>
               </a>
-              <a className={`menu-item ${currentMenu === 'system-logs' ? 'active' : ''}`} onClick={() => setCurrentMenu('system-logs')}>
-                <Terminal size={18} /> System Logs
+              <a className={`menu-item ${currentMenu === 'system-logs' ? 'active' : ''}`} onClick={() => setCurrentMenu('system-logs')} title="System Logs">
+                <Terminal size={17} /> <span className="menu-item-text">System Logs</span>
               </a>
             </>
           )}
 
-          <span className="menu-section-title">Konfigurasi</span>
-          <a className={`menu-item ${currentMenu === 'gacs-config' ? 'active' : ''}`} onClick={() => setCurrentMenu('gacs-config')}>
-            <Settings size={18} /> Konfigurasi Sistem
+          {/* 5. Sistem & Dokumen */}
+          <span className="menu-section-title">Sistem &amp; Dokumen</span>
+          <a className={`menu-item ${currentMenu === 'profile' ? 'active' : ''}`} onClick={() => setCurrentMenu('profile')} title="Pengaturan Profil">
+            <UserIcon size={17} /> <span className="menu-item-text">Pengaturan Profil</span>
           </a>
-
+          <a className={`menu-item ${currentMenu === 'gacs-config' ? 'active' : ''}`} onClick={() => setCurrentMenu('gacs-config')} title="Konfigurasi Sistem">
+            <Settings size={17} /> <span className="menu-item-text">Konfigurasi Sistem</span>
+          </a>
+          <a className={`menu-item ${currentMenu === 'documentation' ? 'active' : ''}`} onClick={() => setCurrentMenu('documentation')} title="Documentation">
+            <BookOpen size={17} /> <span className="menu-item-text">Documentation</span>
+          </a>
+          <a className={`menu-item ${currentMenu === 'statistics' ? 'active' : ''}`} onClick={() => setCurrentMenu('statistics')} title="Statistic">
+            <BarChart3 size={17} /> <span className="menu-item-text">Statistic</span>
+          </a>
         </nav>
       </aside>
 
@@ -551,10 +561,16 @@ export default function App() {
             {currentMenu.replace('-', ' ')}
           </h2>
           <div className="header-actions">
-            {/* Connection state */}
-            <div className="user-badge" style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+            {/* PWA Install Button Prompt */}
+            <PwaInstallPrompt />
+
+            {/* System In-App Notification Center */}
+            <NotificationCenter token={token} onNavigate={setCurrentMenu} socket={socket} />
+
+            {/* Connection state (Desktop only) */}
+            <div className="user-badge hidden md:flex" style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
               <span className="badge-dot active" />
-              WebSocket Connected
+              <span>WebSocket Connected</span>
             </div>
             
             {/* Telegram Bot Toggle */}
@@ -562,15 +578,19 @@ export default function App() {
               className="btn-primary" 
               onClick={() => setTelegramOpen(!telegramOpen)}
               style={{
-                padding: '6px 12px',
-                fontSize: '12.5px',
+                padding: '6px 10px',
+                fontSize: '12px',
                 background: telegramOpen ? 'linear-gradient(135deg, #0284c7, #0369a1)' : 'var(--bg-secondary)',
                 border: telegramOpen ? 'none' : '1px solid var(--border-color)',
-                color: telegramOpen ? '#fff' : 'var(--text-secondary)'
+                color: telegramOpen ? '#fff' : 'var(--text-secondary)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
               }}
+              title="Bot Telegram Alert"
             >
               <MessageSquare size={14} />
-              Bot Telegram: {telegramOpen ? 'Open' : 'Closed'}
+              <span className="hidden sm:inline">Bot Telegram: {telegramOpen ? 'Open' : 'Closed'}</span>
             </button>
 
             {/* Theme Toggle */}
@@ -596,7 +616,13 @@ export default function App() {
             </button>
 
             {/* Profile */}
-            <div className="user-badge" style={{ fontWeight: 600 }}>
+            <div 
+              className="user-badge" 
+              onClick={() => setCurrentMenu('profile')} 
+              style={{ fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              title="Klik untuk Pengaturan Profil"
+            >
+              <UserIcon size={14} style={{ color: '#38bdf8' }} />
               {currentUser.name} ({currentUser.role})
             </div>
 
@@ -635,6 +661,13 @@ export default function App() {
           onCompleteTask={handleCompleteTask}
         />
       </main>
+
+      {/* Mobile Bottom Navigation Bar (Mobile / Smartphone Screens) */}
+      <MobileBottomBar
+        currentMenu={currentMenu}
+        onNavigate={setCurrentMenu}
+        currentUser={currentUser}
+      />
     </div>
   );
 }

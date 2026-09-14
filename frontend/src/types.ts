@@ -8,6 +8,12 @@ export interface User {
   daily_tasks_count: number;
   mission_completed: number;
   mission_incompleted: number;
+  nipp?: string;
+  division?: string;
+  jabatan?: string;
+  phone?: string;
+  email?: string;
+  location?: string;
 }
 
 export interface DeviceCategory {

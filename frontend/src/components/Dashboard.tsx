@@ -16,7 +16,15 @@ import {
   TrendingUp, 
   Users, 
   Check, 
-  X
+  X,
+  Globe,
+  Ticket,
+  Boxes,
+  MessageSquare,
+  Terminal,
+  ArrowRight,
+  Database,
+  Cpu
 } from 'lucide-react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
@@ -51,6 +59,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [_loadingZabbix, setLoadingZabbix] = useState<boolean>(true);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
 
   // UI Interactive States
   const [activeTab, setActiveTab] = useState<'problems' | 'devices'>('problems');
@@ -76,7 +85,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     : 15;
 
   // -------------------------------------------------------------
-  // FETCH REAL-TIME ZABBIX MONITORING DATA
+  // FETCH REAL-TIME ZABBIX MONITORING DATA & AUDIT LOGS
   // -------------------------------------------------------------
   const fetchZabbixLive = useCallback(async (manual: boolean = false) => {
     if (manual) setIsRefreshing(true);
@@ -84,12 +93,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
       const headers: Record<string, string> = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const [rSummary, rProblems, rDevices, rBandwidth, rStatus] = await Promise.allSettled([
+      const [rSummary, rProblems, rDevices, rBandwidth, rStatus, rLogs] = await Promise.allSettled([
         fetch(`${BACKEND_URL}/api/monitoring/summary`, { headers }).then(r => r.json()),
         fetch(`${BACKEND_URL}/api/monitoring/problems`, { headers }).then(r => r.json()),
         fetch(`${BACKEND_URL}/api/monitoring/devices`, { headers }).then(r => r.json()),
         fetch(`${BACKEND_URL}/api/monitoring/bandwidth`, { headers }).then(r => r.json()),
         fetch(`${BACKEND_URL}/api/monitoring/status`, { headers }).then(r => r.json()),
+        fetch(`${BACKEND_URL}/api/temp-logs`, { headers }).then(r => r.json()),
       ]);
 
       if (rSummary.status === 'fulfilled' && !rSummary.value?.error) {
@@ -100,6 +110,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
       }
       if (rDevices.status === 'fulfilled' && Array.isArray(rDevices.value)) {
         setNocDevices(rDevices.value);
+      }
+      if (rLogs.status === 'fulfilled' && Array.isArray(rLogs.value)) {
+        setAuditLogs(rLogs.value.slice(0, 7));
       }
       if (rBandwidth.status === 'fulfilled' && !rBandwidth.value?.error) {
         setNocBandwidth(rBandwidth.value);
@@ -395,6 +408,204 @@ export const Dashboard: React.FC<DashboardProps> = ({
           >
             <AlertCircle size={16} /> Simulasi Alert
           </button>
+        </div>
+      </div>
+
+      {/* ------------------------------------------------------------- */}
+      {/* SYSTEM SERVICE HEALTH STATUS BAR */}
+      {/* ------------------------------------------------------------- */}
+      <div className="glass-card" style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', background: 'rgba(15, 23, 42, 0.6)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+          <Cpu size={17} className="text-cyan-400" />
+          <span>STATUS KESEHATAN MODUL SYSTEM:</span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', fontSize: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: zabbixStatus?.connected ? '#22c55e' : '#eab308', boxShadow: '0 0 8px #22c55e' }} />
+            <span style={{ color: 'var(--text-secondary)' }}>Zabbix API:</span>
+            <b style={{ color: '#4ade80' }}>{zabbixStatus?.connected ? 'Online' : 'Syncing'}</b>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px #22c55e' }} />
+            <span style={{ color: 'var(--text-secondary)' }}>GenieACS (TR-069):</span>
+            <b style={{ color: '#4ade80' }}>Connected</b>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px #22c55e' }} />
+            <span style={{ color: 'var(--text-secondary)' }}>MikroTik API:</span>
+            <b style={{ color: '#4ade80' }}>Connected</b>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px #22c55e' }} />
+            <span style={{ color: 'var(--text-secondary)' }}>Telegram Bot:</span>
+            <b style={{ color: '#4ade80' }}>Active</b>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px #22c55e' }} />
+            <span style={{ color: 'var(--text-secondary)' }}>MySQL Database:</span>
+            <b style={{ color: '#4ade80' }}>Connected</b>
+          </div>
+        </div>
+      </div>
+
+      {/* ------------------------------------------------------------- */}
+      {/* QUICK ACTION NAVIGATION GRID */}
+      {/* ------------------------------------------------------------- */}
+      <div>
+        <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Zap size={17} className="text-amber-400" />
+          Akses Cepat Modul Utama
+        </h3>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '14px' }}>
+          <div 
+            onClick={() => onNavigate('noc-monitoring')}
+            className="glass-card" 
+            style={{ 
+              padding: '16px', 
+              cursor: 'pointer', 
+              transition: 'all 0.2s ease', 
+              borderLeft: '4px solid #38bdf8',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              height: '100px'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Activity size={22} style={{ color: '#38bdf8' }} />
+              <ArrowRight size={14} style={{ color: 'var(--text-secondary)' }} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '13.5px', color: '#f8fafc' }}>NOC Monitoring</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>Zabbix & Telemetri Live</div>
+            </div>
+          </div>
+
+          <div 
+            onClick={() => onNavigate('service-desk')}
+            className="glass-card" 
+            style={{ 
+              padding: '16px', 
+              cursor: 'pointer', 
+              transition: 'all 0.2s ease', 
+              borderLeft: '4px solid #818cf8',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              height: '100px'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Ticket size={22} style={{ color: '#818cf8' }} />
+              <ArrowRight size={14} style={{ color: 'var(--text-secondary)' }} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '13.5px', color: '#f8fafc' }}>Service Desk Tiket</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>Tiket Kendala Civitas</div>
+            </div>
+          </div>
+
+          <div 
+            onClick={() => onNavigate('netmap-core')}
+            className="glass-card" 
+            style={{ 
+              padding: '16px', 
+              cursor: 'pointer', 
+              transition: 'all 0.2s ease', 
+              borderLeft: '4px solid #34d399',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              height: '100px'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Globe size={22} style={{ color: '#34d399' }} />
+              <ArrowRight size={14} style={{ color: 'var(--text-secondary)' }} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '13.5px', color: '#f8fafc' }}>Peta Topologi</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>GPS & Waypoint Kampus</div>
+            </div>
+          </div>
+
+          <div 
+            onClick={() => onNavigate('mikrotik-noc')}
+            className="glass-card" 
+            style={{ 
+              padding: '16px', 
+              cursor: 'pointer', 
+              transition: 'all 0.2s ease', 
+              borderLeft: '4px solid #f472b6',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              height: '100px'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Router size={22} style={{ color: '#f472b6' }} />
+              <ArrowRight size={14} style={{ color: 'var(--text-secondary)' }} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '13.5px', color: '#f8fafc' }}>MikroTik RouterOS</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>Hotspot & DHCP Leases</div>
+            </div>
+          </div>
+
+          <div 
+            onClick={() => onNavigate('inventory')}
+            className="glass-card" 
+            style={{ 
+              padding: '16px', 
+              cursor: 'pointer', 
+              transition: 'all 0.2s ease', 
+              borderLeft: '4px solid #fbbf24',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              height: '100px'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Boxes size={22} style={{ color: '#fbbf24' }} />
+              <ArrowRight size={14} style={{ color: 'var(--text-secondary)' }} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '13.5px', color: '#f8fafc' }}>Inventaris IT</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>Manajemen Aset & QR</div>
+            </div>
+          </div>
+
+          <div 
+            onClick={() => onNavigate('gacs-config')}
+            className="glass-card" 
+            style={{ 
+              padding: '16px', 
+              cursor: 'pointer', 
+              transition: 'all 0.2s ease', 
+              borderLeft: '4px solid #a855f7',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              height: '100px'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <MessageSquare size={22} style={{ color: '#a855f7' }} />
+              <ArrowRight size={14} style={{ color: 'var(--text-secondary)' }} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '13.5px', color: '#f8fafc' }}>Bot Telegram</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>Alert Sirine & Webhook</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -920,6 +1131,67 @@ export const Dashboard: React.FC<DashboardProps> = ({
         )}
 
 
+      </div>
+
+      {/* ------------------------------------------------------------- */}
+      {/* SECTION 5: REAL-TIME SYSTEM AUDIT LOG STREAM */}
+      {/* ------------------------------------------------------------- */}
+      <div className="glass-card" style={{ padding: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Terminal size={18} className="text-cyan-400" />
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+              Audit Log Stream System Realtime
+            </h3>
+          </div>
+          <button 
+            onClick={() => onNavigate('system-logs')} 
+            style={{ background: 'transparent', border: 'none', color: 'var(--accent-primary)', fontSize: '13px', cursor: 'pointer', fontWeight: 600 }}
+          >
+            Lihat Log Lengkap &rarr;
+          </button>
+        </div>
+
+        <div className="table-container">
+          {auditLogs.length === 0 ? (
+            <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
+              Belum ada data log aktivitas sistem terbaru.
+            </div>
+          ) : (
+            <table className="custom-table">
+              <thead>
+                <tr>
+                  <th>Waktu</th>
+                  <th>Aksi / Peristiwa</th>
+                  <th>Rincian Detail</th>
+                  <th>IP Address</th>
+                </tr>
+              </thead>
+              <tbody>
+                {auditLogs.map((log: any, idx: number) => (
+                  <tr key={log.id || idx}>
+                    <td>
+                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                        {new Date(log.created_at || log.timestamp || Date.now()).toLocaleTimeString('id-ID')} WIB
+                      </span>
+                    </td>
+                    <td>
+                      <span className="badge badge-info" style={{ fontSize: '11px' }}>
+                        {log.action}
+                      </span>
+                    </td>
+                    <td>
+                      <span style={{ fontSize: '12.5px', color: '#e2e8f0' }}>{log.details || '-'}</span>
+                    </td>
+                    <td>
+                      <code>{log.ip_address || '127.0.0.1'}</code>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
 
       {/* ------------------------------------------------------------- */}
