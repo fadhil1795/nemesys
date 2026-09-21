@@ -87,10 +87,11 @@ export interface AuthUser {
   username: string;
   name: string;
   role: 'Administrator' | 'Manager' | 'Teknisi';
-  status?: 'Available' | 'Busy';
-  telegram_chat_id?: string;
-  daily_tasks_count?: number;
-  mission_completed?: number;
+  status: 'Available' | 'Busy';
+  telegram_chat_id: string | null;
+  daily_tasks_count: number;
+  mission_completed: number;
+  mission_incompleted: number;
   nipp?: string;
   division?: string;
   jabatan?: string;
@@ -356,7 +357,8 @@ export default function App() {
       case 'tasks':
         return <DailyTaskComponent tasks={tasks} users={users} missions={missions} onAssignTask={handleAssignTask} dailyTodos={dailyTodos} token={token || ''} onRefresh={fetchData} devices={devices} userRole={currentUser?.role || 'Teknisi'} />;
       case 'mission-view':
-        return <MissionPage customMissions={customMissions} users={users} token={token || ''} onRefresh={fetchData} isAdmin={currentUser?.role === 'Administrator'} />;
+      case 'mission':
+        return <MissionPage customMissions={customMissions} users={users} token={token || ''} onRefresh={fetchData} isAdmin={currentUser?.role === 'Administrator' || currentUser?.role === 'Manager'} currentUser={currentUser as User | null} />;
       case 'team':
         return <Team users={users} token={token || ''} isAdmin={currentUser?.role === 'Administrator'} onRefresh={fetchData} />;
       case 'service-desk':
@@ -568,9 +570,9 @@ export default function App() {
             <NotificationCenter token={token} onNavigate={setCurrentMenu} socket={socket} />
 
             {/* Connection state (Desktop only) */}
-            <div className="user-badge hidden md:flex" style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+            <div className="user-badge hidden md:flex" style={{ fontSize: '11px', color: 'var(--text-secondary)', padding: '3px 9px' }}>
               <span className="badge-dot active" />
-              <span>WebSocket Connected</span>
+              <span>WS Connected</span>
             </div>
             
             {/* Telegram Bot Toggle */}
@@ -578,18 +580,18 @@ export default function App() {
               className="btn-primary" 
               onClick={() => setTelegramOpen(!telegramOpen)}
               style={{
-                padding: '6px 10px',
-                fontSize: '12px',
+                padding: '4px 9px',
+                fontSize: '11.5px',
                 background: telegramOpen ? 'linear-gradient(135deg, #0284c7, #0369a1)' : 'var(--bg-secondary)',
                 border: telegramOpen ? 'none' : '1px solid var(--border-color)',
                 color: telegramOpen ? '#fff' : 'var(--text-secondary)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px'
+                gap: '5px'
               }}
               title="Bot Telegram Alert"
             >
-              <MessageSquare size={14} />
+              <MessageSquare size={13} />
               <span className="hidden sm:inline">Bot Telegram: {telegramOpen ? 'Open' : 'Closed'}</span>
             </button>
 
@@ -598,7 +600,7 @@ export default function App() {
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               className="btn-primary"
               style={{
-                padding: '8px',
+                padding: '6px',
                 background: 'rgba(255, 255, 255, 0.05)',
                 border: '1px solid var(--border-color)',
                 color: 'var(--text-primary)',
@@ -607,22 +609,22 @@ export default function App() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                width: '34px',
-                height: '34px'
+                width: '30px',
+                height: '30px'
               }}
               title={theme === 'dark' ? 'Ganti ke Tampilan Light' : 'Ganti ke Tampilan Dark'}
             >
-              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} style={{ color: '#6366f1' }} />}
+              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} style={{ color: '#6366f1' }} />}
             </button>
 
             {/* Profile */}
             <div 
               className="user-badge" 
               onClick={() => setCurrentMenu('profile')} 
-              style={{ fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              style={{ fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 10px', fontSize: '12px' }}
               title="Klik untuk Pengaturan Profil"
             >
-              <UserIcon size={14} style={{ color: '#38bdf8' }} />
+              <UserIcon size={12} style={{ color: '#38bdf8' }} />
               {currentUser.name} ({currentUser.role})
             </div>
 
@@ -636,12 +638,12 @@ export default function App() {
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
-                fontSize: '13px',
+                gap: '5px',
+                fontSize: '12px',
                 fontWeight: 600
               }}
             >
-              <LogOut size={16} />
+              <LogOut size={14} />
               Sign Out
             </button>
           </div>

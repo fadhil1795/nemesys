@@ -71,7 +71,7 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
     <>
       {/* Mobile Bottom Bar Container */}
       <nav 
-        className="mobile-bottom-bar md:hidden"
+        className="mobile-bottom-bar"
         style={{
           position: 'fixed',
           bottom: 0,
@@ -82,7 +82,6 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
           borderTop: '1px solid rgba(255, 255, 255, 0.12)',
           boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.6)',
           zIndex: 99999,
-          display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-around',
           padding: '0 4px'
@@ -148,6 +147,7 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
       {/* Full Menu Drawer Sheet (Mobile Slide-up Modal) */}
       {drawerOpen && (
         <div 
+          className="mobile-bottom-drawer"
           onClick={() => setDrawerOpen(false)}
           style={{
             position: 'fixed',

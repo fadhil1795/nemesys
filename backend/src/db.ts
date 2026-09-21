@@ -145,22 +145,30 @@ export async function initializeDatabase() {
     `);
 
     // Add extra mission columns
-    try {
-      await pool.query("ALTER TABLE custom_missions ADD COLUMN created_by VARCHAR(150) NULL");
-    } catch (e) {}
-    try {
-      await pool.query("ALTER TABLE custom_missions ADD COLUMN date_finished VARCHAR(100) NULL");
-    } catch (e) {}
-    try {
-      await pool.query("ALTER TABLE custom_missions ADD COLUMN duration_str VARCHAR(100) NULL");
-    } catch (e) {}
-    try {
-      await pool.query("ALTER TABLE custom_missions ADD COLUMN note TEXT NULL");
-    } catch (e) {}
-    try {
-      await pool.query("ALTER TABLE custom_missions ADD COLUMN mission_image VARCHAR(255) NULL");
-      console.log('Migration: Verified extra custom_missions columns.');
-    } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN created_by VARCHAR(150) NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN date_finished VARCHAR(100) NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN duration_str VARCHAR(100) NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN note TEXT NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN mission_image VARCHAR(255) NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN checklists LONGTEXT NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN started_at VARCHAR(100) NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN bast_number VARCHAR(100) NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN bast_signer_name VARCHAR(150) NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN bast_signer_role VARCHAR(150) NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN bast_signed_at VARCHAR(100) NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN bast_signature_url LONGTEXT NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN bast_tech_signature_url LONGTEXT NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN bast_notes TEXT NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN custom_header_logo TEXT NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN custom_header_title VARCHAR(255) NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN custom_header_subtitle VARCHAR(255) NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN bast_admin_approved_by VARCHAR(150) NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN bast_admin_approved_at VARCHAR(100) NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN bast_tech_approved_by VARCHAR(150) NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN bast_tech_approved_at VARCHAR(100) NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN bast_hash VARCHAR(255) NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN bast_qr_data LONGTEXT NULL"); } catch (e) {}
+    console.log('Migration: Verified extra custom_missions & BAST digital verification columns.');
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS mission_participants (

@@ -160,6 +160,9 @@ export async function initTelegramBot(onAction?: (action: 'accept' | 'complete',
 • \`/dhcp\` atau \`/leases\` - Info sewa IP DHCP MikroTik
 • \`/rekap\` - Kirim rekapitulasi harian jaringan kampus
 
+🔹 *Manajemen Misi Tim:*
+• \`/misi\` atau \`/mission\` - Cek daftar Misi Tim aktif & ketersediaan slot
+
 🔹 *Diagnostik Jaringan:*
 • \`/ping <ip_atau_host>\` - Uji latensi & ping ke target (Contoh: \`/ping 103.92.209.1\`)
 
@@ -233,6 +236,45 @@ export async function initTelegramBot(onAction?: (action: 'accept' | 'complete',
     bot.onText(/\/(?:rekap|digest|laporan)/, async (msg) => {
       const chatId = msg.chat.id.toString();
       await sendDigestReportToChat(chatId);
+    });
+
+    // --------------------------------------------------------
+    // COMMAND: /misi /mission
+    // --------------------------------------------------------
+    bot.onText(/\/(?:misi|mission|missions)/, async (msg) => {
+      const chatId = msg.chat.id.toString();
+      try {
+        const [missions]: any = await pool.query('SELECT * FROM custom_missions ORDER BY id DESC LIMIT 10');
+        if (!missions || missions.length === 0) {
+          return bot?.sendMessage(chatId, 'ℹ️ Saat ini belum ada Misi Tim terdaftar.');
+        }
+
+        const [participants]: any = await pool.query(
+          'SELECT mp.mission_id, u.name FROM mission_participants mp JOIN users u ON mp.user_id = u.id'
+        );
+
+        let text = `🚀 *DAFTAR MISI TIM UNTAG NOC*\n━━━━━━━━━━━━━━━━━━━━\n\n`;
+        missions.forEach((m: any, idx: number) => {
+          const mParts = participants.filter((p: any) => p.mission_id === m.id);
+          const statusEmoji = m.status === 'Completed' ? '✅' : m.status === 'In Progress' ? '⚡' : '📌';
+          text += `${statusEmoji} *${idx + 1}. ${m.title}*\n`;
+          text += `   ├ *Status:* ${m.status}\n`;
+          text += `   ├ *Slot Personel:* ${mParts.length}/${m.slots}\n`;
+          text += `   ├ *Progress:* ${m.progress_percent || 0}%\n`;
+          if (mParts.length > 0) {
+            text += `   └ *Tim:* ${mParts.map((p: any) => p.name).join(', ')}\n`;
+          } else {
+            text += `   └ *Tim:* _Belum ada (Slot Terbuka)_\n`;
+          }
+          text += `\n`;
+        });
+
+        text += `📲 _Buka Web Dashboard / Mobile PWA untuk mengambil slot atau update progress pengerjaan!_`;
+
+        bot?.sendMessage(chatId, text, { parse_mode: 'Markdown' });
+      } catch (err: any) {
+        bot?.sendMessage(chatId, `❌ Gagal mengambil data misi: ${err.message}`);
+      }
     });
 
     // --------------------------------------------------------
@@ -708,4 +750,53 @@ export async function updateTelegramMessage(task: { id: number; device_name: str
     }
   } catch (err) {}
 }
+
+// Broadcast new Custom Mission to Telegram personnel
+export async function sendTelegramMissionAlert(mission: { id: number; title: string; slots: number; description?: string }) {
+  if (!bot) return;
+  try {
+    const { chatId: defaultChatId } = await getTelegramConfig();
+    const [techs]: any = await pool.query('SELECT telegram_chat_id FROM users WHERE telegram_chat_id IS NOT NULL');
+    const targetChatIds = new Set<string>();
+    if (defaultChatId) targetChatIds.add(defaultChatId);
+    for (const t of techs) {
+      if (t.telegram_chat_id) targetChatIds.add(t.telegram_chat_id.toString());
+    }
+
+    const msg = `🚀 *MISI BARU DITERBITKAN!*\n\n📌 *Judul:* ${mission.title}\n👥 *Kapasitas Slot:* ${mission.slots} Personel\n📝 *Deskripsi:* ${mission.description || '-'}\n\nSilakan buka Dashboard / Mobile PWA untuk mengambil slot Misi ini!`;
+
+    for (const cid of targetChatIds) {
+      await bot.sendMessage(cid, msg, { parse_mode: 'Markdown' }).catch(() => {});
+    }
+  } catch (err) {
+    console.error('Failed to send Telegram Mission alert:', err);
+  }
+}
+
+// Broadcast Mission Completed to Telegram personnel
+export async function sendTelegramMissionCompletedAlert(mission: { id: number; title: string; bast_number?: string; bast_signer_name?: string }) {
+  if (!bot) return;
+  try {
+    const { chatId: defaultChatId } = await getTelegramConfig();
+    const [techs]: any = await pool.query('SELECT telegram_chat_id FROM users WHERE telegram_chat_id IS NOT NULL');
+    const targetChatIds = new Set<string>();
+    if (defaultChatId) targetChatIds.add(defaultChatId);
+    for (const t of techs) {
+      if (t.telegram_chat_id) targetChatIds.add(t.telegram_chat_id.toString());
+    }
+
+    let msg = `✅ *MISI DISELESAIKAN!*\n\n📌 *Judul:* ${mission.title}\n`;
+    if (mission.bast_number) {
+      msg += `📄 *No. BAST:* ${mission.bast_number}\n✍️ *Penerima:* ${mission.bast_signer_name || '-'}\n`;
+    }
+    msg += `\nDokumen Laporan & BAST resmi telah diterbitkan dan tersimpan di sistem.`;
+
+    for (const cid of targetChatIds) {
+      await bot.sendMessage(cid, msg, { parse_mode: 'Markdown' }).catch(() => {});
+    }
+  } catch (err) {
+    console.error('Failed to send Telegram Mission completed alert:', err);
+  }
+}
+
 

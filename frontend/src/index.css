@@ -129,6 +129,7 @@ html, body {
 
 /* Mobile Bottom Navigation Bar Styles */
 .mobile-bottom-bar {
+  display: flex !important;
   position: fixed;
   bottom: 0;
   left: 0;
@@ -138,6 +139,14 @@ html, body {
   border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.6) !important;
   z-index: 99999 !important;
+}
+
+/* Hide Mobile Bottom Bar on Desktop / Laptop Screens */
+@media (min-width: 769px) {
+  .mobile-bottom-bar,
+  .mobile-bottom-drawer {
+    display: none !important;
+  }
 }
 
 .mobile-bottom-bar button {
@@ -368,9 +377,9 @@ html, body {
 }
 
 .main-header {
-  height: 70px;
+  height: 56px;
   border-bottom: 1px solid var(--border-color);
-  padding: 0 32px;
+  padding: 0 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -390,19 +399,19 @@ html, body {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
 }
 
 /* User Profile Badges */
 .user-badge {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background-color: rgba(255, 255, 255, 0.03);
-  padding: 6px 12px;
+  padding: 4px 10px;
   border-radius: 30px;
   border: 1px solid var(--border-color);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .badge-dot {

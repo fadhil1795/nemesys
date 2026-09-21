@@ -3,8 +3,10 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
 import { pool, initializeDatabase, writeLog } from './db';
-import { initTelegramBot, sendTelegramAlert, updateTelegramMessage } from './telegram';
+import { initTelegramBot, sendTelegramAlert, updateTelegramMessage, sendTelegramMissionAlert, sendTelegramMissionCompletedAlert } from './telegram';
 import { startCronJobs } from './cron';
 import { syncZabbixHosts, testZabbixConnection } from './zabbix';
 import * as GenieACS from './genieacs';
@@ -447,7 +449,7 @@ app.delete('/api/daily-todos/:id', async (req, res) => {
   }
 });
 
-// Custom Missions CRUD
+// Custom Missions CRUD & Workflow
 app.get('/api/custom-missions', async (req, res) => {
   try {
     const [missions]: any = await pool.query('SELECT * FROM custom_missions ORDER BY id DESC');
@@ -456,8 +458,17 @@ app.get('/api/custom-missions', async (req, res) => {
     );
     
     const mappedMissions = missions.map((m: any) => {
+      let parsedChecklists = [];
+      if (m.checklists) {
+        try {
+          parsedChecklists = typeof m.checklists === 'string' ? JSON.parse(m.checklists) : m.checklists;
+        } catch (e) {
+          parsedChecklists = [];
+        }
+      }
       return {
         ...m,
+        checklists: parsedChecklists,
         personnels: participants.filter((p: any) => p.mission_id === m.id)
       };
     });
@@ -468,13 +479,14 @@ app.get('/api/custom-missions', async (req, res) => {
 });
 
 app.post('/api/custom-missions', async (req, res) => {
-  const { title, description, slots, user_ids, created_by, date_finished, duration_str, note, mission_image, progress_percent, status } = req.body;
+  const { title, description, slots, user_ids, created_by, date_finished, duration_str, note, mission_image, progress_percent, status, checklists, custom_header_logo, custom_header_title, custom_header_subtitle } = req.body;
   const createdAt = new Date().toLocaleString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(' pukul', ' -');
-  
+  const checklistJson = checklists ? JSON.stringify(checklists) : JSON.stringify([]);
+
   try {
     const [result]: any = await pool.query(
-      'INSERT INTO custom_missions (title, description, slots, progress_percent, created_at, status, created_by, date_finished, duration_str, note, mission_image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [title, description || null, slots, progress_percent || 0, createdAt, status || 'Active', created_by || null, date_finished || null, duration_str || null, note || null, mission_image || null]
+      'INSERT INTO custom_missions (title, description, slots, progress_percent, created_at, status, created_by, date_finished, duration_str, note, mission_image, checklists, custom_header_logo, custom_header_title, custom_header_subtitle) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [title, description || null, slots || 1, progress_percent || 0, createdAt, status || 'Active', created_by || null, date_finished || null, duration_str || null, note || null, mission_image || null, checklistJson, custom_header_logo || null, custom_header_title || null, custom_header_subtitle || null]
     );
     const missionId = result.insertId;
 
@@ -483,6 +495,10 @@ app.post('/api/custom-missions', async (req, res) => {
         await pool.query('INSERT INTO mission_participants (mission_id, user_id) VALUES (?, ?)', [missionId, userId]);
       }
     }
+
+    // Trigger Telegram Broadcast for new Mission
+    sendTelegramMissionAlert({ id: missionId, title, slots: slots || 1, description }).catch(() => {});
+
     broadcastUpdate();
     res.status(201).json({ id: missionId, message: 'Mission created successfully' });
   } catch (error) {
@@ -493,11 +509,33 @@ app.post('/api/custom-missions', async (req, res) => {
 
 app.put('/api/custom-missions/:id', async (req, res) => {
   const id = parseInt(req.params.id);
-  const { title, description, slots, progress_percent, status, user_ids, created_by, date_finished, duration_str, note, mission_image } = req.body;
+  const { title, description, slots, progress_percent, status, user_ids, created_by, date_finished, duration_str, note, mission_image, checklists, bast_number, bast_signer_name, bast_signer_role, bast_signed_at, bast_signature_url, bast_tech_signature_url, bast_notes, custom_header_logo, custom_header_title, custom_header_subtitle } = req.body;
+  const checklistJson = checklists ? JSON.stringify(checklists) : undefined;
+
   try {
+    const fieldsToUpdate: string[] = ['title = ?', 'description = ?', 'slots = ?', 'progress_percent = ?', 'status = ?', 'created_by = ?', 'date_finished = ?', 'duration_str = ?', 'note = ?', 'mission_image = ?'];
+    const values: any[] = [title, description || null, slots, progress_percent, status, created_by || null, date_finished || null, duration_str || null, note || null, mission_image || null];
+
+    if (checklistJson !== undefined) {
+      fieldsToUpdate.push('checklists = ?');
+      values.push(checklistJson);
+    }
+    if (bast_number !== undefined) { fieldsToUpdate.push('bast_number = ?'); values.push(bast_number); }
+    if (bast_signer_name !== undefined) { fieldsToUpdate.push('bast_signer_name = ?'); values.push(bast_signer_name); }
+    if (bast_signer_role !== undefined) { fieldsToUpdate.push('bast_signer_role = ?'); values.push(bast_signer_role); }
+    if (bast_signed_at !== undefined) { fieldsToUpdate.push('bast_signed_at = ?'); values.push(bast_signed_at); }
+    if (bast_signature_url !== undefined) { fieldsToUpdate.push('bast_signature_url = ?'); values.push(bast_signature_url); }
+    if (bast_tech_signature_url !== undefined) { fieldsToUpdate.push('bast_tech_signature_url = ?'); values.push(bast_tech_signature_url); }
+    if (bast_notes !== undefined) { fieldsToUpdate.push('bast_notes = ?'); values.push(bast_notes); }
+    if (custom_header_logo !== undefined) { fieldsToUpdate.push('custom_header_logo = ?'); values.push(custom_header_logo); }
+    if (custom_header_title !== undefined) { fieldsToUpdate.push('custom_header_title = ?'); values.push(custom_header_title); }
+    if (custom_header_subtitle !== undefined) { fieldsToUpdate.push('custom_header_subtitle = ?'); values.push(custom_header_subtitle); }
+
+    values.push(id);
+
     await pool.query(
-      'UPDATE custom_missions SET title = ?, description = ?, slots = ?, progress_percent = ?, status = ?, created_by = ?, date_finished = ?, duration_str = ?, note = ?, mission_image = ? WHERE id = ?',
-      [title, description || null, slots, progress_percent, status, created_by || null, date_finished || null, duration_str || null, note || null, mission_image || null, id]
+      `UPDATE custom_missions SET ${fieldsToUpdate.join(', ')} WHERE id = ?`,
+      values
     );
     
     if (user_ids && Array.isArray(user_ids)) {
@@ -509,7 +547,549 @@ app.put('/api/custom-missions/:id', async (req, res) => {
     broadcastUpdate();
     res.json({ message: 'Mission updated successfully' });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: 'DB error updating mission' });
+  }
+});
+
+// Endpoint: Join Mission (Self-Service Technician)
+app.post('/api/custom-missions/:id/join', async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { user_id } = req.body;
+
+  if (!user_id) {
+    return res.status(400).json({ error: 'user_id is required' });
+  }
+
+  try {
+    const [missions]: any = await pool.query('SELECT * FROM custom_missions WHERE id = ?', [id]);
+    if (missions.length === 0) return res.status(404).json({ error: 'Mission not found' });
+    const mission = missions[0];
+
+    const [participants]: any = await pool.query('SELECT * FROM mission_participants WHERE mission_id = ?', [id]);
+    const alreadyJoined = participants.some((p: any) => p.user_id === user_id);
+
+    if (alreadyJoined) {
+      return res.status(400).json({ error: 'Anda sudah bergabung dalam mission ini' });
+    }
+
+    if (participants.length >= mission.slots) {
+      return res.status(400).json({ error: 'Slot mission sudah penuh' });
+    }
+
+    await pool.query('INSERT INTO mission_participants (mission_id, user_id) VALUES (?, ?)', [id, user_id]);
+
+    // Set started_at if first user joins & status to In Progress if slots filled or started
+    const nowISO = new Date().toISOString();
+    const newCount = participants.length + 1;
+    let newStatus = mission.status;
+    if (newStatus === 'Active' || newStatus === 'Open') {
+      newStatus = 'In Progress';
+    }
+
+    await pool.query(
+      'UPDATE custom_missions SET started_at = COALESCE(started_at, ?), status = ? WHERE id = ?',
+      [nowISO, newStatus, id]
+    );
+
+    broadcastUpdate();
+    res.json({ message: 'Berhasil bergabung dengan mission', status: newStatus });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Gagal bergabung dengan mission' });
+  }
+});
+
+// Endpoint: Leave Mission
+app.post('/api/custom-missions/:id/leave', async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { user_id } = req.body;
+  try {
+    await pool.query('DELETE FROM mission_participants WHERE mission_id = ? AND user_id = ?', [id, user_id]);
+    broadcastUpdate();
+    res.json({ message: 'Berhasil keluar dari mission' });
+  } catch (error) {
+    res.status(500).json({ error: 'Gagal keluar dari mission' });
+  }
+});
+
+// Endpoint: Update Progress & Complete BAST Mission
+app.put('/api/custom-missions/:id/progress', async (req, res) => {
+  const id = parseInt(req.params.id);
+  const {
+    progress_percent,
+    checklists,
+    note,
+    mission_image,
+    status,
+    bast_signer_name,
+    bast_signer_role,
+    bast_signature_url,
+    bast_tech_signature_url,
+    bast_notes,
+    bast_admin_approved_by,
+    bast_admin_approved_at,
+    bast_tech_approved_by,
+    bast_tech_approved_at,
+    bast_hash,
+    bast_qr_data,
+    custom_header_logo,
+    custom_header_title,
+    custom_header_subtitle
+  } = req.body;
+
+  try {
+    const [missions]: any = await pool.query('SELECT * FROM custom_missions WHERE id = ?', [id]);
+    if (missions.length === 0) return res.status(404).json({ error: 'Mission not found' });
+    const mission = missions[0];
+
+    const fieldsToUpdate: string[] = [];
+    const values: any[] = [];
+
+    if (progress_percent !== undefined) { fieldsToUpdate.push('progress_percent = ?'); values.push(progress_percent); }
+    if (checklists !== undefined) { fieldsToUpdate.push('checklists = ?'); values.push(JSON.stringify(checklists)); }
+    if (note !== undefined) { fieldsToUpdate.push('note = ?'); values.push(note); }
+    if (mission_image !== undefined) { fieldsToUpdate.push('mission_image = ?'); values.push(mission_image); }
+
+    let nextStatus = status || mission.status;
+    if (progress_percent === 100 && nextStatus !== 'Completed') {
+      nextStatus = 'Completed';
+    }
+    fieldsToUpdate.push('status = ?'); values.push(nextStatus);
+
+    // If Completing Mission (task 100%), record date & BAST number
+    if (nextStatus === 'Completed') {
+      const finishedAtStr = new Date().toLocaleString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(' pukul', ' -');
+      if (!mission.date_finished) {
+        fieldsToUpdate.push('date_finished = ?'); values.push(finishedAtStr);
+      }
+
+      // Auto Duration string
+      if (mission.started_at && !mission.duration_str) {
+        const startTs = new Date(mission.started_at).getTime();
+        const endTs = Date.now();
+        const diffMs = Math.max(0, endTs - startTs);
+        const hours = Math.floor(diffMs / (1000 * 60 * 60));
+        const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        const durationCalc = hours > 0 ? `${hours} jam ${minutes} menit` : `${minutes} menit`;
+        fieldsToUpdate.push('duration_str = ?'); values.push(durationCalc);
+      }
+
+      // Auto BAST Number if not already set
+      if (!mission.bast_number) {
+        const dateObj = new Date();
+        const yyyy = dateObj.getFullYear();
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const bastNo = `BAST-MIS/${yyyy}/${mm}/${id.toString().padStart(3, '0')}`;
+        fieldsToUpdate.push('bast_number = ?'); values.push(bastNo);
+      }
+    }
+
+    // If Digital Approval is being recorded (admin or tech explicitly approves)
+    if (bast_admin_approved_by || bast_tech_approved_by) {
+
+      if (bast_signer_name) { fieldsToUpdate.push('bast_signer_name = ?'); values.push(bast_signer_name); }
+      if (bast_signer_role) { fieldsToUpdate.push('bast_signer_role = ?'); values.push(bast_signer_role); }
+      if (bast_signature_url) { fieldsToUpdate.push('bast_signature_url = ?'); values.push(bast_signature_url); }
+      if (bast_tech_signature_url) { fieldsToUpdate.push('bast_tech_signature_url = ?'); values.push(bast_tech_signature_url); }
+      if (bast_notes) { fieldsToUpdate.push('bast_notes = ?'); values.push(bast_notes); }
+
+      if (bast_admin_approved_by) { fieldsToUpdate.push('bast_admin_approved_by = ?'); values.push(bast_admin_approved_by); }
+      if (bast_admin_approved_at) { fieldsToUpdate.push('bast_admin_approved_at = ?'); values.push(bast_admin_approved_at); }
+      if (bast_tech_approved_by) { fieldsToUpdate.push('bast_tech_approved_by = ?'); values.push(bast_tech_approved_by); }
+      if (bast_tech_approved_at) { fieldsToUpdate.push('bast_tech_approved_at = ?'); values.push(bast_tech_approved_at); }
+      if (bast_hash) { fieldsToUpdate.push('bast_hash = ?'); values.push(bast_hash); }
+      if (bast_qr_data) { fieldsToUpdate.push('bast_qr_data = ?'); values.push(bast_qr_data); }
+
+      // Increment mission_completed for assigned personnel
+      const [participants]: any = await pool.query('SELECT user_id FROM mission_participants WHERE mission_id = ?', [id]);
+      for (const p of participants) {
+        await pool.query('UPDATE users SET mission_completed = mission_completed + 1 WHERE id = ?', [p.user_id]);
+      }
+
+      // Send Telegram Completed Broadcast
+      sendTelegramMissionCompletedAlert({
+        id,
+        title: mission.title,
+        bast_number: mission.bast_number || `BAST-MIS/${new Date().getFullYear()}/${id}`,
+        bast_signer_name
+      }).catch(() => {});
+    }
+
+    if (custom_header_logo !== undefined) { fieldsToUpdate.push('custom_header_logo = ?'); values.push(custom_header_logo); }
+    if (custom_header_title !== undefined) { fieldsToUpdate.push('custom_header_title = ?'); values.push(custom_header_title); }
+    if (custom_header_subtitle !== undefined) { fieldsToUpdate.push('custom_header_subtitle = ?'); values.push(custom_header_subtitle); }
+
+    values.push(id);
+
+    await pool.query(`UPDATE custom_missions SET ${fieldsToUpdate.join(', ')} WHERE id = ?`, values);
+    broadcastUpdate();
+    res.json({ message: 'Progress mission berhasil diperbarui', status: nextStatus });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Gagal memperbarui progress mission' });
+  }
+});
+
+// GET /api/custom-missions/:id/bast-verify - Verify BAST Digital Signature & Authenticity Status (HTML & JSON)
+app.get('/api/custom-missions/:id/bast-verify', async (req, res) => {
+  const id = parseInt(req.params.id);
+  try {
+    const [missions]: any = await pool.query('SELECT * FROM custom_missions WHERE id = ?', [id]);
+    if (missions.length === 0) {
+      const acceptsJson = req.headers.accept?.includes('application/json') && !req.headers.accept?.includes('text/html');
+      if (req.query.format === 'json' || acceptsJson) {
+        return res.status(404).json({ error: 'Dokumen BAST tidak ditemukan' });
+      }
+      return res.status(404).send('<h2 style="font-family:sans-serif;text-align:center;margin-top:50px;color:#ef4444;">❌ Dokumen BAST Tidak Ditemukan</h2>');
+    }
+    const mission = missions[0];
+
+    // Fetch assigned personnel
+    const [participants]: any = await pool.query(`
+      SELECT u.id, u.name, u.role FROM mission_participants mp
+      JOIN users u ON mp.user_id = u.id
+      WHERE mp.mission_id = ?
+    `, [id]);
+
+    // Verified only when BOTH admin AND tech have explicitly approved
+    const adminApproved = Boolean(mission.bast_admin_approved_by);
+    const techApproved = Boolean(mission.bast_tech_approved_by);
+    const isFullyVerified = adminApproved && techApproved;
+    const isPartiallyVerified = adminApproved || techApproved;
+    const isVerified = isFullyVerified;
+    const bastNumber = mission.bast_number || `BAST-MIS/${new Date().getFullYear()}/${id}`;
+    const defaultHash = mission.bast_hash || `SHA256-NEMESYS-${id}-${bastNumber.replace(/[^A-Z0-9]/gi, '')}`;
+    const checklists = mission.checklists ? JSON.parse(mission.checklists) : [];
+
+    // If client explicitly requested JSON format (API call)
+    const acceptsJson = req.headers.accept?.includes('application/json') && !req.headers.accept?.includes('text/html');
+    if (req.query.format === 'json' || acceptsJson) {
+      return res.json({
+        verified: isVerified,
+        partially_verified: isPartiallyVerified,
+        status_label: isVerified
+          ? 'DOKUMEN RESMI TERVERIFIKASI DIGITAL'
+          : isPartiallyVerified
+            ? 'DOKUMEN DALAM PROSES VERIFIKASI (SEBAGIAN)'
+            : 'MENUNGGU PENGESAHAN DIGITAL',
+        bast_number: bastNumber,
+        title: mission.title,
+        description: mission.description,
+        date_finished: mission.date_finished || '-',
+        created_by: mission.created_by || 'Administrator',
+        approvals: {
+          admin: {
+            approved_by: mission.bast_admin_approved_by || null,
+            approved_at: mission.bast_admin_approved_at || null,
+            status: adminApproved ? 'Approved & Validated' : 'Menunggu Persetujuan'
+          },
+          tech: {
+            approved_by: mission.bast_tech_approved_by || null,
+            approved_at: mission.bast_tech_approved_at || null,
+            status: techApproved ? 'Disahkan & Dikonfirmasi' : 'Menunggu Konfirmasi Teknisi'
+          },
+          signer: {
+            name: mission.bast_signer_name || null,
+            role: mission.bast_signer_role || null,
+            signed_at: mission.bast_signed_at || null
+          }
+        },
+        checklists: checklists,
+        hash: isVerified ? defaultHash : null,
+        participants: participants
+      });
+    }
+
+    // Render HTML Page for Browser Scan
+    const adminApprovedBy = mission.bast_admin_approved_by || null;
+    const adminApprovedAt = mission.bast_admin_approved_at || null;
+    const techApprovedBy = mission.bast_tech_approved_by || null;
+    const techApprovedAt = mission.bast_tech_approved_at || null;
+    const dateFinished = mission.date_finished || '-';
+
+    let logoImgTag = '';
+    try {
+      const candidatePaths = [
+        path.join(__dirname, '../frontend/public/logo_perpenas.png'),
+        path.join(process.cwd(), '../frontend/public/logo_perpenas.png'),
+        path.join(process.cwd(), 'frontend/public/logo_perpenas.png'),
+        path.join(__dirname, '../../frontend/public/logo_perpenas.png')
+      ];
+      for (const p of candidatePaths) {
+        if (fs.existsSync(p)) {
+          const logoBuffer = fs.readFileSync(p);
+          logoImgTag = `<img src="data:image/png;base64,${logoBuffer.toString('base64')}" alt="Logo Perpenas" class="logo-img" />`;
+          break;
+        }
+      }
+    } catch (e) {
+      console.error('Error loading logo perpenas:', e);
+    }
+
+    let checklistHtml = '';
+    if (checklists && checklists.length > 0) {
+      checklistHtml = `
+        <div class="checklist-box">
+          <div class="checklist-title">🛠️ Rincian Item Pekerjaan Terverifikasi (${checklists.length} Item)</div>
+          ${checklists.map((c: any) => `
+            <div class="checklist-item">
+              <span style="color: #4ade80; font-weight: 800;">✓</span>
+              <span>${c.text}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    const htmlContent = `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verifikasi BAST Digital - ${bastNumber}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: #090d16;
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .card {
+      width: 100%;
+      max-width: 680px;
+      background: #0f172a;
+      border: 1px solid rgba(34, 197, 94, 0.4);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(34, 197, 94, 0.15);
+    }
+    .header-institution {
+      text-align: center;
+      padding-bottom: 20px;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.15);
+      margin-bottom: 24px;
+    }
+    .logo-img {
+      width: 76px;
+      height: auto;
+      margin: 0 auto 14px auto;
+      display: block;
+      filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+    }
+    .header-institution h2 {
+      font-size: 16px;
+      font-weight: 800;
+      color: #38bdf8;
+      letter-spacing: 0.5px;
+    }
+    .header-institution p {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+    .status-banner {
+      background: linear-gradient(135deg, rgba(22, 163, 74, 0.25), rgba(34, 197, 94, 0.1));
+      border: 1px solid #22c55e;
+      border-radius: 14px;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .badge-verified {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #16a34a;
+      color: #ffffff;
+      padding: 6px 18px;
+      border-radius: 30px;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 15px rgba(22, 163, 74, 0.4);
+    }
+    .status-title {
+      font-size: 19px;
+      font-weight: 800;
+      color: #4ade80;
+      margin-top: 14px;
+    }
+    .info-section {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 20px;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 13px;
+    }
+    .info-row:last-child { margin-bottom: 0; }
+    .label { color: #94a3b8; font-weight: 600; }
+    .val { color: #f8fafc; font-weight: 700; text-align: right; }
+    .approval-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .approval-card {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .approval-role {
+      font-size: 11px;
+      font-weight: 800;
+      color: #38bdf8;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .approval-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+    .approval-status {
+      font-size: 11px;
+      color: #4ade80;
+      font-weight: 700;
+      margin-top: 6px;
+    }
+    .approval-time {
+      font-size: 10.5px;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+    .checklist-box {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .checklist-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .checklist-item {
+      font-size: 12.5px;
+      color: #cbd5e1;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .checklist-item:last-child { border-bottom: none; }
+    .hash-footer {
+      background: #020617;
+      border: 1px dashed rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+      font-family: monospace;
+      font-size: 11px;
+      color: #94a3b8;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header-institution">
+      ${logoImgTag}
+      <h2>PERKUMPULAN GEMA PENDIDIKAN NASIONAL</h2>
+      <p>BIRO TEKNOLOGI INFORMASI (BTI) • NEMESYS MANAGEMENT SYSTEM</p>
+    </div>
+
+    <div class="status-banner" style="${isVerified ? '' : 'background:linear-gradient(135deg,rgba(245,158,11,0.2),rgba(234,179,8,0.08));border-color:#f59e0b;'}">
+      <div class="badge-verified" style="${isVerified ? '' : 'background:#b45309;box-shadow:0 4px 15px rgba(180,83,9,0.4);'}">
+        ${isVerified ? '🛡️ VERIFIED OFFICIAL DOCUMENT' : isPartiallyVerified ? '⏳ DOKUMEN DALAM PROSES VERIFIKASI' : '⚠️ MENUNGGU PENGESAHAN DIGITAL'}
+      </div>
+      <div class="status-title" style="${isVerified ? '' : isPartiallyVerified ? 'color:#fbbf24;' : 'color:#f87171;'}">
+        ${isVerified ? 'DOKUMEN RESMI TERVERIFIKASI DIGITAL' : isPartiallyVerified ? 'VERIFIKASI SEBAGIAN — BELUM LENGKAP' : 'DOKUMEN BELUM DISAHKAN'}
+      </div>
+      <p style="font-size: 12px; color: #94a3b8; margin-top: 6px;">
+        ${isVerified
+          ? 'Dokumen BAST ini resmi tercatat di database server dan telah disahkan oleh kedua pihak.'
+          : isPartiallyVerified
+            ? 'Dokumen sedang dalam proses pengesahan. Salah satu pihak belum mengesahkan.'
+            : 'Dokumen ini belum mendapat pengesahan digital dari Administrator maupun Teknisi.'
+        }
+      </p>
+    </div>
+
+    <div class="info-section">
+      <div class="info-row">
+        <span class="label">Nomor BAST:</span>
+        <span class="val" style="color: #38bdf8;">${bastNumber}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Judul Misi:</span>
+        <span class="val">${mission.title}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Tanggal Diselesaikan:</span>
+        <span class="val">${dateFinished}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Status Pengesahan:</span>
+        <span class="val" style="color: ${isVerified ? '#4ade80' : isPartiallyVerified ? '#fbbf24' : '#f87171'};">
+          ${isVerified ? '✅ Disahkan Kedua Pihak' : isPartiallyVerified ? '⏳ Sebagian Disahkan' : '❌ Belum Disahkan'}
+        </span>
+      </div>
+    </div>
+
+    <div class="approval-grid">
+      <div class="approval-card" style="${adminApproved ? '' : 'border-color:rgba(245,158,11,0.4);'}">
+        <div class="approval-role">👑 Manager BTI / Admin</div>
+        <div class="approval-name">${adminApprovedBy || '— Belum Disahkan —'}</div>
+        <div class="approval-status" style="${adminApproved ? '' : 'color:#fbbf24;'}">
+          ${adminApproved ? '✅ Approved & Validated' : '⏳ Menunggu Persetujuan'}
+        </div>
+        <div class="approval-time">${adminApprovedAt || '-'}</div>
+      </div>
+      <div class="approval-card" style="${techApproved ? '' : 'border-color:rgba(245,158,11,0.4);'}">
+        <div class="approval-role">👷 Pelaksana / Lead Teknisi</div>
+        <div class="approval-name">${techApprovedBy || '— Belum Dikonfirmasi —'}</div>
+        <div class="approval-status" style="${techApproved ? '' : 'color:#fbbf24;'}">
+          ${techApproved ? '✅ Disahkan & Dikonfirmasi' : '⏳ Menunggu Konfirmasi Teknisi'}
+        </div>
+        <div class="approval-time">${techApprovedAt || '-'}</div>
+      </div>
+    </div>
+
+    ${checklistHtml}
+
+    <div class="hash-footer">
+      ${isVerified
+        ? `🔒 DIGITAL SECURITY HASH SIGNATURE:<br/><strong style="color: #fbbf24;">${defaultHash}</strong>`
+        : `⚠️ Hash akan tersedia setelah kedua pihak menyelesaikan pengesahan digital.`
+      }
+    </div>
+  </div>
+</body>
+</html>`;
+
+    res.send(htmlContent);
+  } catch (error) {
+    console.error('Error verifying BAST:', error);
+    res.status(500).send('<h2 style="font-family:sans-serif;text-align:center;margin-top:50px;color:#ef4444;">Gagal memverifikasi dokumen BAST</h2>');
   }
 });
 

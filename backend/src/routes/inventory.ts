@@ -70,7 +70,7 @@ router.get('/assets/:id', async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Error fetching asset detail:', error);
-    res.status(500).json({ error: 'Database error fetching asset detail' });
+    res.status(500).json({ error: 'Database error fetching inventory stats' });
   }
 });
 
@@ -749,6 +749,193 @@ router.get('/stats', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error fetching inventory stats:', error);
     res.status(500).json({ error: 'Database error fetching inventory stats' });
+  }
+});
+
+// Helper to sanitize dates for MySQL DATE column
+const sanitizeDbDate = (val: any): string | null => {
+  if (!val) return null;
+  const str = String(val).trim();
+  if (!str) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  if (/^\d{4}$/.test(str)) return `${str}-01-01`;
+  const ddmmyyyy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (ddmmyyyy) {
+    return `${ddmmyyyy[3]}-${ddmmyyyy[2].padStart(2, '0')}-${ddmmyyyy[1].padStart(2, '0')}`;
+  }
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) {
+    return d.toISOString().split('T')[0];
+  }
+  return null;
+};
+
+// POST /api/inventory/assets/import - Bulk Import IT Assets
+router.post('/assets/import', async (req, res) => {
+  const { items } = req.body;
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: 'Data item impor tidak boleh kosong' });
+  }
+
+  const actorName = (req as any).user?.name || 'Administrator';
+  let successCount = 0;
+
+  try {
+    const [countRows]: any = await pool.query('SELECT COUNT(*) as cnt FROM it_inventory_assets');
+    let counter = countRows[0].cnt + 1;
+
+    for (const item of items) {
+      const name = item.name?.trim() || item.nama?.trim();
+      if (!name) continue;
+
+      const category = item.category?.trim() || item.kategori?.trim() || 'Lainnya';
+      const location = item.location?.trim() || item.lokasi?.trim() || 'Gedung Utama';
+
+      let finalCode = item.asset_code?.trim();
+      if (!finalCode) {
+        const catPrefix = category.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, '') || 'AST';
+        finalCode = `AST-${catPrefix}-${counter.toString().padStart(4, '0')}`;
+        counter++;
+      }
+
+      // Check if code already exists to prevent duplicate key crashes
+      const [existing]: any = await pool.query('SELECT id FROM it_inventory_assets WHERE asset_code = ?', [finalCode]);
+      if (existing.length > 0) {
+        finalCode = `${finalCode}-${Math.floor(1000 + Math.random() * 9000)}`;
+      }
+
+      const [result]: any = await pool.query(`
+        INSERT INTO it_inventory_assets (
+          asset_code, name, category, brand, model_number, serial_number, 
+          mac_address, ip_address, location, assigned_user, status, 
+          purchase_date, purchase_cost, vendor, warranty_expiry, specs, image_url, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        finalCode,
+        name,
+        category,
+        item.brand || null,
+        item.model_number || null,
+        item.serial_number || null,
+        item.mac_address || null,
+        item.ip_address || null,
+        location,
+        item.assigned_user || null,
+        item.status || 'Baik / Aktif',
+        sanitizeDbDate(item.purchase_date),
+        item.purchase_cost ? parseFloat(item.purchase_cost) : 0,
+        item.vendor || null,
+        sanitizeDbDate(item.warranty_expiry),
+        item.specs || null,
+        item.image_url || null,
+        item.notes || null
+      ]);
+
+      const newId = result.insertId;
+
+      // QR Code entry
+      const qrData = JSON.stringify({
+        asset_code: finalCode,
+        id: newId,
+        name: name,
+        category: category,
+        brand: item.brand,
+        location: location,
+        status: item.status || 'Baik / Aktif',
+        type: 'it_asset'
+      });
+
+      await pool.query(
+        'INSERT INTO device_qr_codes (device_id, asset_code, qr_data) VALUES (NULL, ?, ?) ON DUPLICATE KEY UPDATE qr_data = ?',
+        [finalCode, qrData, qrData]
+      );
+
+      successCount++;
+    }
+
+    if (successCount > 0) {
+      await pool.query(`
+        INSERT INTO it_inventory_mutations (type, reference_id, reference_name, details, quantity_change, actor_name)
+        VALUES (?, NULL, ?, ?, ?, ?)
+      `, ['Bulk Import Asset', 'Impor Masal Aset IT', `Berhasil mengimpor ${successCount} data aset IT`, successCount, actorName]);
+    }
+
+    res.json({ message: `Berhasil mengimpor ${successCount} aset IT`, count: successCount });
+  } catch (error: any) {
+    console.error('Error importing assets:', error);
+    res.status(500).json({ error: error?.message || 'Gagal memproses impor aset' });
+  }
+});
+
+// POST /api/inventory/components/import - Bulk Import Components
+router.post('/components/import', async (req, res) => {
+  const { items } = req.body;
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: 'Data item impor tidak boleh kosong' });
+  }
+
+  const actorName = (req as any).user?.name || 'Administrator';
+  let successCount = 0;
+
+  try {
+    const [countRows]: any = await pool.query('SELECT COUNT(*) as cnt FROM it_inventory_components');
+    let counter = countRows[0].cnt + 1;
+
+    for (const item of items) {
+      const name = item.name?.trim() || item.nama?.trim();
+      if (!name) continue;
+
+      const category = item.category?.trim() || item.kategori?.trim() || 'Lainnya';
+
+      let finalCode = item.component_code?.trim();
+      if (!finalCode) {
+        const catPrefix = category.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, '') || 'CMP';
+        finalCode = `CMP-${catPrefix}-${counter.toString().padStart(4, '0')}`;
+        counter++;
+      }
+
+      // Check duplicate code
+      const [existing]: any = await pool.query('SELECT id FROM it_inventory_components WHERE component_code = ?', [finalCode]);
+      if (existing.length > 0) {
+        finalCode = `${finalCode}-${Math.floor(1000 + Math.random() * 9000)}`;
+      }
+
+      await pool.query(`
+        INSERT INTO it_inventory_components (
+          component_code, name, category, brand, model_number, 
+          stock_quantity, min_stock_alert, unit, condition_status, 
+          storage_location, unit_price, supplier, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        finalCode,
+        name,
+        category,
+        item.brand || null,
+        item.model_number || null,
+        item.stock_quantity ? parseInt(item.stock_quantity) : 0,
+        item.min_stock_alert ? parseInt(item.min_stock_alert) : 2,
+        item.unit || 'Pcs',
+        item.condition_status || 'Baru',
+        item.storage_location || null,
+        item.unit_price ? parseFloat(item.unit_price) : 0,
+        item.supplier || null,
+        item.notes || null
+      ]);
+
+      successCount++;
+    }
+
+    if (successCount > 0) {
+      await pool.query(`
+        INSERT INTO it_inventory_mutations (type, reference_id, reference_name, details, quantity_change, actor_name)
+        VALUES (?, NULL, ?, ?, ?, ?)
+      `, ['Bulk Import Component', 'Impor Masal Komponen', `Berhasil mengimpor ${successCount} data komponen`, successCount, actorName]);
+    }
+
+    res.json({ message: `Berhasil mengimpor ${successCount} komponen`, count: successCount });
+  } catch (error: any) {
+    console.error('Error importing components:', error);
+    res.status(500).json({ error: error?.message || 'Gagal memproses impor komponen' });
   }
 });
 

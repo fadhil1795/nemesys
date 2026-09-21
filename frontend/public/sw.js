@@ -39,8 +39,13 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Bypass non-GET requests or backend API calls
-  if (event.request.method !== 'GET' || url.pathname.startsWith('/api/') || url.pathname.startsWith('/socket.io/')) {
+  // Bypass non-GET requests, backend API calls, or non-http/https schemes (e.g. chrome-extension)
+  if (
+    event.request.method !== 'GET' || 
+    url.pathname.startsWith('/api/') || 
+    url.pathname.startsWith('/socket.io/') ||
+    !url.protocol.startsWith('http')
+  ) {
     return;
   }
 

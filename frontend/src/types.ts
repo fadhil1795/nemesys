@@ -83,6 +83,13 @@ export interface DailyTodo {
   is_completed: boolean;
 }
 
+export interface MissionChecklistItem {
+  id: string;
+  text: string;
+  completed: boolean;
+  completed_by?: string | null;
+}
+
 export interface CustomMission {
   id: number;
   title: string;
@@ -90,6 +97,7 @@ export interface CustomMission {
   slots: number;
   progress_percent: number;
   created_at: string;
+  started_at?: string | null;
   status: string;
   personnels: Array<{ id: number; name: string; username: string; role: string }>;
   created_by?: string | null;
@@ -97,6 +105,23 @@ export interface CustomMission {
   duration_str?: string | null;
   note?: string | null;
   mission_image?: string | null;
+  checklists?: MissionChecklistItem[];
+  bast_number?: string | null;
+  bast_signer_name?: string | null;
+  bast_signer_role?: string | null;
+  bast_signed_at?: string | null;
+  bast_signature_url?: string | null;
+  bast_tech_signature_url?: string | null;
+  bast_notes?: string | null;
+  bast_admin_approved_by?: string | null;
+  bast_admin_approved_at?: string | null;
+  bast_tech_approved_by?: string | null;
+  bast_tech_approved_at?: string | null;
+  bast_hash?: string | null;
+  bast_qr_data?: string | null;
+  custom_header_logo?: string | null;
+  custom_header_title?: string | null;
+  custom_header_subtitle?: string | null;
 }
 
 export interface UserTicket {

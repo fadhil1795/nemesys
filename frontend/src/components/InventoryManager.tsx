@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import QRCode from 'qrcode';
+import * as XLSX from 'xlsx';
 import {
   Boxes,
   Plus,
@@ -29,7 +30,10 @@ import {
   MapPin,
   User as UserIcon,
   ShieldCheck,
-  Package
+  Package,
+  Download,
+  Upload,
+  FileSpreadsheet
 } from 'lucide-react';
 import { BACKEND_URL } from '../App';
 import type { 
@@ -104,6 +108,618 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
   const [showQrModal, setShowQrModal] = useState<boolean>(false);
   const [selectedQrAsset, setSelectedQrAsset] = useState<ITAsset | null>(null);
   const [assetQrImageSrc, setAssetQrImageSrc] = useState<string>('');
+
+  // Import & Export States
+  const [showImportModal, setShowImportModal] = useState<boolean>(false);
+  const [importTargetTab, setImportTargetTab] = useState<'assets' | 'components'>('assets');
+  const [csvTextInput, setCsvTextInput] = useState<string>('');
+  const [parsedImportRows, setParsedImportRows] = useState<any[]>([]);
+  const [isImporting, setIsImporting] = useState<boolean>(false);
+  const [showExportMenu, setShowExportMenu] = useState<boolean>(false);
+  const [excelWorkbook, setExcelWorkbook] = useState<any>(null);
+  const [excelSheetNames, setExcelSheetNames] = useState<string[]>([]);
+  const [selectedSheetName, setSelectedSheetName] = useState<string>('');
+
+  // Export Excel (.xlsx) Handler
+  const handleExportExcel = (type: 'assets' | 'components') => {
+    if (type === 'assets') {
+      const data = assets.map(a => ({
+        'Kode Aset': a.asset_code || '',
+        'Nama Perangkat': a.name || '',
+        'Kategori': a.category || '',
+        'Merk': a.brand || '',
+        'Model': a.model_number || '',
+        'Serial Number': a.serial_number || '',
+        'MAC Address': a.mac_address || '',
+        'IP Address': a.ip_address || '',
+        'Lokasi': a.location || '',
+        'PIC': a.assigned_user || '',
+        'Kondisi': a.status || '',
+        'Nilai Aset (Rp)': a.purchase_cost || 0,
+        'Tanggal Beli': a.purchase_date || '',
+        'Vendor': a.vendor || '',
+        'Spesifikasi': a.specs || '',
+        'Catatan': a.notes || ''
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Master Aset IT');
+      XLSX.writeFile(workbook, `Aset_IT_NEMESYS_${new Date().toISOString().split('T')[0]}.xlsx`);
+    } else {
+      const data = components.map(c => ({
+        'Kode Komponen': c.component_code || '',
+        'Nama Komponen': c.name || '',
+        'Kategori': c.category || '',
+        'Merk': c.brand || '',
+        'Model': c.model_number || '',
+        'Stok Quantity': c.stock_quantity || 0,
+        'Stok Min Alert': c.min_stock_alert || 2,
+        'Satuan': c.unit || 'Pcs',
+        'Kondisi Default': c.condition_status || 'Baru',
+        'Lokasi Rak': c.storage_location || '',
+        'Harga Satuan (Rp)': c.unit_price || 0,
+        'Supplier': c.supplier || '',
+        'Catatan': c.notes || ''
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Stok Komponen IT');
+      XLSX.writeFile(workbook, `Komponen_IT_NEMESYS_${new Date().toISOString().split('T')[0]}.xlsx`);
+    }
+    setShowExportMenu(false);
+  };
+
+  // Export CSV Handler
+  const handleExportCSV = (type: 'assets' | 'components') => {
+    let csvContent = '\uFEFF'; // UTF-8 BOM
+
+    if (type === 'assets') {
+      const headers = [
+        'Kode Aset', 'Nama Perangkat', 'Kategori', 'Merk', 'Model', 
+        'Serial Number', 'MAC Address', 'IP Address', 'Lokasi', 'PIC', 
+        'Kondisi', 'Nilai Aset (Rp)', 'Tanggal Beli', 'Vendor', 'Spesifikasi', 'Catatan'
+      ];
+      csvContent += headers.map(h => `"${h}"`).join(',') + '\n';
+
+      assets.forEach(a => {
+        const row = [
+          a.asset_code || '',
+          a.name || '',
+          a.category || '',
+          a.brand || '',
+          a.model_number || '',
+          a.serial_number || '',
+          a.mac_address || '',
+          a.ip_address || '',
+          a.location || '',
+          a.assigned_user || '',
+          a.status || '',
+          a.purchase_cost || 0,
+          a.purchase_date || '',
+          a.vendor || '',
+          (a.specs || '').replace(/"/g, '""'),
+          (a.notes || '').replace(/"/g, '""')
+        ];
+        csvContent += row.map(v => `"${v}"`).join(',') + '\n';
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Aset_IT_NEMESYS_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      const headers = [
+        'Kode Komponen', 'Nama Komponen', 'Kategori', 'Merk', 'Model', 
+        'Stok Quantity', 'Stok Min Alert', 'Satuan', 'Kondisi Default', 
+        'Lokasi Rak', 'Harga Satuan (Rp)', 'Supplier', 'Catatan'
+      ];
+      csvContent += headers.map(h => `"${h}"`).join(',') + '\n';
+
+      components.forEach(c => {
+        const row = [
+          c.component_code || '',
+          c.name || '',
+          c.category || '',
+          c.brand || '',
+          c.model_number || '',
+          c.stock_quantity || 0,
+          c.min_stock_alert || 2,
+          c.unit || 'Pcs',
+          c.condition_status || 'Baru',
+          c.storage_location || '',
+          c.unit_price || 0,
+          c.supplier || '',
+          (c.notes || '').replace(/"/g, '""')
+        ];
+        csvContent += row.map(v => `"${v}"`).join(',') + '\n';
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Komponen_IT_NEMESYS_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+    setShowExportMenu(false);
+  };
+
+  // Download Sample Excel (.xlsx) Template
+  const handleDownloadExcelTemplate = (type: 'assets' | 'components') => {
+    if (type === 'assets') {
+      const sampleData = [
+        {
+          'Kode Aset': 'AST-LAP-0099',
+          'Nama Perangkat': 'Laptop Operasional Dosen',
+          'Kategori': 'Laptop',
+          'Merk': 'Asus',
+          'Model': 'ExpertBook B1400',
+          'Serial Number': 'SN98472934',
+          'MAC Address': '',
+          'IP Address': '10.10.30.99',
+          'Lokasi': 'Ruang Dosen Lt 2',
+          'PIC': 'Dian Prasetyo',
+          'Kondisi': 'Baik / Aktif',
+          'Nilai Aset (Rp)': 9800000,
+          'Tanggal Beli': '2025-01-15',
+          'Vendor': 'PT Asus Indonesia',
+          'Spesifikasi': 'Core i5, 16GB RAM, 512GB SSD',
+          'Catatan': 'Laptop operasional riset'
+        },
+        {
+          'Kode Aset': 'AST-AP-0099',
+          'Nama Perangkat': 'Access Point Outdoor Gazebo',
+          'Kategori': 'Access Point',
+          'Merk': 'Ubiquiti',
+          'Model': 'UniFi AC Mesh',
+          'Serial Number': 'UBNT-9821',
+          'MAC Address': 'AA:BB:CC:DD:EE:FF',
+          'IP Address': '10.10.20.99',
+          'Lokasi': 'Gazebo Depan',
+          'PIC': 'Dika Admin',
+          'Kondisi': 'Baik / Aktif',
+          'Nilai Aset (Rp)': 3200000,
+          'Tanggal Beli': '2024-11-20',
+          'Vendor': 'PT Network Solusindo',
+          'Spesifikasi': 'Dual Band 802.11ac',
+          'Catatan': 'AP hotspot mahasiswa'
+        }
+      ];
+
+      const worksheet = XLSX.utils.json_to_sheet(sampleData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Template Aset IT');
+      XLSX.writeFile(workbook, `Template_Import_Aset_IT.xlsx`);
+    } else {
+      const sampleData = [
+        {
+          'Kode Komponen': 'CMP-RAM-0099',
+          'Nama Komponen': 'RAM DDR4 16GB SODIMM 3200MHz',
+          'Kategori': 'RAM / Memory',
+          'Merk': 'Corsair',
+          'Model': 'Vengeance',
+          'Stok Quantity': 10,
+          'Stok Min Alert': 2,
+          'Satuan': 'Pcs',
+          'Kondisi Default': 'Baru',
+          'Lokasi Rak': 'Rak A-02',
+          'Harga Satuan (Rp)': 750000,
+          'Supplier': 'PT Memory Jaya',
+          'Catatan': 'Stok pengganti laptop'
+        },
+        {
+          'Kode Komponen': 'CMP-SSD-0099',
+          'Nama Komponen': 'SSD NVMe M.2 512GB PCIe Gen4',
+          'Kategori': 'SSD / Storage',
+          'Merk': 'Samsung',
+          'Model': '980 EVOPRO',
+          'Stok Quantity': 8,
+          'Stok Min Alert': 3,
+          'Satuan': 'Pcs',
+          'Kondisi Default': 'Baru',
+          'Lokasi Rak': 'Rak B-01',
+          'Harga Satuan (Rp)': 850000,
+          'Supplier': 'CV Storage Pro',
+          'Catatan': 'Stok upgrade PC Lab'
+        }
+      ];
+
+      const worksheet = XLSX.utils.json_to_sheet(sampleData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Template Komponen');
+      XLSX.writeFile(workbook, `Template_Import_Komponen.xlsx`);
+    }
+  };
+
+  // Download Sample CSV (.csv) Template
+  const handleDownloadCSVTemplate = (type: 'assets' | 'components') => {
+    let csvContent = '\uFEFF';
+    if (type === 'assets') {
+      const headers = [
+        'Kode Aset', 'Nama Perangkat', 'Kategori', 'Merk', 'Model', 
+        'Serial Number', 'MAC Address', 'IP Address', 'Lokasi', 'PIC', 
+        'Kondisi', 'Nilai Aset (Rp)', 'Tanggal Beli', 'Vendor', 'Spesifikasi', 'Catatan'
+      ];
+      csvContent += headers.map(h => `"${h}"`).join(',') + '\n';
+      csvContent += `"AST-LAP-0099","Laptop Operasional Dosen","Laptop","Asus","ExpertBook B1400","SN98472934","","10.10.30.99","Ruang Dosen Lt 2","Dian Prasetyo","Baik / Aktif","9800000","2025-01-15","PT Asus Indonesia","Core i5, 16GB RAM, 512GB SSD","Laptop operasional riset"` + '\n';
+      csvContent += `"AST-AP-0099","Access Point Outdoor Gazebo","Access Point","Ubiquiti","UniFi AC Mesh","UBNT-9821","AA:BB:CC:DD:EE:FF","10.10.20.99","Gazebo Depan","Dika Admin","Baik / Aktif","3200000","2024-11-20","PT Network Solusindo","Dual Band 802.11ac","AP hotspot mahasiswa"` + '\n';
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Template_Import_Aset_IT.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      const headers = [
+        'Kode Komponen', 'Nama Komponen', 'Kategori', 'Merk', 'Model', 
+        'Stok Quantity', 'Stok Min Alert', 'Satuan', 'Kondisi Default', 
+        'Lokasi Rak', 'Harga Satuan (Rp)', 'Supplier', 'Catatan'
+      ];
+      csvContent += headers.map(h => `"${h}"`).join(',') + '\n';
+      csvContent += `"CMP-RAM-0099","RAM DDR4 16GB SODIMM 3200MHz","RAM / Memory","Corsair","Vengeance","10","2","Pcs","Baru","Rak A-02","750000","PT Memory Jaya","Stok pengganti laptop"` + '\n';
+      csvContent += `"CMP-SSD-0099","SSD NVMe M.2 512GB PCIe Gen4","SSD / Storage","Samsung","980 EVOPRO","8","3","Pcs","Baru","Rak B-01","850000","CV Storage Pro","Stok upgrade PC Lab"` + '\n';
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Template_Import_Komponen.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  // Smart Flexible Excel & CSV Parser (Supports both SheetJS object rows & array of arrays)
+  const parseFlexibleExcelRows = (rawRows: any[], type: 'assets' | 'components') => {
+    if (!rawRows || rawRows.length === 0) return [];
+    const parsed: any[] = [];
+
+    // Helper to find value by matching multiple possible header aliases
+    const getVal = (item: any, aliases: string[]) => {
+      if (typeof item === 'object' && !Array.isArray(item)) {
+        const keys = Object.keys(item);
+        
+        // Pass 1: EXACT MATCH
+        for (const alias of aliases) {
+          const cleanAlias = alias.toLowerCase().replace(/[^a-z0-9]/g, '');
+          for (const key of keys) {
+            const cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (cleanKey === cleanAlias) {
+              const val = item[key];
+              if (val === undefined || val === null) return '';
+              if (val instanceof Date) return val.toISOString().split('T')[0];
+              return String(val).trim();
+            }
+          }
+        }
+
+        // Pass 2: CONTAINS MATCH
+        for (const alias of aliases) {
+          const cleanAlias = alias.toLowerCase().replace(/[^a-z0-9]/g, '');
+          for (const key of keys) {
+            const cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (cleanKey.includes(cleanAlias)) {
+              const val = item[key];
+              if (val === undefined || val === null) return '';
+              if (val instanceof Date) return val.toISOString().split('T')[0];
+              return String(val).trim();
+            }
+          }
+        }
+      }
+      return '';
+    };
+
+    // Case 1: SheetJS returned Array of Objects
+    if (typeof rawRows[0] === 'object' && !Array.isArray(rawRows[0])) {
+      for (const rowObj of rawRows) {
+        if (type === 'assets') {
+          const name = getVal(rowObj, ['namaperangkat', 'namaaset', 'namadevice', 'nama', 'device', 'perangkat', 'itemname', 'item', 'title', 'assetname']);
+          const category = getVal(rowObj, ['kategori', 'category', 'jenis', 'tipe', 'type', 'kelompok']);
+          const location = getVal(rowObj, ['lokasi', 'location', 'ruang', 'ruangan', 'site', 'penempatan', 'posisi']);
+
+          if (!name && !category) continue;
+
+          parsed.push({
+            asset_code: getVal(rowObj, ['kodeaset', 'kode', 'assetcode', 'code']),
+            name: name || 'Aset IT Impor',
+            category: category || 'Lainnya',
+            brand: getVal(rowObj, ['merk', 'brand', 'manufaktur', 'manufacture', 'pembuat', 'pabrikan']),
+            model_number: getVal(rowObj, ['modelnumber', 'nomormodel', 'model', 'tipe']),
+            serial_number: getVal(rowObj, ['serialnumber', 'nomorseri', 'serial', 'sn', 'noseri']),
+            mac_address: getVal(rowObj, ['macaddress', 'mac', 'alamatmac']),
+            ip_address: getVal(rowObj, ['ipaddress', 'ip', 'alamatip']),
+            location: location || 'Gedung Utama',
+            assigned_user: getVal(rowObj, ['assigneduser', 'penanggungjawab', 'pic', 'pengguna', 'user', 'pemakai']),
+            status: getVal(rowObj, ['status', 'kondisi', 'state']) || 'Baik / Aktif',
+            purchase_cost: parseFloat(getVal(rowObj, ['purchasecost', 'nilaiaset', 'hargabeli', 'harga', 'cost', 'nilai', 'price']).replace(/[^0-9.]/g, '')) || 0,
+            purchase_date: getVal(rowObj, ['purchasedate', 'tanggalbeli', 'tglbeli', 'tanggal', 'date']),
+            vendor: getVal(rowObj, ['vendor', 'supplier', 'tokodistributor', 'toko', 'distributor']),
+            specs: getVal(rowObj, ['spesifikasi', 'specs', 'spec', 'deskripsi', 'detail']),
+            notes: getVal(rowObj, ['catatan', 'notes', 'keterangan', 'note', 'remark'])
+          });
+        } else {
+          const name = getVal(rowObj, ['namakomponen', 'namapart', 'nama', 'komponen', 'part', 'itemname', 'item']);
+          const category = getVal(rowObj, ['kategori', 'category', 'jenis', 'tipe', 'type']);
+
+          if (!name && !category) continue;
+
+          parsed.push({
+            component_code: getVal(rowObj, ['kodekomponen', 'kodepart', 'kode', 'componentcode', 'code']),
+            name: name || 'Komponen Impor',
+            category: category || 'Lainnya',
+            brand: getVal(rowObj, ['merk', 'brand', 'manufaktur']),
+            model_number: getVal(rowObj, ['modelnumber', 'nomormodel', 'model']),
+            stock_quantity: parseInt(getVal(rowObj, ['stokquantity', 'stok', 'stock', 'quantity', 'qty', 'jumlah'])) || 0,
+            min_stock_alert: parseInt(getVal(rowObj, ['stokminalert', 'stokmin', 'minstock', 'alert', 'minimum'])) || 2,
+            unit: getVal(rowObj, ['satuan', 'unit', 'uom']) || 'Pcs',
+            condition_status: getVal(rowObj, ['kondisidefault', 'kondisi', 'condition', 'status']) || 'Baru',
+            storage_location: getVal(rowObj, ['storagelocation', 'storage', 'lokasirak', 'lokasi', 'rak', 'gudang']),
+            unit_price: parseFloat(getVal(rowObj, ['unitprice', 'hargasatuan', 'harga', 'price', 'cost']).replace(/[^0-9.]/g, '')) || 0,
+            supplier: getVal(rowObj, ['supplier', 'vendor', 'distributor']),
+            notes: getVal(rowObj, ['catatan', 'notes', 'keterangan', 'remark'])
+          });
+        }
+      }
+    } 
+    // Case 2: Array of Arrays (CSV lines or header:1 option)
+    else if (Array.isArray(rawRows[0])) {
+      const headerRow = rawRows[0].map((h: any) => String(h).toLowerCase().trim());
+      const startIndex = headerRow.length > 0 ? 1 : 0;
+
+      for (let i = startIndex; i < rawRows.length; i++) {
+        const values = rawRows[i];
+        if (!values || !Array.isArray(values) || values.length === 0) continue;
+
+        const getCol = (idx: number, aliases: string[]) => {
+          if (headerRow.length > 0) {
+            // Pass 1: EXACT MATCH
+            for (const alias of aliases) {
+              const cleanAlias = alias.toLowerCase().replace(/[^a-z0-9]/g, '');
+              for (let c = 0; c < headerRow.length; c++) {
+                const cleanH = headerRow[c].replace(/[^a-z0-9]/g, '');
+                if (cleanH === cleanAlias) {
+                  const val = values[c];
+                  if (val === undefined || val === null) return '';
+                  if (val instanceof Date) return val.toISOString().split('T')[0];
+                  return String(val).trim();
+                }
+              }
+            }
+            // Pass 2: CONTAINS MATCH
+            for (const alias of aliases) {
+              const cleanAlias = alias.toLowerCase().replace(/[^a-z0-9]/g, '');
+              for (let c = 0; c < headerRow.length; c++) {
+                const cleanH = headerRow[c].replace(/[^a-z0-9]/g, '');
+                if (cleanH.includes(cleanAlias)) {
+                  const val = values[c];
+                  if (val === undefined || val === null) return '';
+                  if (val instanceof Date) return val.toISOString().split('T')[0];
+                  return String(val).trim();
+                }
+              }
+            }
+          }
+          const val = values[idx];
+          if (val === undefined || val === null) return '';
+          if (val instanceof Date) return val.toISOString().split('T')[0];
+          return String(val).trim();
+        };
+
+        if (type === 'assets') {
+          const name = getCol(1, ['namaperangkat', 'namaaset', 'nama', 'device', 'perangkat', 'item']);
+          const category = getCol(2, ['kategori', 'category', 'jenis']);
+          if (!name && !category) continue;
+
+          parsed.push({
+            asset_code: getCol(0, ['kodeaset', 'kode', 'assetcode', 'code']),
+            name: name || 'Aset IT Impor',
+            category: category || 'Lainnya',
+            brand: getCol(3, ['merk', 'brand', 'manufacture']),
+            model_number: getCol(4, ['modelnumber', 'model']),
+            serial_number: getCol(5, ['serialnumber', 'serial', 'sn']),
+            mac_address: getCol(6, ['macaddress', 'mac']),
+            ip_address: getCol(7, ['ipaddress', 'ip']),
+            location: getCol(8, ['lokasi', 'location', 'ruang']) || 'Gedung Utama',
+            assigned_user: getCol(9, ['assigneduser', 'pic', 'user']),
+            status: getCol(10, ['status', 'kondisi']) || 'Baik / Aktif',
+            purchase_cost: parseFloat(getCol(11, ['purchasecost', 'nilai', 'harga', 'cost']).replace(/[^0-9.]/g, '')) || 0,
+            purchase_date: getCol(12, ['purchasedate', 'tanggal', 'date']),
+            vendor: getCol(13, ['vendor', 'supplier']),
+            specs: getCol(14, ['spesifikasi', 'specs']),
+            notes: getCol(15, ['catatan', 'notes'])
+          });
+        } else {
+          const name = getCol(1, ['namakomponen', 'nama', 'part', 'komponen', 'item']);
+          const category = getCol(2, ['kategori', 'category', 'jenis']);
+          if (!name && !category) continue;
+
+          parsed.push({
+            component_code: getCol(0, ['kodekomponen', 'kode', 'code']),
+            name: name || 'Komponen Impor',
+            category: category || 'Lainnya',
+            brand: getCol(3, ['merk', 'brand']),
+            model_number: getCol(4, ['modelnumber', 'model']),
+            stock_quantity: parseInt(getCol(5, ['stokquantity', 'stok', 'qty', 'stock'])) || 0,
+            min_stock_alert: parseInt(getCol(6, ['stokminalert', 'min', 'alert'])) || 2,
+            unit: getCol(7, ['satuan', 'unit']) || 'Pcs',
+            condition_status: getCol(8, ['kondisidefault', 'kondisi', 'condition']) || 'Baru',
+            storage_location: getCol(9, ['storagelocation', 'lokasi', 'rak', 'storage']),
+            unit_price: parseFloat(getCol(10, ['unitprice', 'harga', 'price']).replace(/[^0-9.]/g, '')) || 0,
+            supplier: getCol(11, ['supplier', 'vendor']),
+            notes: getCol(12, ['catatan', 'notes'])
+          });
+        }
+      }
+    }
+
+    return parsed;
+  };
+
+  // Helper CSV Line Parser
+  const parseCSVText = (text: string, type: 'assets' | 'components') => {
+    const lines = text.split(/\r\n|\n/).filter(l => l.trim().length > 0);
+    if (lines.length <= 1) return [];
+
+    const rawRows: string[][] = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const values: string[] = [];
+      let currentVal = '';
+      let insideQuote = false;
+
+      for (let c = 0; c < line.length; c++) {
+        const char = line[c];
+        if (char === '"') {
+          insideQuote = !insideQuote;
+        } else if (char === ',' && !insideQuote) {
+          values.push(currentVal.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
+          currentVal = '';
+        } else {
+          currentVal += char;
+        }
+      }
+      values.push(currentVal.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
+      rawRows.push(values);
+    }
+    return parseFlexibleExcelRows(rawRows, type);
+  };
+
+  // Helper to parse specific sheet from loaded SheetJS workbook
+  const parseSheetFromWorkbook = (wb: any, sheetName: string, type: 'assets' | 'components') => {
+    if (!wb || !sheetName || !wb.Sheets[sheetName]) return [];
+    const worksheet = wb.Sheets[sheetName];
+    const rawObjects = XLSX.utils.sheet_to_json(worksheet, { defval: '', raw: false });
+    let parsed = parseFlexibleExcelRows(rawObjects, type);
+    if (parsed.length === 0) {
+      const rawArrays: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      parsed = parseFlexibleExcelRows(rawArrays, type);
+    }
+    return parsed;
+  };
+
+  const handleSheetChange = (sheetName: string, targetTab?: 'assets' | 'components') => {
+    setSelectedSheetName(sheetName);
+    const tab = targetTab || importTargetTab;
+    if (excelWorkbook && sheetName) {
+      const parsed = parseSheetFromWorkbook(excelWorkbook, sheetName, tab);
+      setParsedImportRows(parsed);
+    }
+  };
+
+  // Unified File Upload Handler (.xlsx, .xls, .csv)
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fileName = file.name.toLowerCase();
+    const reader = new FileReader();
+
+    if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+      reader.onload = (evt) => {
+        try {
+          const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array', cellDates: true, dateNF: 'yyyy-mm-dd' });
+          setExcelWorkbook(workbook);
+          setExcelSheetNames(workbook.SheetNames);
+
+          // Find best sheet for current importTargetTab
+          let bestSheet = workbook.SheetNames[0];
+          let maxCount = 0;
+          let bestParsed: any[] = [];
+
+          for (const sName of workbook.SheetNames) {
+            const parsed = parseSheetFromWorkbook(workbook, sName, importTargetTab);
+            if (parsed.length > maxCount) {
+              maxCount = parsed.length;
+              bestSheet = sName;
+              bestParsed = parsed;
+            }
+          }
+
+          if (maxCount === 0) {
+            bestParsed = parseSheetFromWorkbook(workbook, workbook.SheetNames[0], importTargetTab);
+          }
+
+          setSelectedSheetName(bestSheet);
+          setParsedImportRows(bestParsed);
+
+          if (bestParsed.length === 0) {
+            alert('Tidak ditemukan data valid dalam file Excel. Pastikan file berisi baris data dengan nama & kategori.');
+          }
+        } catch (err) {
+          console.error('Error reading Excel file:', err);
+          alert('Gagal membaca file Excel. Pastikan format file .xlsx/.xls tidak rusak.');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.onload = (evt) => {
+        const text = evt.target?.result as string;
+        setCsvTextInput(text);
+        const parsed = parseCSVText(text, importTargetTab);
+        setParsedImportRows(parsed);
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const handleTextareaChange = (text: string) => {
+    setCsvTextInput(text);
+    const parsed = parseCSVText(text, importTargetTab);
+    setParsedImportRows(parsed);
+  };
+
+  // Submit Bulk Import to Server
+  const handleExecuteImport = async () => {
+    if (parsedImportRows.length === 0) {
+      alert('Tidak ada data valid yang dapat diimpor.');
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const endpoint = importTargetTab === 'assets' 
+        ? `${BACKEND_URL}/api/inventory/assets/import`
+        : `${BACKEND_URL}/api/inventory/components/import`;
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ items: parsedImportRows })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message || 'Impor data berhasil!');
+        setShowImportModal(false);
+        setCsvTextInput('');
+        setParsedImportRows([]);
+        setRefreshKey(prev => prev + 1);
+      } else {
+        alert(data.error || 'Gagal mengimpor data.');
+      }
+    } catch (err) {
+      alert('Error saat mengirim data impor ke server.');
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   useEffect(() => {
     if (selectedQrAsset?.asset_code) {
@@ -620,13 +1236,66 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <button
             onClick={() => setRefreshKey(prev => prev + 1)}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 14px', borderRadius: '8px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: '13px', cursor: 'pointer' }}
           >
             <RefreshCw size={15} className={loading ? 'spin' : ''} /> Refresh
           </button>
+
+          {/* Export Dropdown Button */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 14px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}
+            >
+              <Download size={15} /> Export Data ▾
+            </button>
+            {showExportMenu && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: '6px', backgroundColor: '#0f172a', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '8px', padding: '6px', minWidth: '220px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', zIndex: 100 }}>
+                <div style={{ fontSize: '10px', color: '#94a3b8', padding: '4px 8px', fontWeight: 700, textTransform: 'uppercase' }}>Format Excel (.xlsx)</div>
+                <button
+                  onClick={() => handleExportExcel('assets')}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 12px', background: 'transparent', border: 'none', color: '#f8fafc', fontSize: '12.5px', cursor: 'pointer', borderRadius: '4px', textAlign: 'left' }}
+                >
+                  <FileSpreadsheet size={14} color="#34d399" /> Export Perangkat IT (.XLSX)
+                </button>
+                <button
+                  onClick={() => handleExportExcel('components')}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 12px', background: 'transparent', border: 'none', color: '#f8fafc', fontSize: '12.5px', cursor: 'pointer', borderRadius: '4px', textAlign: 'left' }}
+                >
+                  <FileSpreadsheet size={14} color="#fbbf24" /> Export Komponen (.XLSX)
+                </button>
+                <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '4px 0' }} />
+                <div style={{ fontSize: '10px', color: '#94a3b8', padding: '4px 8px', fontWeight: 700, textTransform: 'uppercase' }}>Format CSV (.csv)</div>
+                <button
+                  onClick={() => handleExportCSV('assets')}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 12px', background: 'transparent', border: 'none', color: '#f8fafc', fontSize: '12.5px', cursor: 'pointer', borderRadius: '4px', textAlign: 'left' }}
+                >
+                  <FileSpreadsheet size={14} color="#38bdf8" /> Export Perangkat IT (.CSV)
+                </button>
+                <button
+                  onClick={() => handleExportCSV('components')}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 12px', background: 'transparent', border: 'none', color: '#f8fafc', fontSize: '12.5px', cursor: 'pointer', borderRadius: '4px', textAlign: 'left' }}
+                >
+                  <FileSpreadsheet size={14} color="#818cf8" /> Export Komponen (.CSV)
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Import Button */}
+          <button
+            onClick={() => {
+              setImportTargetTab(activeTab === 'components' ? 'components' : 'assets');
+              setShowImportModal(true);
+            }}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 14px', borderRadius: '8px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#38bdf8', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}
+          >
+            <Upload size={15} /> Import Data
+          </button>
+
           <button
             onClick={handleOpenAddComp}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 16px', borderRadius: '8px', background: 'rgba(129, 140, 248, 0.15)', border: '1px solid rgba(129, 140, 248, 0.3)', color: '#818cf8', fontWeight: 600, fontSize: '13.5px', cursor: 'pointer' }}
@@ -1865,6 +2534,12 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
               <div><b>Kode Aset:</b> <span style={{ fontFamily: 'monospace', color: '#a5b4fc' }}>{targetAssetForInstall.asset_code}</span> ({targetAssetForInstall.location})</div>
             </div>
 
+            {components.length === 0 && (
+              <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#f87171', padding: '10px 14px', borderRadius: '8px', fontSize: '12.5px', marginBottom: '14px' }}>
+                ⚠️ <b>Stok Komponen Kosong:</b> Belum ada jenis suku cadang yang terdaftar di sistem. Silakan tambah komponen terlebih dahulu via tombol <b>"+ Tambah Komponen"</b> atau <b>"Import Data"</b>.
+              </div>
+            )}
+
             <form onSubmit={handleSaveInstall} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
                 <label style={{ fontSize: '12.5px', color: 'rgba(255,255,255,0.7)' }}>Pilih Komponen dari Stok Gudang *</label>
@@ -2075,6 +2750,216 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                 style={{ flex: 1, padding: '10px', borderRadius: '8px', background: '#34d399', border: 'none', color: '#064e3b', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               >
                 <Printer size={16} /> Cetak Stiker
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* 8. MODAL IMPORT DATA (CSV Bulk Upload & Text Paste) */}
+      {showImportModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ width: '100%', maxWidth: '780px', backgroundColor: '#0f172a', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '16px', padding: '24px', color: '#fff', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 50px rgba(0,0,0,0.8)' }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ padding: '8px', background: 'rgba(56, 189, 248, 0.15)', borderRadius: '8px', color: '#38bdf8' }}>
+                  <Upload size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700 }}>Impor Masal Data Inventaris</h3>
+                  <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>Upload file CSV atau paste data teks CSV dari Excel / Spreadsheets</span>
+                </div>
+              </div>
+              <button onClick={() => setShowImportModal(false)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Target Tab Selection */}
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+              <button
+                onClick={() => {
+                  setImportTargetTab('assets');
+                  if (excelWorkbook) {
+                    // Try auto finding best sheet for assets
+                    let best = excelSheetNames[0];
+                    let maxC = 0;
+                    let bestP: any[] = [];
+                    for (const s of excelSheetNames) {
+                      const p = parseSheetFromWorkbook(excelWorkbook, s, 'assets');
+                      if (p.length > maxC) { maxC = p.length; best = s; bestP = p; }
+                    }
+                    if (maxC === 0 && selectedSheetName) { bestP = parseSheetFromWorkbook(excelWorkbook, selectedSheetName, 'assets'); best = selectedSheetName; }
+                    setSelectedSheetName(best);
+                    setParsedImportRows(bestP);
+                  } else {
+                    setParsedImportRows(parseCSVText(csvTextInput, 'assets'));
+                  }
+                }}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: '8px', fontWeight: 600, fontSize: '13px', cursor: 'pointer',
+                  background: importTargetTab === 'assets' ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255,255,255,0.05)',
+                  border: importTargetTab === 'assets' ? '1px solid #6366f1' : '1px solid rgba(255,255,255,0.1)',
+                  color: importTargetTab === 'assets' ? '#818cf8' : '#94a3b8'
+                }}
+              >
+                🖥️ Impor Perangkat IT (Assets)
+              </button>
+              <button
+                onClick={() => {
+                  setImportTargetTab('components');
+                  if (excelWorkbook) {
+                    // Try auto finding best sheet for components
+                    let best = excelSheetNames[0];
+                    let maxC = 0;
+                    let bestP: any[] = [];
+                    for (const s of excelSheetNames) {
+                      const p = parseSheetFromWorkbook(excelWorkbook, s, 'components');
+                      if (p.length > maxC) { maxC = p.length; best = s; bestP = p; }
+                    }
+                    if (maxC === 0 && selectedSheetName) { bestP = parseSheetFromWorkbook(excelWorkbook, selectedSheetName, 'components'); best = selectedSheetName; }
+                    setSelectedSheetName(best);
+                    setParsedImportRows(bestP);
+                  } else {
+                    setParsedImportRows(parseCSVText(csvTextInput, 'components'));
+                  }
+                }}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: '8px', fontWeight: 600, fontSize: '13px', cursor: 'pointer',
+                  background: importTargetTab === 'components' ? 'rgba(251, 191, 36, 0.2)' : 'rgba(255,255,255,0.05)',
+                  border: importTargetTab === 'components' ? '1px solid #fbbf24' : '1px solid rgba(255,255,255,0.1)',
+                  color: importTargetTab === 'components' ? '#fbbf24' : '#94a3b8'
+                }}
+              >
+                ⚙️ Impor Komponen & Stok
+              </button>
+            </div>
+
+            {/* Multi-Sheet Selector if Workbook Loaded */}
+            {excelSheetNames.length > 1 && (
+              <div style={{ marginBottom: '16px', background: 'rgba(30, 41, 59, 0.8)', padding: '10px 16px', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                <span style={{ fontSize: '12.5px', color: '#93c5fd', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  📄 Pilihan Sheet Excel ({excelSheetNames.length} sheet terdeteksi):
+                </span>
+                <select
+                  value={selectedSheetName}
+                  onChange={(e) => handleSheetChange(e.target.value)}
+                  style={{ background: '#0f172a', color: '#38bdf8', border: '1px solid #38bdf8', borderRadius: '6px', padding: '6px 14px', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', outline: 'none' }}
+                >
+                  {excelSheetNames.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Template Download Notification */}
+            <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '8px', padding: '12px 14px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ fontSize: '12px', color: '#93c5fd' }}>
+                💡 Unduh contoh template Excel / CSV untuk format kolom yang benar:
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => handleDownloadExcelTemplate(importTargetTab)}
+                  style={{ background: 'rgba(34, 197, 94, 0.2)', border: '1px solid rgba(34, 197, 94, 0.4)', color: '#4ade80', padding: '5px 12px', borderRadius: '6px', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                >
+                  <FileSpreadsheet size={13} /> Template Excel (.xlsx)
+                </button>
+                <button
+                  onClick={() => handleDownloadCSVTemplate(importTargetTab)}
+                  style={{ background: 'rgba(56, 189, 248, 0.2)', border: '1px solid rgba(56, 189, 248, 0.4)', color: '#38bdf8', padding: '5px 12px', borderRadius: '6px', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                >
+                  <Download size={13} /> Template CSV (.csv)
+                </button>
+              </div>
+            </div>
+
+            {/* File Upload Box */}
+            <div style={{ border: '2px dashed rgba(255, 255, 255, 0.2)', borderRadius: '10px', padding: '20px', textAlign: 'center', backgroundColor: 'rgba(15, 23, 42, 0.6)', marginBottom: '16px' }}>
+              <input
+                type="file"
+                accept=".xlsx, .xls, .csv, text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                onChange={handleFileUpload}
+                id="excel-file-input"
+                style={{ display: 'none' }}
+              />
+              <label htmlFor="excel-file-input" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: 'linear-gradient(135deg, #059669, #10b981)', border: 'none', borderRadius: '8px', fontSize: '13px', color: '#fff', fontWeight: 700, boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)' }}>
+                <FileSpreadsheet size={18} /> Pilih File Excel (.xlsx / .xls / .csv)
+              </label>
+              <div style={{ fontSize: '11.5px', color: 'rgba(255,255,255,0.5)', marginTop: '8px' }}>
+                Mendukung file Microsoft Excel (.xlsx), Excel 97-2003 (.xls), atau CSV (.csv). Atau tempelkan isi teks CSV di bawah ini:
+              </div>
+            </div>
+
+            {/* CSV Text Input Area */}
+            <div style={{ marginBottom: '16px' }}>
+              <textarea
+                rows={5}
+                placeholder="Kode Aset,Nama Perangkat,Kategori,Merk,Model,Serial Number,MAC Address,IP Address,Lokasi,PIC,Kondisi,Nilai Aset,Tanggal Beli,Vendor,Spesifikasi,Catatan"
+                value={csvTextInput}
+                onChange={(e) => handleTextareaChange(e.target.value)}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', background: '#090d16', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: '12px', fontFamily: 'monospace', resize: 'vertical' }}
+              />
+            </div>
+
+            {/* Table Preview */}
+            {parsedImportRows.length > 0 && (
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#38bdf8', marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Preview Data Impor ({parsedImportRows.length} baris)</span>
+                  <span style={{ fontSize: '11px', color: '#4ade80' }}>✓ Valid Siap Diimpor</span>
+                </div>
+                <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}>
+                  <table style={{ width: '100%', fontSize: '11.5px', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead style={{ background: '#1e293b', position: 'sticky', top: 0 }}>
+                      <tr>
+                        <th style={{ padding: '6px 10px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>#</th>
+                        <th style={{ padding: '6px 10px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>Kode</th>
+                        <th style={{ padding: '6px 10px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>Nama</th>
+                        <th style={{ padding: '6px 10px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>Kategori</th>
+                        <th style={{ padding: '6px 10px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>Lokasi / Stok</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parsedImportRows.slice(0, 30).map((row, idx) => (
+                        <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                          <td style={{ padding: '6px 10px', color: 'rgba(255,255,255,0.5)' }}>{idx + 1}</td>
+                          <td style={{ padding: '6px 10px', fontWeight: 600, color: '#818cf8' }}>{row.asset_code || row.component_code || '(Auto)'}</td>
+                          <td style={{ padding: '6px 10px', color: '#fff' }}>{row.name}</td>
+                          <td style={{ padding: '6px 10px', color: 'rgba(255,255,255,0.7)' }}>{row.category}</td>
+                          <td style={{ padding: '6px 10px', color: '#38bdf8' }}>{importTargetTab === 'assets' ? row.location : `${row.stock_quantity} ${row.unit}`}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '16px' }}>
+              <button
+                type="button"
+                onClick={() => setShowImportModal(false)}
+                style={{ padding: '9px 18px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.1)', border: 'none', color: '#fff', fontSize: '13px', cursor: 'pointer' }}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={isImporting || parsedImportRows.length === 0}
+                onClick={handleExecuteImport}
+                style={{
+                  padding: '9px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: parsedImportRows.length > 0 ? 'pointer' : 'not-allowed',
+                  background: parsedImportRows.length > 0 ? 'linear-gradient(135deg, #059669, #10b981)' : 'rgba(255,255,255,0.1)',
+                  color: parsedImportRows.length > 0 ? '#fff' : 'rgba(255,255,255,0.3)', border: 'none',
+                  display: 'flex', alignItems: 'center', gap: '6px'
+                }}
+              >
+                {isImporting ? <RefreshCw className="spin" size={15} /> : <Upload size={15} />}
+                {isImporting ? 'Memproses Impor...' : `Proses Impor ${parsedImportRows.length} Data`}
               </button>
             </div>
 
