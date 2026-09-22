@@ -64,7 +64,7 @@ import type { GenieACSDevice } from './types';
 
 const rawBackendUrl = 
   import.meta.env.VITE_BACKEND_URL || 
-  (window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://nemesys.vercel.app');
+  (window.location.hostname === 'https://nemesys-iota.vercel.app' ? 'http://localhost:5000' : 'https://nemesys.vercel.app');
 
 export const BACKEND_URL = rawBackendUrl.replace(/\/+$/, '');
 
