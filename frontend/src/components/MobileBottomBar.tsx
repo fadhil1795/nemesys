@@ -14,7 +14,6 @@ import {
   List, 
   Boxes, 
   FileSpreadsheet, 
-  FileText, 
   QrCode, 
   ShieldAlert, 
   Terminal, 

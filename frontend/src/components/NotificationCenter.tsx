@@ -43,7 +43,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ token, o
   const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'network' | 'ticket'>('all');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [browserPushEnabled, setBrowserPushEnabled] = useState<boolean>(false);
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Check browser push permission

@@ -23,7 +23,6 @@ import {
   MessageSquare,
   Terminal,
   ArrowRight,
-  Database,
   Cpu
 } from 'lucide-react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';

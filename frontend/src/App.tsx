@@ -87,11 +87,11 @@ export interface AuthUser {
   username: string;
   name: string;
   role: 'Administrator' | 'Manager' | 'Teknisi';
-  status: 'Available' | 'Busy';
-  telegram_chat_id: string | null;
-  daily_tasks_count: number;
-  mission_completed: number;
-  mission_incompleted: number;
+  status?: 'Available' | 'Busy';
+  telegram_chat_id?: string | null;
+  daily_tasks_count?: number;
+  mission_completed?: number;
+  mission_incompleted?: number;
   nipp?: string;
   division?: string;
   jabatan?: string;

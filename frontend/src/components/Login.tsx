@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { ShieldAlert, User, KeyRound } from 'lucide-react';
-import { BACKEND_URL } from '../App';
+import { BACKEND_URL, type AuthUser } from '../App';
 
 interface LoginProps {
-  onLoginSuccess: (token: string, user: { id: number; username: string; name: string; role: 'Administrator' | 'Manager' | 'Teknisi' }) => void;
+  onLoginSuccess: (token: string, user: AuthUser) => void;
   onOpenPublicHelpdesk: () => void;
 }
 

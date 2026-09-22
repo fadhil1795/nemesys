@@ -19,25 +19,8 @@ import {
   FileBadge,
   Share2
 } from 'lucide-react';
-import { BACKEND_URL } from '../App';
+import { BACKEND_URL, type AuthUser } from '../App';
 import { openWhatsAppChat, WATemplates } from '../utils/whatsapp';
-
-export interface AuthUser {
-  id: number;
-  username: string;
-  name: string;
-  role: 'Administrator' | 'Manager' | 'Teknisi';
-  status?: 'Available' | 'Busy';
-  telegram_chat_id?: string;
-  daily_tasks_count?: number;
-  mission_completed?: number;
-  nipp?: string;
-  division?: string;
-  jabatan?: string;
-  phone?: string;
-  email?: string;
-  location?: string;
-}
 
 interface UserProfileProps {
   token: string;
