@@ -303,7 +303,16 @@ export async function initializeDatabase() {
       await pool.query("ALTER TABLE open_tickets ADD COLUMN resolved_at VARCHAR(100) NULL");
     } catch (e) {}
     try {
-      await pool.query("UPDATE open_tickets SET resolved_at = updated_at WHERE status IN ('Resolved', 'Closed') AND (resolved_at IS NULL OR resolved_at = '')");
+      await pool.query("CREATE INDEX idx_open_tickets_status ON open_tickets(status)");
+    } catch (e) {}
+    try {
+      await pool.query("CREATE INDEX idx_open_tickets_created_at ON open_tickets(created_at)");
+    } catch (e) {}
+    try {
+      await pool.query("CREATE INDEX idx_open_tickets_priority ON open_tickets(priority)");
+    } catch (e) {}
+    try {
+      await pool.query("CREATE INDEX idx_open_tickets_sla_breached ON open_tickets(sla_breached)");
     } catch (e) {}
 
     // Migration: Expand tasks status ENUM for Manager approve/reject workflow

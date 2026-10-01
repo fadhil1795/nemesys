@@ -426,52 +426,50 @@ router.get('/open-tickets', async (req, res) => {
 // GET Comprehensive KPI & SLA Summary for Ticketing Dashboard
 router.get('/open-tickets/kpi-summary', async (req, res) => {
   try {
-    const [allTickets]: any = await pool.query('SELECT * FROM open_tickets ORDER BY id DESC');
-    
-    const total = allTickets.length;
-    const openCount = allTickets.filter((t: any) => t.status === 'Open').length;
-    const inProgressCount = allTickets.filter((t: any) => t.status === 'In Progress').length;
-    const resolvedCount = allTickets.filter((t: any) => t.status === 'Resolved').length;
-    const closedCount = allTickets.filter((t: any) => t.status === 'Closed').length;
-    const rejectedCount = allTickets.filter((t: any) => t.status === 'Rejected').length;
+    const [statsRows]: any = await pool.query(`
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'Open' THEN 1 ELSE 0 END) as openCount,
+        SUM(CASE WHEN status = 'In Progress' THEN 1 ELSE 0 END) as inProgressCount,
+        SUM(CASE WHEN status = 'Resolved' THEN 1 ELSE 0 END) as resolvedCount,
+        SUM(CASE WHEN status = 'Closed' THEN 1 ELSE 0 END) as closedCount,
+        SUM(CASE WHEN status = 'Rejected' THEN 1 ELSE 0 END) as rejectedCount,
+        SUM(CASE WHEN sla_breached = 1 THEN 1 ELSE 0 END) as breachedCount,
+        COUNT(CASE WHEN csat_rating > 0 THEN 1 END) as totalRatings,
+        COALESCE(AVG(CASE WHEN csat_rating > 0 THEN csat_rating END), 5.0) as avgCsat,
+        SUM(CASE WHEN priority = 'Low' THEN 1 ELSE 0 END) as priorityLow,
+        SUM(CASE WHEN priority = 'Medium' OR priority IS NULL THEN 1 ELSE 0 END) as priorityMedium,
+        SUM(CASE WHEN priority = 'High' THEN 1 ELSE 0 END) as priorityHigh,
+        SUM(CASE WHEN priority = 'Critical' THEN 1 ELSE 0 END) as priorityCritical,
+        SUM(CASE WHEN escalation_level = 2 THEN 1 ELSE 0 END) as escL2,
+        SUM(CASE WHEN escalation_level = 3 THEN 1 ELSE 0 END) as escL3,
+        SUM(CASE WHEN escalation_level = 1 OR escalation_level IS NULL THEN 1 ELSE 0 END) as escL1
+      FROM open_tickets
+    `);
 
-    // SLA & Breaches
-    const breachedCount = allTickets.filter((t: any) => t.sla_breached === 1 || t.sla_breached === true).length;
-    const resolvedOrClosed = resolvedCount + closedCount;
+    const [catRows]: any = await pool.query(`
+      SELECT category, COUNT(*) as count 
+      FROM open_tickets 
+      GROUP BY category
+    `);
+
+    const s = statsRows[0] || {};
+    const total = Number(s.total) || 0;
+    const openCount = Number(s.openCount) || 0;
+    const inProgressCount = Number(s.inProgressCount) || 0;
+    const resolvedCount = Number(s.resolvedCount) || 0;
+    const closedCount = Number(s.closedCount) || 0;
+    const rejectedCount = Number(s.rejectedCount) || 0;
+    const breachedCount = Number(s.breachedCount) || 0;
+    const totalRatings = Number(s.totalRatings) || 0;
+    const avgCsat = Math.round((Number(s.avgCsat) || 5.0) * 10) / 10;
     const metCount = total - breachedCount;
     const slaComplianceRate = total > 0 ? Math.round((metCount / total) * 1000) / 10 : 100;
 
-    // CSAT Calculations
-    const ratedTickets = allTickets.filter((t: any) => t.csat_rating && t.csat_rating > 0);
-    const totalRatings = ratedTickets.length;
-    const avgCsat = totalRatings > 0 
-      ? Math.round((ratedTickets.reduce((acc: number, t: any) => acc + Number(t.csat_rating), 0) / totalRatings) * 10) / 10 
-      : 5.0;
-
-    // Priority breakdown
-    const priorityBreakdown = {
-      Low: allTickets.filter((t: any) => t.priority === 'Low').length,
-      Medium: allTickets.filter((t: any) => t.priority === 'Medium' || !t.priority).length,
-      High: allTickets.filter((t: any) => t.priority === 'High').length,
-      Critical: allTickets.filter((t: any) => t.priority === 'Critical').length,
-    };
-
-    // Category breakdown
     const categoryCounts: Record<string, number> = {};
-    allTickets.forEach((t: any) => {
-      const cat = t.category || 'Lainnya';
-      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+    catRows.forEach((r: any) => {
+      categoryCounts[r.category || 'Lainnya'] = Number(r.count) || 0;
     });
-
-    // Escalation breakdown
-    const escalationCounts = {
-      level1: allTickets.filter((t: any) => !t.escalation_level || t.escalation_level === 1).length,
-      level2: allTickets.filter((t: any) => t.escalation_level === 2).length,
-      level3: allTickets.filter((t: any) => t.escalation_level === 3).length,
-    };
-
-    // Average MTTR estimate (in minutes, assuming 45 mins default for closed/resolved)
-    const avgMttrMinutes = resolvedOrClosed > 0 ? 38 : 0;
 
     res.json({
       total,
@@ -484,10 +482,19 @@ router.get('/open-tickets/kpi-summary', async (req, res) => {
       slaComplianceRate,
       avgCsat,
       totalRatings,
-      avgMttrMinutes,
-      priorityBreakdown,
+      avgMttrMinutes: (resolvedCount + closedCount) > 0 ? 38 : 0,
+      priorityBreakdown: {
+        Low: Number(s.priorityLow) || 0,
+        Medium: Number(s.priorityMedium) || 0,
+        High: Number(s.priorityHigh) || 0,
+        Critical: Number(s.priorityCritical) || 0,
+      },
       categoryCounts,
-      escalationCounts
+      escalationCounts: {
+        level1: Number(s.escL1) || 0,
+        level2: Number(s.escL2) || 0,
+        level3: Number(s.escL3) || 0,
+      }
     });
   } catch (error) {
     console.error('Error fetching KPI summary:', error);

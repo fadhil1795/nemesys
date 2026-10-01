@@ -246,17 +246,27 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
     }
   }, [activeTicket]);
 
-  // Fetch Tickets & KPI Data
+  // Fetch Tickets & KPI Data with timeout and concurrency lock
+  const isFetchingRef = React.useRef(false);
+
   const fetchData = async (isManual = false) => {
+    if (isFetchingRef.current && !isManual) return;
+    isFetchingRef.current = true;
     if (isManual) setRefreshing(true);
     setError(null);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
     try {
       const headers = { Authorization: `Bearer ${token}` };
 
       const [ticketsRes, kpiRes] = await Promise.all([
-        fetch(`${BACKEND_URL}/api/open-tickets?limit=150`, { headers }),
-        fetch(`${BACKEND_URL}/api/open-tickets/kpi-summary`, { headers })
+        fetch(`${BACKEND_URL}/api/open-tickets?limit=150`, { headers, signal: controller.signal }),
+        fetch(`${BACKEND_URL}/api/open-tickets/kpi-summary`, { headers, signal: controller.signal })
       ]);
+
+      clearTimeout(timeoutId);
 
       if (ticketsRes.ok) {
         const tData = await ticketsRes.json();
@@ -267,9 +277,13 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
         setKpi(kData);
       }
     } catch (err: any) {
-      console.error('Error fetching service desk data:', err);
-      setError('Gagal memuat data ticketing & SLA.');
+      if (err.name !== 'AbortError') {
+        console.error('Error fetching service desk data:', err);
+        setError('Gagal memuat data ticketing & SLA.');
+      }
     } finally {
+      clearTimeout(timeoutId);
+      isFetchingRef.current = false;
       setLoading(false);
       if (isManual) setRefreshing(false);
     }
@@ -281,7 +295,7 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
     if (autoRefresh) {
       interval = setInterval(() => {
         fetchData();
-      }, 15000);
+      }, 30000);
     }
     return () => {
       if (interval) clearInterval(interval);

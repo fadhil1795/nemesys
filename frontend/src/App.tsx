@@ -62,23 +62,30 @@ import { Router as RouterIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { initGlobalErrorLogging } from './utils/clientLogger';
 import type { GenieACSDevice } from './types';
 
-// 'https://nemesys-iota.vercel.app'
+const isVercelHost = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app');
+
 const rawBackendUrl = 
   import.meta.env.VITE_BACKEND_URL || 
-  // (window.location.hostname === 'http://localhost:5000' ? 'http://localhost:5000' : 'http://localhost:5000');
-  (window.location.hostname === 'https://nemesys-iota.vercel.app' ? 'http://localhost:5000' : 'https://nemesys.vercel.app');
+  (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:5000' 
+    : typeof window !== 'undefined'
+      ? window.location.origin
+      : 'http://localhost:5000');
 
 export const BACKEND_URL = rawBackendUrl.replace(/\/+$/, '');
 
+// Vercel serverless frontend does not support persistent WebSockets unless a dedicated VITE_BACKEND_URL is configured
+const hasDedicatedBackend = Boolean(import.meta.env.VITE_BACKEND_URL) || (!isVercelHost && typeof window !== 'undefined');
+
 const socket = io(BACKEND_URL, {
-  autoConnect: true,
+  autoConnect: hasDedicatedBackend,
   transports: ['websocket', 'polling'],
-  reconnectionAttempts: 3,
-  timeout: 5000,
+  reconnectionAttempts: hasDedicatedBackend ? 3 : 0,
+  timeout: 4000,
 });
 
 socket.on('connect_error', () => {
-  // Gracefully stop polling on Vercel serverless environment where socket.io server is disabled
+  // Gracefully stop polling on Vercel serverless environment
   if (socket.active) {
     socket.disconnect();
   }
