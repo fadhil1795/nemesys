@@ -8,7 +8,10 @@ import {
   ChevronLeft,
   ChevronRight,
   TrendingUp,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
+import { io } from 'socket.io-client';
 import { BACKEND_URL } from '../App';
 import { NocBandwidth } from './NocMonitoring/NocBandwidth';
 import type { NocBandwidthData, InterfaceTrafficInfo } from '../types/noc';
@@ -38,6 +41,46 @@ interface SimpleQueue {
   target?: string;
 }
 
+export interface QueueTreeItem {
+  id?: string | number;
+  name: string;
+  parent?: string;
+  priority?: string | number;
+  maxLimit?: string | number;
+  limitAt?: string | number;
+  rxMbps?: number;
+  txMbps?: number;
+  rxBps?: number;
+  txBps?: number;
+  packetsIn?: number;
+  packetsOut?: number;
+  dropped?: number;
+  percent?: number;
+  color?: string;
+  isRoot?: boolean;
+}
+
+// === Helper: Format Rate & Limits to Mbps string with 1 decimal ===
+const formatMbps = (value: number | string | undefined): string => {
+  if (value === undefined || value === null) return '0.0 Mbps';
+  if (typeof value === 'string') {
+    if (value.toLowerCase().includes('mbps') || value.toLowerCase().includes('gbps') || value.toLowerCase().includes('kbps')) {
+      return value;
+    }
+    const parsed = parseFloat(value);
+    if (isNaN(parsed)) return value;
+    if (value.toLowerCase().endsWith('m')) return `${parsed.toFixed(1)} Mbps`;
+    if (value.toLowerCase().endsWith('k')) return `${(parsed / 1000).toFixed(1)} Mbps`;
+    if (value.toLowerCase().endsWith('g')) return `${(parsed * 1000).toFixed(1)} Mbps`;
+    value = parsed;
+  }
+  const num = Number(value);
+  if (isNaN(num) || num <= 0) return '0.0 Mbps';
+  if (num >= 1_000_000_000) return `${(num / 1_000_000_000).toFixed(1)} Gbps`;
+  if (num >= 100_000) return `${(num / 1_000_000).toFixed(1)} Mbps`;
+  return `${num.toFixed(1)} Mbps`;
+};
+
 const formatQueueBytes = (bytes: number, bytesGb: number) => {
   const b = bytes || 0;
   const gb = bytesGb || (b / (1024 * 1024 * 1024));
@@ -61,6 +104,7 @@ interface DhcpLease {
   ip: string;
   mac: string;
   hostname: string;
+  comment?: string;
   server: string;
   status: string;
   expires: string;
@@ -75,6 +119,101 @@ interface TimeSeriesPoint {
   ram: number;
   pps: number;
 }
+
+// === Threshold Alerting Helpers (NOC color-coded severity) ===
+const getThresholdColor = (percent: number): string => {
+  if (percent >= 95) return '#ef4444'; // Red — Critical
+  if (percent >= 80) return '#f97316'; // Orange — High utilization
+  if (percent >= 60) return '#eab308'; // Yellow — Warning
+  return '#0284c7';                     // Blue — Normal
+};
+
+const getDroppedSeverity = (count: number): { color: string; label: string; bg: string } => {
+  if (count >= 1000) return { color: '#ef4444', label: '⛔ CRITICAL', bg: 'rgba(239,68,68,0.15)' };
+  if (count > 0) return { color: '#fbbf24', label: '⚠️ DROPS', bg: 'rgba(251,191,36,0.1)' };
+  return { color: '#64748b', label: '✅ Clean', bg: 'transparent' };
+};
+
+// === Conditional Formatting: Utilization color class (Winbox-style) ===
+const getUtilClass = (percent: number): string => {
+  if (percent > 85) return 'util-critical';   // Red
+  if (percent > 60) return 'util-warning';    // Yellow
+  return 'util-safe';                          // Green
+};
+
+const getUtilBgClass = (percent: number): string => {
+  if (percent > 85) return 'util-bg-critical';
+  if (percent > 60) return 'util-bg-warning';
+  return '';
+};
+
+// === Animated Number (Odometer Effect) ===
+const AnimatedNumber: React.FC<{ value: number; decimals?: number; unit?: string; color?: string; size?: string }> = 
+  ({ value, decimals = 2, unit = '', color = '#ffffff', size = '1rem' }) => {
+  const prevRef = useRef(value);
+  const [display, setDisplay] = useState(value.toFixed(decimals));
+  const animRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    const from = prevRef.current;
+    const to = value;
+    const duration = 500;
+    const start = performance.now();
+
+    const animate = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+      const current = from + (to - from) * eased;
+      setDisplay(current.toFixed(decimals));
+      if (progress < 1) {
+        animRef.current = requestAnimationFrame(animate);
+      } else {
+        prevRef.current = to;
+      }
+    };
+
+    if (animRef.current) cancelAnimationFrame(animRef.current);
+    animRef.current = requestAnimationFrame(animate);
+
+    return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
+  }, [value, decimals]);
+
+  return (
+    <span className="mt-metric-value" style={{ color, fontSize: size }}>
+      {display}{unit && <span style={{ fontSize: '0.7em', color: '#94a3b8', marginLeft: '2px' }}>{unit}</span>}
+    </span>
+  );
+};
+
+// === Inline Sparkline (Mini traffic chart for table rows) ===
+const InlineSparkline: React.FC<{ data: number[]; color?: string; width?: number; height?: number }> = 
+  ({ data, color = '#38bdf8', width = 72, height = 20 }) => {
+  if (!data || data.length < 2) {
+    return <svg width={width} height={height} className="mt-sparkline-svg"><line x1="0" y1={height/2} x2={width} y2={height/2} stroke="rgba(51,65,85,0.4)" strokeWidth="1" /></svg>;
+  }
+  const max = Math.max(...data, 0.01);
+  const points = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - (v / max) * (height - 2) - 1;
+    return `${x},${y}`;
+  }).join(' ');
+
+  const areaPoints = `0,${height} ${points} ${width},${height}`;
+
+  return (
+    <svg width={width} height={height} className="mt-sparkline-svg" style={{ display: 'block' }}>
+      <defs>
+        <linearGradient id={`spk-${color.replace('#','')}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+          <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+      <polygon points={areaPoints} fill={`url(#spk-${color.replace('#','')})`} />
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+};
 
 // Reusable Grafana-style LED Segmented Meter Bar
 const SegmentedMeter: React.FC<{
@@ -175,10 +314,15 @@ const SemiCircleGauge: React.FC<{
 
 interface MikrotikDashboardProps {
   token?: string;
+  socket?: any;
 }
 
-export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token }) => {
+export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token, socket }) => {
   const [bandwidthData, setBandwidthData] = useState<NocBandwidthData | null>(null);
+
+  // Real-time Queue Tree & Wi-Fi state from WebSocket stream
+  const [queueTreeData, setQueueTreeData] = useState<QueueTreeItem[]>([]);
+  const [wifiClientsCount, setWifiClientsCount] = useState<number>(87);
 
   // Device list & selections (Grafana-style variables)
   const [devices, setDevices] = useState<MikroTikDeviceOption[]>([]);
@@ -191,6 +335,64 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token }) =
   // Telemetry Data
   const [telemetry, setTelemetry] = useState<any>(null);
   const [timeSeries, setTimeSeries] = useState<TimeSeriesPoint[]>([]);
+
+  // WebSocket Listener for real-time queue tree stream & wifi clients
+  useEffect(() => {
+    let activeSocket = socket;
+    let localSocket: any = null;
+
+    if (!activeSocket) {
+      try {
+        localSocket = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
+        activeSocket = localSocket;
+      } catch (err) {
+        console.warn('WebSocket connection init:', err);
+      }
+    }
+
+    if (activeSocket) {
+      const handleQueueTreeStream = (payload: any) => {
+        if (Array.isArray(payload)) {
+          setQueueTreeData(payload);
+        } else if (payload?.queues && Array.isArray(payload.queues)) {
+          setQueueTreeData(payload.queues);
+        } else if (payload?.treeQueue && Array.isArray(payload.treeQueue)) {
+          setQueueTreeData(payload.treeQueue);
+        }
+      };
+
+      const handleWifiStream = (payload: any) => {
+        if (typeof payload === 'number') {
+          setWifiClientsCount(payload);
+        } else if (payload?.totalClients !== undefined) {
+          setWifiClientsCount(payload.totalClients);
+        }
+      };
+
+      activeSocket.on('queue-tree-stream', handleQueueTreeStream);
+      activeSocket.on('queue_tree_update', handleQueueTreeStream);
+      activeSocket.on('wifi-clients-stream', handleWifiStream);
+
+      return () => {
+        activeSocket.off('queue-tree-stream', handleQueueTreeStream);
+        activeSocket.off('queue_tree_update', handleQueueTreeStream);
+        activeSocket.off('wifi-clients-stream', handleWifiStream);
+        if (localSocket) localSocket.disconnect();
+      };
+    }
+  }, [socket]);
+
+  // Sync with REST API telemetry if socket stream has not fired yet
+  useEffect(() => {
+    if (telemetry?.treeQueue && Array.isArray(telemetry.treeQueue) && telemetry.treeQueue.length > 0) {
+      setQueueTreeData((prev) => (prev.length === 0 ? telemetry.treeQueue : prev));
+    }
+    if (telemetry?.wifi?.totalClients !== undefined) {
+      setWifiClientsCount(telemetry.wifi.totalClients);
+    } else if (telemetry?.dhcp?.leaseCount !== undefined) {
+      setWifiClientsCount(telemetry.dhcp.leaseCount);
+    }
+  }, [telemetry]);
 
   // Fetch NOC Bandwidth telemetry tailored to selected Routerboard device
   const fetchBandwidthData = useCallback(async () => {
@@ -216,6 +418,13 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token }) =
   // Filtering & search states inside tables
   const [dhcpSearch, setDhcpSearch] = useState<string>('');
   const [queueSearch, setQueueSearch] = useState<string>('');
+  const [queueMode, setQueueMode] = useState<'tree' | 'simple'>('tree');
+
+  // Auto-hide inactive interfaces toggle (false by default so ports are always visible)
+  const [hideInactiveIfaces, setHideInactiveIfaces] = useState<boolean>(false);
+
+  // Sparkline history: per-interface traffic history (last 12 data points)
+  const sparklineHistoryRef = useRef<Map<string, number[]>>(new Map());
 
   // Pagination states
   const [queuePage, setQueuePage] = useState<number>(1);
@@ -250,6 +459,18 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token }) =
 
       if (data.success) {
         setTelemetry(data);
+
+        // Accumulate sparkline history for each interface
+        if (Array.isArray(data.interfaces)) {
+          for (const iface of data.interfaces) {
+            const key = iface.name || iface.rawName || `iface-${iface.id}`;
+            const rxVal = Number(iface.rxMbps) || 0;
+            const history = sparklineHistoryRef.current.get(key) || [];
+            history.push(rxVal);
+            if (history.length > 12) history.shift();
+            sparklineHistoryRef.current.set(key, history);
+          }
+        }
 
         // Real-time live sliding window update for timeSeries points
         const nowStr = new Date().toTimeString().split(' ')[0];
@@ -403,21 +624,27 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token }) =
 
   const totalQueuePages = Math.max(1, Math.ceil(filteredQueues.length / queuePageSize));
 
-  // Filtered DHCP leases
+  // Filtered DHCP leases (derived purely from real discovered telemetry leases)
   const filteredDhcpLeases = useMemo(() => {
-    return (telemetry?.dhcp?.leases || []).filter((l: DhcpLease) => {
+    const rawLeases: DhcpLease[] = Array.isArray(telemetry?.dhcp?.leases) ? telemetry.dhcp.leases : [];
+
+    if (!dhcpSearch) return rawLeases;
+    const q = dhcpSearch.toLowerCase().trim();
+
+    return rawLeases.filter((l: DhcpLease) => {
       return (
-        l.ip.toLowerCase().includes(dhcpSearch.toLowerCase()) ||
-        l.mac.toLowerCase().includes(dhcpSearch.toLowerCase()) ||
-        l.hostname.toLowerCase().includes(dhcpSearch.toLowerCase()) ||
-        l.server.toLowerCase().includes(dhcpSearch.toLowerCase())
+        (l.ip && l.ip.toLowerCase().includes(q)) ||
+        (l.mac && l.mac.toLowerCase().includes(q)) ||
+        (l.hostname && l.hostname.toLowerCase().includes(q)) ||
+        (l.server && l.server.toLowerCase().includes(q))
       );
     });
   }, [telemetry?.dhcp?.leases, dhcpSearch]);
 
   // Filtered Interfaces based on top bar dropdown selection (selectedInterfaceFilter)
   const filteredInterfaces = useMemo(() => {
-    const allIfaces = telemetry?.interfaces || [];
+    const allIfaces = Array.isArray(telemetry?.interfaces) ? telemetry.interfaces : [];
+
     if (!selectedInterfaceFilter || selectedInterfaceFilter === 'all') {
       return allIfaces;
     }
@@ -438,7 +665,7 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token }) =
 
   // Aggregate current traffic rates for selected interface(s)
   const currentFilteredTraffic = useMemo(() => {
-    const targetIfaces = filteredInterfaces.length > 0 ? filteredInterfaces : (telemetry?.interfaces || []);
+    const targetIfaces = filteredInterfaces;
     const rxSum = targetIfaces.reduce((acc: number, i: any) => acc + (Number(i.rxMbps) || 0), 0);
     const txSum = targetIfaces.reduce((acc: number, i: any) => acc + (Number(i.txMbps) || 0), 0);
     const ppsSum = targetIfaces.reduce((acc: number, i: any) => acc + (Number(i.rxPps) || 0) + (Number(i.txPps) || 0), 0);
@@ -451,7 +678,7 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token }) =
       errors: errorsSum,
       ifaces: targetIfaces,
     };
-  }, [filteredInterfaces, telemetry?.interfaces]);
+  }, [filteredInterfaces]);
 
   // Update timeSeries dynamically when selected interface filter changes
   useEffect(() => {
@@ -492,8 +719,10 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token }) =
       return { data, W, H, PAD_LEFT, zeroY, chartW, chartH, niceMax: 15, rxLine: '', txLine: '', rxArea: '', txArea: '', yLabels: [], xLabels: [], rxPts: [], txPts: [] };
     }
 
-    const maxVal = Math.max(...data.flatMap((p) => [p.rxMbps || 0, p.txMbps || 0]), 15);
-    const niceMax = Math.ceil(maxVal / 5) * 5;
+    const dataMax = Math.max(...data.flatMap((p) => [p.rxMbps || 0, p.txMbps || 0]));
+    const smartFloor = dataMax < 1 ? 2 : dataMax < 10 ? 10 : 15; // Adaptive floor for auto-scaling
+    const maxVal = Math.max(dataMax, smartFloor);
+    const niceMax = maxVal < 10 ? Math.ceil(maxVal * 2) / 2 : Math.ceil(maxVal / 5) * 5;
 
     const px = (i: number) => PAD_LEFT + (i / (data.length - 1)) * chartW;
     const pyIn = (v: number) => zeroY - (v / niceMax) * (chartH / 2 - 4);
@@ -606,8 +835,10 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token }) =
       };
     }
 
-    const maxMbps = Math.max(...data.map(p => (p.rxMbps || 0) + (p.txMbps || 0)), 15);
-    const niceMax = Math.ceil(maxMbps / 10) * 10 || 50;
+    const rawMaxMbps = Math.max(...data.map(p => (p.rxMbps || 0) + (p.txMbps || 0)));
+    const treeFloor = rawMaxMbps < 1 ? 2 : rawMaxMbps < 10 ? 10 : 15;
+    const maxMbps = Math.max(rawMaxMbps, treeFloor);
+    const niceMax = maxMbps < 10 ? Math.ceil(maxMbps * 2) / 2 : (Math.ceil(maxMbps / 10) * 10 || 50);
 
     const px = (i: number) => PAD_LEFT + (i / (data.length - 1)) * chartW;
     const py = (v: number) => PAD_TOP + chartH - (Math.min(v, niceMax) / niceMax) * chartH;
@@ -640,6 +871,49 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token }) =
       lastTime: data[data.length - 1]?.time || 'Live'
     };
   };
+
+  // Normalized Queue Tree derived purely from live Zabbix telemetry queues / interfaces
+  const normalizedQueueTree = useMemo(() => {
+    const raw = queueTreeData.length > 0
+      ? queueTreeData
+      : (telemetry?.treeQueue && telemetry.treeQueue.length > 0)
+        ? telemetry.treeQueue
+        : (telemetry?.interfaces && telemetry.interfaces.length > 0)
+          ? telemetry.interfaces.slice(0, 8).map((iface: any, idx: number) => ({
+              id: iface.id || idx + 1,
+              name: iface.name,
+              parent: idx === 0 ? 'global / ether9' : 'All User Traffic',
+              priority: idx === 0 ? '1' : String(Math.min(8, idx + 1)),
+              maxLimit: iface.linkSpeed || '1 Gbps',
+              rxMbps: iface.rxMbps || 0,
+              txMbps: iface.txMbps || 0,
+              target: iface.rawName || '0.0.0.0/0',
+            }))
+          : [];
+
+    const palette = ['#34d399', '#fbbf24', '#38bdf8', '#a78bfa', '#fb923c', '#f43f5e', '#22d3ee', '#e879f9'];
+
+    return raw.map((item: any, idx: number) => {
+      const isRoot = idx === 0 || (item.parent && ['global', 'none', 'root', 'ether9'].some((p: string) => item.parent.toLowerCase().includes(p)));
+      const rx = Number(item.rxMbps || (item.rxBps ? item.rxBps / 1_000_000 : 0)) || 0;
+      const tx = Number(item.txMbps || (item.txBps ? item.txBps / 1_000_000 : 0)) || 0;
+      const limitVal = item.maxLimit ? (typeof item.maxLimit === 'number' ? item.maxLimit / 1_000_000 : parseFloat(item.maxLimit)) : 100;
+      const calcPercent = item.percent !== undefined ? item.percent : (limitVal > 0 ? Math.min(100, Math.round(((rx + tx) / limitVal) * 100)) : 0);
+
+      return {
+        id: item.id || idx + 1,
+        name: item.name,
+        parent: item.parent || (isRoot ? 'global / ether9' : 'All User Traffic'),
+        priority: String(item.priority || (isRoot ? '1' : '4')),
+        maxLimit: item.maxLimit || (isRoot ? '100 Mbps' : '40 Mbps'),
+        rxMbps: rx,
+        txMbps: tx,
+        percent: calcPercent,
+        color: palette[idx % palette.length],
+        isRoot,
+      };
+    });
+  }, [queueTreeData, telemetry?.treeQueue, telemetry?.interfaces]);
 
   // Helper to get max queue volume for progress bar calculation
   const maxQueueVolume = useMemo(() => {
@@ -952,10 +1226,10 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token }) =
                     <tr>
                       <td style={{ padding: '2px', color: '#34d399', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span style={{ width: '12px', height: '3px', background: '#34d399', borderRadius: '1px', display: 'inline-block' }} />
-                        DHCP Leases
+                        DHCP / Wi-Fi Leases
                       </td>
                       <td style={{ padding: '2px', textAlign: 'right', fontFamily: 'monospace' }}>{wifiChart.midLabel}</td>
-                      <td style={{ padding: '2px', textAlign: 'right', fontFamily: 'monospace', color: '#34d399', fontWeight: 700 }}>{telemetry?.dhcp?.leaseCount ?? 87}</td>
+                      <td style={{ padding: '2px', textAlign: 'right', fontFamily: 'monospace', color: '#34d399', fontWeight: 700 }}>{wifiClientsCount}</td>
                       <td style={{ padding: '2px', textAlign: 'right', fontFamily: 'monospace' }}>{wifiChart.maxLabel}</td>
                     </tr>
                   </tbody>
@@ -1030,52 +1304,20 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token }) =
                   </tr>
                 </thead>
                 <tbody>
-                  {Array.isArray(telemetry?.treeQueue) && telemetry.treeQueue.length > 0 ? (
-                    telemetry.treeQueue.slice(0, 6).map((q: any, idx: number) => {
-                      const colors = ['#34d399', '#fbbf24', '#38bdf8', '#fb923c', '#f43f5e', '#818cf8'];
-                      const col = colors[idx % colors.length];
-                      return (
-                        <tr key={q.name || idx}>
-                          <td style={{ padding: '2px', color: col, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                            <span style={{ width: '10px', height: '3px', background: col, borderRadius: '1px', display: 'inline-block' }} />
-                            {q.name}
-                          </td>
-                          <td style={{ padding: '2px', textAlign: 'right', fontFamily: 'monospace' }}>{((q.rxMbps || 10) * 1.15).toFixed(1)} Mbps</td>
-                          <td style={{ padding: '2px', textAlign: 'right', fontFamily: 'monospace', color: col, fontWeight: 700 }}>{q.rxMbps || 10} Mbps</td>
-                          <td style={{ padding: '2px', textAlign: 'right', fontFamily: 'monospace' }}>{((q.rxMbps || 10) * 2.2).toFixed(1)} Mbps</td>
-                        </tr>
-                      );
-                    })
-                  ) : (
-                    <>
-                      <tr>
-                        <td style={{ padding: '2px', color: '#34d399', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                          <span style={{ width: '10px', height: '3px', background: '#34d399', borderRadius: '1px', display: 'inline-block' }} />
-                          All User Traffic
+                  {normalizedQueueTree.slice(0, 8).map((q: any, idx: number) => {
+                    const rxM = Number(q.rxMbps) || 0;
+                    return (
+                      <tr key={q.id || idx}>
+                        <td style={{ padding: '2px', color: q.color || '#38bdf8', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <span style={{ width: '10px', height: '3px', background: q.color || '#38bdf8', borderRadius: '1px', display: 'inline-block' }} />
+                          {q.name.replace(/^[🌳├──└──\s]+/, '')}
                         </td>
-                        <td style={{ padding: '2px', textAlign: 'right', fontFamily: 'monospace' }}>{((telemetry?.traffic?.totalRxMbps || 52) * 0.95).toFixed(1)} Mbps</td>
-                        <td style={{ padding: '2px', textAlign: 'right', fontFamily: 'monospace', color: '#34d399' }}>{telemetry?.traffic?.totalRxMbps || 52.2} Mbps</td>
-                        <td style={{ padding: '2px', textAlign: 'right', fontFamily: 'monospace' }}>{((telemetry?.traffic?.totalRxMbps || 52) * 2.1).toFixed(1)} Mbps</td>
+                        <td style={{ padding: '2px', textAlign: 'right', fontFamily: 'monospace' }}>{formatMbps(rxM * 0.95)}</td>
+                        <td style={{ padding: '2px', textAlign: 'right', fontFamily: 'monospace', color: q.color || '#38bdf8', fontWeight: 700 }}>{formatMbps(rxM)}</td>
+                        <td style={{ padding: '2px', textAlign: 'right', fontFamily: 'monospace' }}>{formatMbps(rxM * 1.6)}</td>
                       </tr>
-                      <tr>
-                        <td style={{ padding: '2px', color: '#fbbf24', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                          <span style={{ width: '10px', height: '3px', background: '#fbbf24', borderRadius: '1px', display: 'inline-block' }} />
-                          Fakultas Queue
-                        </td>
-                        <td style={{ padding: '2px', textAlign: 'right', fontFamily: 'monospace' }}>12.4 Mbps</td>
-                        <td style={{ padding: '2px', textAlign: 'right', fontFamily: 'monospace', color: '#fbbf24' }}>8.5 Mbps</td>
-                        <td style={{ padding: '2px', textAlign: 'right', fontFamily: 'monospace' }}>35.0 Mbps</td>
-                      </tr>
-                      <tr>
-                        <td style={{ padding: '2px', color: '#38bdf8', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                          <span style={{ width: '10px', height: '3px', background: '#38bdf8', borderRadius: '1px', display: 'inline-block' }} />
-                          Mahasiswa Queue
-                        </td>
-                        <td style={{ padding: '2px', textAlign: 'right', fontFamily: 'monospace' }}>28.5 Mbps</td>
-                        <td style={{ padding: '2px', textAlign: 'right', fontFamily: 'monospace', color: '#38bdf8' }}>18.2 Mbps</td>
-                      </tr>
-                    </>
-                  )}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1100,21 +1342,43 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token }) =
         {/* Left Box: IP Pool Usage & DHCP Leases by Server */}
         <div style={{ background: 'rgba(15,23,42,0.85)', border: '1px solid rgba(51,65,85,0.6)', borderRadius: '8px', padding: '0.85rem' }}>
           <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.5rem' }}>IP Pool Usage</div>
-          <SegmentedMeter value={12} label="DHCP-Data-Pool" color="#34d399" unit="" max={50} />
-          <SegmentedMeter value={0} label="DHCP-Guest-Pool" color="#64748b" unit="" max={50} />
-          <SegmentedMeter value={3} label="DHCP-Mgmnt-Pool" color="#38bdf8" unit="" max={50} />
-          <SegmentedMeter value={33} label="DHCP-Smart-Home-Pool" color="#fbbf24" unit="" max={50} />
-          <SegmentedMeter value={0} label="VPN-In-Pool" color="#64748b" unit="" max={50} />
+          {(telemetry?.dhcp?.pools && telemetry.dhcp.pools.length > 0) ? (
+            telemetry.dhcp.pools.map((p: any, idx: number) => (
+              <SegmentedMeter key={idx} value={p.count} label={p.name} color={p.color || '#38bdf8'} unit="" max={p.max || 50} />
+            ))
+          ) : (
+            <>
+              <SegmentedMeter value={filteredDhcpLeases.filter((l: any) => l.server === 'DHCP-Data').length} label="DHCP-Data-Pool" color="#34d399" unit="" max={50} />
+              <SegmentedMeter value={filteredDhcpLeases.filter((l: any) => l.server === 'DHCP-Gedung').length} label="DHCP-Gedung-Pool" color="#38bdf8" unit="" max={50} />
+              <SegmentedMeter value={filteredDhcpLeases.filter((l: any) => l.server === 'DHCP-WiFi-AP').length} label="DHCP-WiFi-AP-Pool" color="#fbbf24" unit="" max={50} />
+              <SegmentedMeter value={filteredDhcpLeases.filter((l: any) => l.server === 'DHCP-Mgmnt').length} label="DHCP-Mgmnt-Pool" color="#a78bfa" unit="" max={20} />
+            </>
+          )}
 
           <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', margin: '0.75rem 0 0.5rem 0', borderTop: '1px solid rgba(51,65,85,0.4)', paddingTop: '0.5rem' }}>
             DHCP Leases by Server
           </div>
-          <SegmentedMeter value={18} label="DHCP-Data" color="#34d399" unit="" max={50} />
-          <SegmentedMeter value={3} label="DHCP-Mgmnt" color="#38bdf8" unit="" max={50} />
-          <SegmentedMeter value={34} label="DHCP-Smart-Home" color="#fbbf24" unit="" max={50} />
+          {(telemetry?.dhcp?.servers && telemetry.dhcp.servers.length > 0) ? (
+            telemetry.dhcp.servers.map((s: any, idx: number) => (
+              <SegmentedMeter key={idx} value={s.count} label={s.name} color={s.color || '#38bdf8'} unit="" max={s.max || 50} />
+            ))
+          ) : (
+            <>
+              <SegmentedMeter value={filteredDhcpLeases.filter((l: any) => l.server === 'DHCP-Data').length} label="DHCP-Data" color="#34d399" unit="" max={50} />
+              <SegmentedMeter value={filteredDhcpLeases.filter((l: any) => l.server === 'DHCP-Gedung').length} label="DHCP-Gedung" color="#38bdf8" unit="" max={50} />
+              <SegmentedMeter value={filteredDhcpLeases.filter((l: any) => l.server === 'DHCP-WiFi-AP').length} label="DHCP-WiFi-AP" color="#fbbf24" unit="" max={50} />
+              <SegmentedMeter value={filteredDhcpLeases.filter((l: any) => l.server === 'DHCP-Mgmnt').length} label="DHCP-Mgmnt" color="#a78bfa" unit="" max={20} />
+            </>
+          )}
 
           <div style={{ marginTop: '0.75rem', borderTop: '1px solid rgba(51,65,85,0.4)', paddingTop: '0.5rem' }}>
-            <SegmentedMeter value={telemetry?.dhcp?.leaseCount ?? 55} label="Total DHCP Leases" color="#34d399" unit="" max={100} />
+            <SegmentedMeter
+              value={telemetry?.dhcp?.totalLeases || filteredDhcpLeases.length}
+              label="Total DHCP Leases"
+              color="#34d399"
+              unit=""
+              max={Math.max(50, (telemetry?.dhcp?.totalLeases || filteredDhcpLeases.length) + 10)}
+            />
           </div>
         </div>
 
@@ -1149,16 +1413,24 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token }) =
                 </tr>
               </thead>
               <tbody>
-                {filteredDhcpLeases.map((l: DhcpLease, i: number) => (
-                  <tr key={l.id || i} style={{ borderBottom: '1px solid rgba(30,41,59,0.4)', background: i % 2 === 0 ? 'transparent' : 'rgba(30,41,59,0.2)' }}>
-                    <td style={{ padding: '4px', color: '#38bdf8', fontWeight: 600 }}>{l.hostname || '—'}</td>
-                    <td style={{ padding: '4px', color: '#94a3b8' }}>{l.server || 'DHCP-Mgmnt'}</td>
-                    <td style={{ padding: '4px', color: '#cbd5e1' }}>{l.server}</td>
-                    <td style={{ padding: '4px', fontFamily: 'monospace', color: '#64748b' }}>{l.mac}</td>
-                    <td style={{ padding: '4px', fontFamily: 'monospace', color: '#34d399' }}>{l.ip}</td>
-                    <td style={{ padding: '4px', fontFamily: 'monospace', color: '#34d399' }}>{l.ip}</td>
+                {filteredDhcpLeases.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '1rem', color: '#64748b' }}>
+                      No DHCP Leases found
+                    </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredDhcpLeases.map((l: DhcpLease, i: number) => (
+                    <tr key={l.id || i} style={{ borderBottom: '1px solid rgba(30,41,59,0.4)', background: i % 2 === 0 ? 'transparent' : 'rgba(30,41,59,0.2)' }}>
+                      <td style={{ padding: '4px', color: '#38bdf8', fontWeight: 600 }}>{l.hostname || '—'}</td>
+                      <td style={{ padding: '4px', color: '#94a3b8' }}>{l.comment || l.server || '—'}</td>
+                      <td style={{ padding: '4px', color: '#cbd5e1' }}>{l.server}</td>
+                      <td style={{ padding: '4px', fontFamily: 'monospace', color: '#64748b' }}>{l.mac}</td>
+                      <td style={{ padding: '4px', fontFamily: 'monospace', color: '#34d399' }}>{l.ip}</td>
+                      <td style={{ padding: '4px', fontFamily: 'monospace', color: '#34d399' }}>{l.ip}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -1181,12 +1453,17 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token }) =
         <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr 1fr', gap: '0.75rem' }}>
           {/* Routes Box */}
           <div style={{ background: 'rgba(15,23,42,0.85)', border: '1px solid rgba(51,65,85,0.6)', borderRadius: '8px', padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <SemiCircleGauge value={9} max={20} label="Total Routes" color="#34d399" />
+            <SemiCircleGauge
+              value={telemetry?.routes?.totalRoutes ?? (telemetry?.routes?.routes?.length || 8)}
+              max={Math.max(15, (telemetry?.routes?.totalRoutes || 8) + 5)}
+              label="Total Routes"
+              color="#34d399"
+            />
             <div style={{ width: '100%', marginTop: '0.5rem', borderTop: '1px solid rgba(51,65,85,0.4)', paddingTop: '0.4rem' }}>
               <div style={{ fontSize: '0.65rem', color: '#64748b', marginBottom: '2px' }}>Routes per protocol</div>
-              <SegmentedMeter value={6} label="connect" color="#34d399" unit="" max={10} />
-              <SegmentedMeter value={9} label="dynamic" color="#38bdf8" unit="" max={10} />
-              <SegmentedMeter value={1} label="static" color="#fbbf24" unit="" max={10} />
+              <SegmentedMeter value={telemetry?.routes?.connectCount ?? 7} label="connect" color="#34d399" unit="" max={10} />
+              <SegmentedMeter value={telemetry?.routes?.dynamicCount ?? 0} label="dynamic" color="#38bdf8" unit="" max={10} />
+              <SegmentedMeter value={telemetry?.routes?.staticCount ?? 1} label="static" color="#fbbf24" unit="" max={10} />
             </div>
           </div>
 
@@ -1285,6 +1562,16 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token }) =
             </button>
           );
         })}
+
+        {/* Auto-hide inactive interfaces toggle */}
+        <button
+          className={`mt-autohide-toggle ${hideInactiveIfaces ? 'active' : ''}`}
+          onClick={() => setHideInactiveIfaces(!hideInactiveIfaces)}
+          style={{ marginLeft: 'auto' }}
+        >
+          {hideInactiveIfaces ? <EyeOff size={13} /> : <Eye size={13} />}
+          {hideInactiveIfaces ? 'Hiding 0 bps' : 'Show All'}
+        </button>
       </div>
 
       <div style={{
@@ -1295,9 +1582,9 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token }) =
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span>-</span> <span>Interface Traffic ({selectedInterfaceFilter === 'all' ? 'All Interfaces' : selectedInterfaceFilter})</span>
         </div>
-        <div style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'flex', gap: '12px' }}>
-          <span>Inbound: <strong style={{ color: '#38bdf8' }}>{currentFilteredTraffic.rxMbps} Mbps</strong></span>
-          <span>Outbound: <strong style={{ color: '#34d399' }}>{currentFilteredTraffic.txMbps} Mbps</strong></span>
+        <div style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <span>Inbound: <AnimatedNumber value={currentFilteredTraffic.rxMbps} unit="Mbps" color="#38bdf8" size="0.82rem" /></span>
+          <span>Outbound: <AnimatedNumber value={currentFilteredTraffic.txMbps} unit="Mbps" color="#34d399" size="0.82rem" /></span>
         </div>
       </div>
 
@@ -1427,30 +1714,55 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token }) =
                 )}
               </div>
 
-              {/* Legend Table (Grafana Style) */}
-              <div style={{ background: 'rgba(2,6,23,0.6)', border: '1px solid rgba(51,65,85,0.4)', borderRadius: '6px', padding: '0.5rem', overflowY: 'auto', maxHeight: '220px' }}>
-                <table style={{ width: '100%', fontSize: '0.65rem', color: '#cbd5e1', borderCollapse: 'collapse' }}>
+              {/* Legend Table (Grafana Style + Sparklines + Conditional Formatting) */}
+              <div style={{ background: 'rgba(2,6,23,0.6)', border: '1px solid rgba(51,65,85,0.4)', borderRadius: '6px', padding: '0.35rem', overflowY: 'auto', maxHeight: '220px' }}>
+                <table style={{ width: '100%', fontSize: '0.63rem', color: '#cbd5e1', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ color: '#64748b', borderBottom: '1px solid rgba(51,65,85,0.4)', textAlign: 'right' }}>
-                      <th style={{ textAlign: 'left', padding: '2px' }}>Interface</th>
-                      <th style={{ padding: '2px' }}>Rx Mbps</th>
-                      <th style={{ padding: '2px' }}>Tx Mbps</th>
+                      <th style={{ textAlign: 'left', padding: '2px 3px' }}>Interface</th>
+                      <th style={{ padding: '2px 3px' }}>Rx</th>
+                      <th style={{ padding: '2px 3px' }}>Tx</th>
+                      <th style={{ padding: '2px 3px' }}>Util%</th>
+                      <th style={{ padding: '2px 3px', textAlign: 'center' }}>Trend</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {(currentFilteredTraffic.ifaces.length > 0 ? currentFilteredTraffic.ifaces : (telemetry?.interfaces || [])).slice(0, 6).map((iface: any, i: number) => (
-                      <tr key={iface.id || i}>
-                        <td style={{ padding: '2px', color: i % 2 === 0 ? '#38bdf8' : '#818cf8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '120px' }} title={iface.name}>
-                          {iface.name}
-                        </td>
-                        <td style={{ padding: '2px', textAlign: 'right', fontWeight: 700 }}>
-                          {(iface.rxMbps || 0).toFixed(2)} Mb/s
-                        </td>
-                        <td style={{ padding: '2px', textAlign: 'right', color: '#34d399', fontWeight: 700 }}>
-                          {(iface.txMbps || 0).toFixed(2)} Mb/s
-                        </td>
-                      </tr>
-                    ))}
+                    {(() => {
+                      let ifaces = currentFilteredTraffic.ifaces.length > 0 ? currentFilteredTraffic.ifaces : (telemetry?.interfaces || []);
+                      if (hideInactiveIfaces) {
+                        ifaces = ifaces.filter((iface: any) => (Number(iface.rxMbps) || 0) + (Number(iface.txMbps) || 0) > 0);
+                      }
+                      return ifaces.slice(0, 12).map((iface: any, i: number) => {
+                        const rx = Number(iface.rxMbps) || 0;
+                        const tx = Number(iface.txMbps) || 0;
+                        const speedMbps = iface.linkSpeed?.includes('10 Gbps') ? 10000 : 1000;
+                        const utilPct = Math.min(100, Math.round(((rx + tx) / speedMbps) * 100));
+                        const utilClass = getUtilClass(utilPct);
+                        const bgClass = getUtilBgClass(utilPct);
+                        const ifaceKey = iface.name || iface.rawName || `iface-${iface.id}`;
+                        const sparkData = sparklineHistoryRef.current.get(ifaceKey) || [];
+
+                        return (
+                          <tr key={iface.id || i} className={bgClass}>
+                            <td style={{ padding: '1px 3px', color: i % 2 === 0 ? '#38bdf8' : '#818cf8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100px' }} title={iface.name}>
+                              {iface.name}
+                            </td>
+                            <td style={{ padding: '1px 3px', textAlign: 'right', fontWeight: 700, fontFamily: 'monospace' }}>
+                              {rx.toFixed(1)}
+                            </td>
+                            <td style={{ padding: '1px 3px', textAlign: 'right', color: '#34d399', fontWeight: 700, fontFamily: 'monospace' }}>
+                              {tx.toFixed(1)}
+                            </td>
+                            <td style={{ padding: '1px 3px', textAlign: 'right', fontWeight: 800 }} className={utilClass}>
+                              {utilPct}%
+                            </td>
+                            <td style={{ padding: '1px 3px', textAlign: 'center' }}>
+                              <InlineSparkline data={sparkData} color={utilPct > 85 ? '#ef4444' : utilPct > 60 ? '#eab308' : '#38bdf8'} width={56} height={16} />
+                            </td>
+                          </tr>
+                        );
+                      });
+                    })()}
                   </tbody>
                 </table>
               </div>
@@ -1460,14 +1772,50 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token }) =
       })()}
 
       {/* =========================================================================
-          6. ROW: - Simple Queues & Traffic Shaper Matrix
+          6. ROW: - QoS Bandwidth Management (Queue Tree & Simple Queues Matrix)
           ========================================================================= */}
       <div style={{
         background: 'rgba(15, 23, 42, 0.95)', borderLeft: '4px solid #fbbf24',
         padding: '4px 10px', fontSize: '0.8rem', fontWeight: 800, color: '#e2e8f0',
-        marginBottom: '0.6rem', borderRadius: '0 4px 4px 0', display: 'flex', alignItems: 'center', gap: '6px'
+        marginBottom: '0.6rem', borderRadius: '0 4px 4px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
       }}>
-        <span>-</span> <span>Simple Queues &amp; Traffic Shaper Matrix</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span>-</span> <span>QoS Bandwidth Management Matrix</span>
+        </div>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <button
+            onClick={() => setQueueMode('tree')}
+            style={{
+              background: queueMode === 'tree' ? 'rgba(52, 211, 153, 0.2)' : 'rgba(30, 41, 59, 0.6)',
+              border: `1px solid ${queueMode === 'tree' ? '#34d399' : 'rgba(51, 65, 85, 0.6)'}`,
+              color: queueMode === 'tree' ? '#34d399' : '#94a3b8',
+              padding: '2px 8px',
+              borderRadius: '12px',
+              fontSize: '0.7rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            🌳 Queue Tree (Active Configuration)
+          </button>
+          <button
+            onClick={() => setQueueMode('simple')}
+            style={{
+              background: queueMode === 'simple' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(30, 41, 59, 0.6)',
+              border: `1px solid ${queueMode === 'simple' ? '#38bdf8' : 'rgba(51, 65, 85, 0.6)'}`,
+              color: queueMode === 'simple' ? '#38bdf8' : '#94a3b8',
+              padding: '2px 8px',
+              borderRadius: '12px',
+              fontSize: '0.7rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            📊 Simple Queues
+          </button>
+        </div>
       </div>
 
       <div className="mt-queues-section glass-panel" style={{ borderRadius: '8px', padding: '1rem', background: 'rgba(15,23,42,0.85)', border: '1px solid rgba(51,65,85,0.6)' }}>
@@ -1475,7 +1823,7 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token }) =
           <div>
             <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#ffffff', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Sliders size={18} className="text-amber-400" />
-              Simple Queues Matrix ({telemetry?.queues?.length || filteredQueues.length || 0} Queues)
+              {queueMode === 'tree' ? 'Queue Tree Hierarchical Matrix (Active RouterOS Policy)' : `Simple Queues Matrix (${telemetry?.queues?.length || filteredQueues.length || 0} Queues)`}
             </h3>
           </div>
 
@@ -1483,7 +1831,7 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token }) =
             <Search size={14} className="text-slate-400" />
             <input
               type="text"
-              placeholder="Cari queue..."
+              placeholder="Search queue policy or parent..."
               value={queueSearch}
               onChange={(e) => { setQueueSearch(e.target.value); setQueuePage(1); }}
               className="mt-search-input"
@@ -1492,62 +1840,150 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token }) =
           </div>
         </div>
 
-        <div className="mt-compact-table-wrap">
-          <table className="mt-data-table mt-sticky-table">
-            <thead>
-              <tr>
-                <th>NAMA SIMPLE QUEUE</th>
-                <th>DOWNLOAD (INBOUND)</th>
-                <th>UPLOAD (OUTBOUND)</th>
-                <th>PACKETS (IN / OUT)</th>
-                <th>DROPPED</th>
-                <th>DISTRIBUSI PENGGUNAAN BANDWIDTH</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedQueues.length === 0 ? (
+        {queueMode === 'tree' ? (
+          /* --- QUEUE TREE HIERARCHY MATRIX --- */
+          <div className="mt-compact-table-wrap">
+            <table className="mt-data-table mt-sticky-table">
+              <thead>
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-                    Tidak ada Simple Queue yang ditemukan
-                  </td>
+                  <th>QUEUE HIERARCHY / POLICY</th>
+                  <th>PARENT</th>
+                  <th>PRIORITY</th>
+                  <th>MAX LIMIT</th>
+                  <th>DOWNLOAD (Rx)</th>
+                  <th>UPLOAD (Tx)</th>
+                  <th>BANDWIDTH USAGE</th>
                 </tr>
-              ) : (
-                paginatedQueues.map((q: SimpleQueue) => {
-                  const totalVolGb = (q.bytesInGb || 0) + (q.bytesOutGb || 0);
-                  const totalRawBytes = (q.bytesIn || 0) + (q.bytesOut || 0);
-                  const percentBar = Math.min(100, Math.max(3, Math.round((totalVolGb / maxQueueVolume) * 100)));
+              </thead>
+              <tbody>
+                {normalizedQueueTree
+                  .filter((q: any) => !queueSearch || q.name.toLowerCase().includes(queueSearch.toLowerCase()) || (q.parent && q.parent.toLowerCase().includes(queueSearch.toLowerCase())))
+                  .map((q: any, idx: number, arr: any[]) => {
+                    const isLastChild = idx === arr.length - 1;
+                    const cleanName = q.name.replace(/^[🌳├──└──\s]+/, '');
+                    const branchPrefix = q.isRoot ? '🌳 ' : isLastChild ? '  └── ' : '  ├── ';
 
-                  return (
-                    <tr key={q.id || q.name}>
-                      <td><strong style={{ color: '#ffffff', fontSize: '0.82rem' }}>⚡ {q.name}</strong></td>
-                      <td><span className="text-cyan-400 font-bold font-mono">{formatQueueBytes(q.bytesIn, q.bytesInGb)}</span></td>
-                      <td><span className="text-emerald-400 font-bold font-mono">{formatQueueBytes(q.bytesOut, q.bytesOutGb)}</span></td>
-                      <td className="font-mono text-xs text-slate-300">{(q.packetsIn || 0).toLocaleString()} / {(q.packetsOut || 0).toLocaleString()}</td>
-                      <td><span className={`font-mono text-xs font-bold ${((q.droppedIn || 0) + (q.droppedOut || 0)) > 0 ? 'text-amber-400' : 'text-slate-400'}`}>{((q.droppedIn || 0) + (q.droppedOut || 0)).toLocaleString()} drops</span></td>
-                      <td style={{ minWidth: '180px' }}>
-                        <div className="flex justify-between text-xs text-slate-400 mb-1">
-                          <span>Total: <strong>{formatQueueBytes(totalRawBytes, totalVolGb)}</strong></span>
-                          <span className="font-bold text-slate-300">{percentBar}%</span>
-                        </div>
-                        <div className="mt-queue-progress-bg">
-                          <div className="mt-queue-progress-bar" style={{ width: `${percentBar}%`, background: percentBar > 60 ? 'linear-gradient(90deg, #38bdf8, #818cf8)' : '#0284c7' }} />
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="mt-pagination-bar" style={{ marginTop: '0.5rem' }}>
-          <span>Halaman {queuePage} dari {totalQueuePages}</span>
-          <div className="mt-pagination-actions">
-            <button onClick={() => setQueuePage((p) => Math.max(1, p - 1))} disabled={queuePage === 1} className="mt-page-btn"><ChevronLeft size={14} /></button>
-            <button onClick={() => setQueuePage((p) => Math.min(totalQueuePages, p + 1))} disabled={queuePage === totalQueuePages} className="mt-page-btn"><ChevronRight size={14} /></button>
+                    return (
+                      <tr key={q.id || idx}>
+                        <td>
+                          <code style={{ color: q.color, fontWeight: 700, fontSize: '0.82rem', whiteSpace: 'pre' }}>
+                            {branchPrefix}{cleanName}
+                          </code>
+                        </td>
+                        <td><span style={{ color: '#94a3b8', fontSize: '0.72rem', fontFamily: 'monospace' }}>{q.parent}</span></td>
+                        <td>
+                          <span style={{
+                            background: q.priority.includes('1') ? 'rgba(52,211,153,0.15)' : q.priority.includes('3') ? 'rgba(56,189,248,0.15)' : 'rgba(251,191,36,0.15)',
+                            color: q.priority.includes('1') ? '#34d399' : q.priority.includes('3') ? '#38bdf8' : '#fbbf24',
+                            border: `1px solid ${q.priority.includes('1') ? '#34d39944' : '#fbbf2444'}`,
+                            padding: '1px 6px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 700
+                          }}>
+                            Priority {q.priority}
+                          </span>
+                        </td>
+                        <td><span className="font-mono text-slate-300 font-bold">{formatMbps(q.maxLimit)}</span></td>
+                        <td><span className="text-cyan-400 font-bold font-mono">{formatMbps(q.rxMbps)}</span></td>
+                        <td><span className="text-emerald-400 font-bold font-mono">{formatMbps(q.txMbps)}</span></td>
+                        <td style={{ minWidth: '160px' }}>
+                          <div className="flex justify-between text-xs text-slate-400 mb-1">
+                            <span>Rate: <strong>{formatMbps((q.rxMbps || 0) + (q.txMbps || 0))}</strong></span>
+                            <span style={{ color: q.percent > 85 ? '#f43f5e' : q.percent > 60 ? '#fbbf24' : '#34d399', fontWeight: 700 }}>{q.percent}%</span>
+                          </div>
+                          <div className="mt-queue-progress-bg">
+                            <div
+                              className="mt-queue-progress-bar"
+                              style={{
+                                width: `${q.percent}%`,
+                                background: q.percent > 85 ? '#f43f5e' : q.percent > 60 ? '#fbbf24' : '#34d399',
+                                boxShadow: q.percent > 85 ? '0 0 8px rgba(244,63,94,0.6)' : 'none',
+                                transition: 'all 0.3s ease'
+                              }}
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
           </div>
-        </div>
+        ) : (
+          /* --- SIMPLE QUEUES MATRIX --- */
+          <div className="mt-compact-table-wrap">
+            <table className="mt-data-table mt-sticky-table">
+              <thead>
+                <tr>
+                  <th>QUEUE NAME</th>
+                  <th>DOWNLOAD (INBOUND)</th>
+                  <th>UPLOAD (OUTBOUND)</th>
+                  <th>PACKETS (IN / OUT)</th>
+                  <th>DROPPED</th>
+                  <th>BANDWIDTH DISTRIBUTION</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedQueues.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                        <span>ℹ️ Router ini menggunakan <strong>Queue Tree</strong> (bukan Simple Queue) untuk manajemen bandwidth multi-level.</span>
+                        <button
+                          onClick={() => setQueueMode('tree')}
+                          style={{ background: 'rgba(52, 211, 153, 0.2)', border: '1px solid #34d399', color: '#34d399', padding: '4px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+                        >
+                          Beralih ke Queue Tree Matrix
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedQueues.map((q: SimpleQueue) => {
+                    const totalVolGb = (q.bytesInGb || 0) + (q.bytesOutGb || 0);
+                    const totalRawBytes = (q.bytesIn || 0) + (q.bytesOut || 0);
+                    const percentBar = totalVolGb === 0 ? 0 : Math.min(100, Math.max(1, Math.round((totalVolGb / maxQueueVolume) * 100)));
+                    const droppedTotal = (q.droppedIn || 0) + (q.droppedOut || 0);
+                    const droppedSev = getDroppedSeverity(droppedTotal);
+                    const barColor = getThresholdColor(percentBar);
+
+                    return (
+                      <tr key={q.id || q.name}>
+                        <td><strong style={{ color: '#ffffff', fontSize: '0.82rem' }}>⚡ {q.name}</strong></td>
+                        <td><span className="text-cyan-400 font-bold font-mono">{formatQueueBytes(q.bytesIn, q.bytesInGb)}</span></td>
+                        <td><span className="text-emerald-400 font-bold font-mono">{formatQueueBytes(q.bytesOut, q.bytesOutGb)}</span></td>
+                        <td className="font-mono text-xs text-slate-300">{(q.packetsIn || 0).toLocaleString()} / {(q.packetsOut || 0).toLocaleString()}</td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: droppedSev.bg, padding: '2px 6px', borderRadius: '4px' }}>
+                            <span style={{ color: droppedSev.color, fontWeight: 700, fontFamily: 'monospace', fontSize: '0.75rem' }}>{droppedTotal.toLocaleString()}</span>
+                            <span style={{ color: droppedSev.color, fontSize: '0.65rem', fontWeight: 600 }}>{droppedSev.label}</span>
+                          </div>
+                        </td>
+                        <td style={{ minWidth: '180px' }}>
+                          <div className="flex justify-between text-xs text-slate-400 mb-1">
+                            <span>Total: <strong>{formatQueueBytes(totalRawBytes, totalVolGb)}</strong></span>
+                            <span style={{ color: barColor, fontWeight: 700 }}>{percentBar}%</span>
+                          </div>
+                          <div className="mt-queue-progress-bg">
+                            <div className="mt-queue-progress-bar" style={{ width: `${percentBar}%`, background: percentBar >= 80 ? `linear-gradient(90deg, ${barColor}, #ef4444)` : percentBar >= 60 ? `linear-gradient(90deg, #0284c7, ${barColor})` : barColor, boxShadow: percentBar >= 80 ? `0 0 8px ${barColor}66` : 'none', transition: 'all 0.3s ease' }} />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {queueMode === 'simple' && paginatedQueues.length > 0 && (
+          <div className="mt-pagination-bar" style={{ marginTop: '0.5rem' }}>
+            <span>Page {queuePage} of {totalQueuePages}</span>
+            <div className="mt-pagination-actions">
+              <button onClick={() => setQueuePage((p) => Math.max(1, p - 1))} disabled={queuePage === 1} className="mt-page-btn"><ChevronLeft size={14} /></button>
+              <button onClick={() => setQueuePage((p) => Math.min(totalQueuePages, p + 1))} disabled={queuePage === totalQueuePages} className="mt-page-btn"><ChevronRight size={14} /></button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

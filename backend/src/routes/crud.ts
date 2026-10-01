@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { pool } from '../db';
 import { requireAuth, requireRole } from '../auth';
+import { uploadBase64Image } from '../services/storageService';
 
 const router = Router();
 
@@ -533,17 +534,28 @@ router.post('/open-tickets', async (req, res) => {
     const ticketNumber = `TKT-${Date.now()}`;
     const now = new Date().toLocaleString('id-ID');
 
+    let finalProofBeforeUrl = proof_before_url;
+    if (proof_before_url && proof_before_url.startsWith('data:image/')) {
+      try {
+        const uploadRes = await uploadBase64Image(proof_before_url, 'tickets');
+        finalProofBeforeUrl = uploadRes.url;
+      } catch (uploadErr) {
+        console.error('Error auto-uploading base64 image:', uploadErr);
+      }
+    }
+
     const [result]: any = await pool.query(
       `INSERT INTO open_tickets 
         (ticket_number, full_name, id_number, category, unit_specification, email, whatsapp_number, service_type, description, status, priority, sla_limit_minutes, sla_breached, escalation_level, image_url, proof_before_url, created_at, updated_at) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "Open", ?, ?, 0, 1, ?, ?, ?, ?)`,
-      [ticketNumber, full_name, id_number, category, unit_specification || '', email, whatsapp_number, service_type, description, priority, sla_limit_minutes, image_url, proof_before_url, now, now]
+      [ticketNumber, full_name, id_number, category, unit_specification || '', email, whatsapp_number, service_type, description, priority, sla_limit_minutes, image_url, finalProofBeforeUrl, now, now]
     );
 
     res.status(201).json({ 
       id: result.insertId, 
       ticket_number: ticketNumber,
-      message: 'Ticket created successfully' 
+      message: 'Ticket created successfully',
+      proof_before_url: finalProofBeforeUrl
     });
   } catch (error) {
     console.error('Error creating ticket:', error);
@@ -647,6 +659,16 @@ router.put('/open-tickets/:id/status', async (req, res) => {
     let updateQuery = 'UPDATE open_tickets SET status = ?, updated_at = ?';
     const params: any[] = [status, now];
 
+    // Record resolved_at ONLY when status is set to Resolved or Closed
+    if (['Resolved', 'Closed'].includes(status)) {
+      if (!currentTicket.resolved_at || !['Resolved', 'Closed'].includes(currentTicket.status)) {
+        updateQuery += ', resolved_at = ?';
+        params.push(now);
+      }
+    } else if (['Open', 'In Progress'].includes(status)) {
+      updateQuery += ', resolved_at = NULL';
+    }
+
     if (assigned_user_id !== undefined) {
       updateQuery += ', assigned_user_id = ?, assigned_user_name = ?';
       params.push(assigned_user_id, assigned_user_name || null);
@@ -688,16 +710,42 @@ router.put('/open-tickets/:id/proof', async (req, res) => {
 
   try {
     const now = new Date().toLocaleString('id-ID');
+
+    let finalBefore = proof_before_url;
+    let finalAfter = proof_after_url;
+
+    if (proof_before_url && proof_before_url.startsWith('data:image/')) {
+      try {
+        const uploadRes = await uploadBase64Image(proof_before_url, 'tickets');
+        finalBefore = uploadRes.url;
+      } catch (err) {
+        console.error('Error auto-uploading before proof:', err);
+      }
+    }
+
+    if (proof_after_url && proof_after_url.startsWith('data:image/')) {
+      try {
+        const uploadRes = await uploadBase64Image(proof_after_url, 'tickets');
+        finalAfter = uploadRes.url;
+      } catch (err) {
+        console.error('Error auto-uploading after proof:', err);
+      }
+    }
+
     await pool.query(
       `UPDATE open_tickets SET 
         proof_before_url = COALESCE(?, proof_before_url),
         proof_after_url = COALESCE(?, proof_after_url),
         updated_at = ?
        WHERE id = ?`,
-      [proof_before_url, proof_after_url, now, id]
+      [finalBefore, finalAfter, now, id]
     );
 
-    res.json({ message: 'Bukti foto pengerjaan berhasil disimpan' });
+    res.json({ 
+      message: 'Bukti foto pengerjaan berhasil disimpan',
+      proof_before_url: finalBefore,
+      proof_after_url: finalAfter
+    });
   } catch (error) {
     console.error('Error uploading proof:', error);
     res.status(500).json({ error: 'Database error saving proof photos' });
@@ -741,14 +789,14 @@ router.put('/open-tickets/:id/bast', async (req, res) => {
     const now = new Date().toLocaleString('id-ID');
     const bastNumber = `BAST/${new Date().getFullYear()}/${String(id).padStart(5, '0')}`;
     
+    // BAST generation does NOT modify updated_at or resolved_at (resolution time remains strictly when ticket status became Resolved)
     await pool.query(
       `UPDATE open_tickets SET 
         bast_number = COALESCE(bast_number, ?),
         bast_signer_name = ?,
-        bast_signed_at = ?,
-        updated_at = ?
+        bast_signed_at = COALESCE(bast_signed_at, ?)
        WHERE id = ?`,
-      [bastNumber, bast_signer_name || 'Civitas Pengguna / Koordinator Ruangan', now, now, id]
+      [bastNumber, bast_signer_name || 'Civitas Pengguna / Koordinator Ruangan', now, id]
     );
 
     const [updated]: any = await pool.query('SELECT * FROM open_tickets WHERE id = ?', [id]);
@@ -761,7 +809,7 @@ router.put('/open-tickets/:id/bast', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error generating BAST:', error);
+    console.error('Error issuing BAST:', error);
     res.status(500).json({ error: 'Database error generating BAST' });
   }
 });

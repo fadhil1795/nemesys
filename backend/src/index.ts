@@ -53,6 +53,15 @@ import inventoryRouter from './routes/inventory';
 import nocMonitoringRouter from './routes/nocMonitoring';
 import notificationRouter from './routes/notifications';
 import { mikrotikDashboardRouter } from './routes/mikrotikDashboard';
+import uploadRouter from './routes/upload';
+import { uploadBase64Image } from './services/storageService';
+
+// Static file serving for physical uploads (with CORS)
+const uploadsDirectory = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadsDirectory)) {
+  fs.mkdirSync(uploadsDirectory, { recursive: true });
+}
+app.use('/uploads', express.static(uploadsDirectory));
 
 app.set('socketio', io);
 
@@ -64,6 +73,7 @@ app.use('/api/inventory', inventoryRouter);
 app.use('/api/monitoring', nocMonitoringRouter);
 app.use('/api/notifications', requireAuth, notificationRouter);
 app.use('/api/mikrotik-dashboard', mikrotikDashboardRouter);
+app.use('/api/upload', uploadRouter);
 
 // Broadcast database change helper (no-op on Vercel)
 async function broadcastUpdate() {
@@ -1185,15 +1195,26 @@ app.post('/api/public/submit-ticket', async (req, res) => {
     const ticketNumber = `TKT-${Date.now()}`;
     const now = new Date().toLocaleString('id-ID');
 
+    let finalImageUrl = image_url;
+    if (image_url && image_url.startsWith('data:image/')) {
+      try {
+        const uploadRes = await uploadBase64Image(image_url, 'tickets');
+        finalImageUrl = uploadRes.url;
+      } catch (err) {
+        console.error('Error auto-uploading public ticket image:', err);
+      }
+    }
+
     const [result]: any = await pool.query(
-      'INSERT INTO open_tickets (ticket_number, full_name, id_number, category, unit_specification, email, whatsapp_number, service_type, description, status, created_at, updated_at, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "Open", ?, ?, ?)',
-      [ticketNumber, full_name, id_number, category, unit_specification, email, whatsapp_number, service_type, description, now, now, image_url || null]
+      'INSERT INTO open_tickets (ticket_number, full_name, id_number, category, unit_specification, email, whatsapp_number, service_type, description, status, created_at, updated_at, image_url, proof_before_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "Open", ?, ?, ?, ?)',
+      [ticketNumber, full_name, id_number, category, unit_specification, email, whatsapp_number, service_type, description, now, now, finalImageUrl || null, finalImageUrl || null]
     );
 
     res.status(201).json({ 
       id: result.insertId, 
       ticket_number: ticketNumber,
-      message: 'Ticket berhasil dibuat! Anda akan menerima notifikasi di email dan WhatsApp.' 
+      message: 'Ticket berhasil dibuat! Anda akan menerima notifikasi di email dan WhatsApp.',
+      image_url: finalImageUrl
     });
     
     broadcastUpdate();
@@ -1301,8 +1322,8 @@ app.put('/api/tickets/:id/resolve', requireAuth, async (req, res) => {
 
     const now = new Date().toLocaleString('id-ID');
     await pool.query(
-      'UPDATE open_tickets SET status = ?, resolution_notes = ?, updated_at = ? WHERE id = ?',
-      [status, resolution_notes || 'Tindakan selesai.', now, ticketId]
+      'UPDATE open_tickets SET status = ?, resolution_notes = ?, updated_at = ?, resolved_at = COALESCE(resolved_at, ?) WHERE id = ?',
+      [status, resolution_notes || 'Tindakan selesai.', now, now, ticketId]
     );
 
     // If technician was assigned, make them Available again

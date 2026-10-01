@@ -62,8 +62,10 @@ import { Router as RouterIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { initGlobalErrorLogging } from './utils/clientLogger';
 import type { GenieACSDevice } from './types';
 
+// 'https://nemesys-iota.vercel.app'
 const rawBackendUrl = 
   import.meta.env.VITE_BACKEND_URL || 
+  // (window.location.hostname === 'http://localhost:5000' ? 'http://localhost:5000' : 'http://localhost:5000');
   (window.location.hostname === 'https://nemesys-iota.vercel.app' ? 'http://localhost:5000' : 'https://nemesys.vercel.app');
 
 export const BACKEND_URL = rawBackendUrl.replace(/\/+$/, '');
@@ -414,7 +416,7 @@ export default function App() {
       case 'noc-monitoring':
         return <NocDashboard token={token || ''} currentUserRole={currentUser?.role} currentUserName={currentUser?.name} />;
       case 'mikrotik-noc':
-        return <MikrotikDashboard token={token || ''} />;
+        return <MikrotikDashboard token={token || ''} socket={socket} />;
       case 'sla-report':
         return <SlaReportManager token={token || ''} currentUserRole={currentUser?.role} currentUserName={currentUser?.name} />;
       case 'profile':

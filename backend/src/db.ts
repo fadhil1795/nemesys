@@ -299,6 +299,12 @@ export async function initializeDatabase() {
     try {
       await pool.query("ALTER TABLE open_tickets ADD COLUMN bast_signed_at VARCHAR(100) NULL");
     } catch (e) {}
+    try {
+      await pool.query("ALTER TABLE open_tickets ADD COLUMN resolved_at VARCHAR(100) NULL");
+    } catch (e) {}
+    try {
+      await pool.query("UPDATE open_tickets SET resolved_at = updated_at WHERE status IN ('Resolved', 'Closed') AND (resolved_at IS NULL OR resolved_at = '')");
+    } catch (e) {}
 
     // Migration: Expand tasks status ENUM for Manager approve/reject workflow
     try {

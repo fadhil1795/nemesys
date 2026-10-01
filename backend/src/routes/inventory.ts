@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { pool, writeLog } from '../db';
 import { requireAuth, requireRole } from '../auth';
+import { uploadBase64Image } from '../services/storageService';
 
 const router = Router();
 
@@ -111,6 +112,16 @@ router.post('/assets', requireRole('Administrator', 'Manager'), async (req: Requ
       finalCode = `AST-${catPrefix}-${nextNum}`;
     }
 
+    let finalImageUrl = image_url;
+    if (image_url && image_url.startsWith('data:image/')) {
+      try {
+        const uploadRes = await uploadBase64Image(image_url, 'inventory');
+        finalImageUrl = uploadRes.url;
+      } catch (uploadErr) {
+        console.error('Error uploading asset image to S3:', uploadErr);
+      }
+    }
+
     const [result]: any = await pool.query(`
       INSERT INTO it_inventory_assets (
         asset_code, name, category, brand, model_number, serial_number, 
@@ -134,7 +145,7 @@ router.post('/assets', requireRole('Administrator', 'Manager'), async (req: Requ
       vendor || null,
       warranty_expiry || null,
       specs || null,
-      image_url || null,
+      finalImageUrl || null,
       notes || null
     ]);
 
@@ -164,7 +175,7 @@ router.post('/assets', requireRole('Administrator', 'Manager'), async (req: Requ
       VALUES (?, ?, ?, ?, NULL, ?)
     `, ['Asset Create', newId, name, `Registrasi aset baru [${finalCode}] ${name} di lokasi ${location}`, actorName]);
 
-    res.status(201).json({ id: newId, asset_code: finalCode, message: 'Aset IT berhasil ditambahkan' });
+    res.status(201).json({ id: newId, asset_code: finalCode, message: 'Aset IT berhasil ditambahkan', image_url: finalImageUrl });
   } catch (error: any) {
     console.error('Error creating IT asset:', error);
     if (error.code === 'ER_DUP_ENTRY') {
@@ -199,6 +210,16 @@ router.put('/assets/:id', requireRole('Administrator', 'Manager'), async (req: R
   } = req.body;
 
   try {
+    let finalImageUrl = image_url;
+    if (image_url && image_url.startsWith('data:image/')) {
+      try {
+        const uploadRes = await uploadBase64Image(image_url, 'inventory');
+        finalImageUrl = uploadRes.url;
+      } catch (uploadErr) {
+        console.error('Error uploading asset image on update:', uploadErr);
+      }
+    }
+
     await pool.query(`
       UPDATE it_inventory_assets SET
         asset_code = ?, name = ?, category = ?, brand = ?, model_number = ?, serial_number = ?,
@@ -223,7 +244,7 @@ router.put('/assets/:id', requireRole('Administrator', 'Manager'), async (req: R
       vendor || null,
       warranty_expiry || null,
       specs || null,
-      image_url || null,
+      finalImageUrl || null,
       notes || null,
       assetId
     ]);

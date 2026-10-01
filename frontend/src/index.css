@@ -7685,29 +7685,112 @@ html, body {
 .mt-data-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
 }
 
+/* ── Compact Table Mode: NOC-density ── */
 .mt-data-table th {
   background: rgba(30, 41, 59, 0.85);
   color: #94a3b8;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  padding: 0.65rem 0.85rem;
+  padding: 0.3rem 0.55rem;
   text-align: left;
   border-bottom: 1px solid rgba(71, 85, 105, 0.8);
+  white-space: nowrap;
 }
 
 .mt-data-table td {
-  padding: 0.7rem 0.85rem;
-  border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+  padding: 0.28rem 0.55rem;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.35);
   vertical-align: middle;
+  line-height: 1.35;
 }
 
 .mt-data-table tr:hover td {
-  background: rgba(56, 189, 248, 0.04);
+  background: rgba(56, 189, 248, 0.06);
+}
+
+/* ── Odometer / AnimatedCounter transitions ── */
+@keyframes odometer-slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes odometer-slide-down {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.mt-odometer {
+  display: inline-flex;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-weight: 800;
+  overflow: hidden;
+  line-height: 1;
+}
+
+.mt-odometer-digit {
+  display: inline-block;
+  animation: odometer-slide-up 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mt-metric-value {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-weight: 800;
+  transition: color 0.3s ease;
+}
+
+/* ── Sparkline inline mini-chart ── */
+.mt-sparkline-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 90px;
+}
+
+.mt-sparkline-svg {
+  flex-shrink: 0;
+}
+
+/* ── Conditional Formatting: Utilization color classes ── */
+.util-safe { color: #34d399 !important; }       /* 0-60% */
+.util-warning { color: #eab308 !important; }     /* 61-85% */
+.util-critical { color: #ef4444 !important; }    /* >85% */
+
+.util-bg-safe { background: rgba(52, 211, 153, 0.08); }
+.util-bg-warning { background: rgba(234, 179, 8, 0.08); }
+.util-bg-critical { background: rgba(239, 68, 68, 0.1); }
+
+/* ── Auto-hide toggle button ── */
+.mt-autohide-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(51, 65, 85, 0.6);
+  border-radius: 6px;
+  color: #94a3b8;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.mt-autohide-toggle:hover {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+.mt-autohide-toggle.active {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.4);
 }
 
 .mt-status-badge {
@@ -8028,24 +8111,25 @@ html, body {
 
 /* 10. Simple Queues & Bandwidth Shaper Section (Bottom of Page) */
 .mt-queues-section {
-  margin-top: 1.5rem;
-  padding: 1.25rem;
-  border-radius: 12px;
+  margin-top: 1rem;
+  padding: 0.85rem;
+  border-radius: 10px;
 }
 
 .mt-queue-progress-bg {
   width: 100%;
-  height: 6px;
-  background: rgba(51, 65, 85, 0.6);
+  height: 5px;
+  background: rgba(51, 65, 85, 0.5);
   border-radius: 9999px;
   overflow: hidden;
-  margin-top: 4px;
+  margin-top: 3px;
 }
 
 .mt-queue-progress-bar {
   height: 100%;
   background: linear-gradient(90deg, #38bdf8, #818cf8);
   border-radius: 9999px;
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1), background 0.3s ease, box-shadow 0.3s ease;
 }
 
 /* ==========================================================================
@@ -8261,6 +8345,126 @@ html, body {
     text-align: center !important;
     page-break-inside: avoid !important;
   }
+}
+
+/* ==========================================================================
+   HYPER REAL-TIME NOC & BANDWIDTH STREAMING STYLES (ECG & Ticker)
+   ========================================================================== */
+
+/* 1. Data Flashing / Trading Ticker Keyframes */
+@keyframes tickerFlashSurge {
+  0% {
+    background-color: rgba(16, 185, 129, 0.38);
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+    color: #6ee7b7;
+    transform: scale(1.02);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+    transform: scale(1);
+  }
+}
+
+@keyframes tickerFlashDrop {
+  0% {
+    background-color: rgba(239, 68, 68, 0.38);
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
+    color: #fca5a5;
+    transform: scale(1.02);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+    transform: scale(1);
+  }
+}
+
+.flash-surge {
+  animation: tickerFlashSurge 1.2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  border-radius: 4px;
+  display: inline-block;
+  padding: 1px 6px;
+}
+
+.flash-drop {
+  animation: tickerFlashDrop 1.2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  border-radius: 4px;
+  display: inline-block;
+  padding: 1px 6px;
+}
+
+/* 2. Live ECG Pulsing Dots & Badges */
+@keyframes ecgPulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.7);
+  }
+  70% {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 8px rgba(6, 182, 212, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(6, 182, 212, 0);
+  }
+}
+
+.live-stream-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(6, 182, 212, 0.12);
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  color: #38bdf8;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.live-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #06b6d4;
+  animation: ecgPulse 1.6s infinite;
+}
+
+.live-pulse-dot.emerald {
+  background-color: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
+}
+
+/* 3. Live Sparkline SVG Styling */
+.sparkline-container {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(51, 65, 85, 0.6);
+  border-radius: 6px;
+  padding: 2px 6px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.sparkline-container:hover {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(56, 189, 248, 0.6);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+  transform: translateY(-1px);
+}
+
+/* 4. Table Row Glide Transitions */
+.smooth-glide-row {
+  transition: background-color 0.25s ease, transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.smooth-glide-row:hover {
+  background-color: rgba(30, 41, 59, 0.75) !important;
 }
 
 

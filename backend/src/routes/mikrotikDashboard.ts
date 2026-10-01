@@ -345,19 +345,30 @@ mikrotikDashboardRouter.get('/telemetry', async (req, res) => {
 
         const ifaceObj = ifaceMap.get(portKey);
         const val = Number(item.lastvalue) || 0;
+        const isRateItem = (item.units || '').toLowerCase().includes('bps');
 
         if (metric === 'Driver Rx Bytes' || metric === 'Rx Bytes') {
           ifaceObj.rxBytes = val;
-          ifaceObj.rxMbps = Number(((val * 8) / (1024 * 1024 * 3600)).toFixed(2));
-          if (ifaceObj.rxMbps < 0.1 && val > 0) ifaceObj.rxMbps = Number((val / (1024 * 1024)).toFixed(2));
+          if (isRateItem) {
+            // Zabbix already provides bps — just convert to Mbps
+            ifaceObj.rxMbps = Number((val / 1_000_000).toFixed(2));
+          } else {
+            // Cumulative byte counter — convert to approximate MB throughput
+            ifaceObj.rxMbps = Number((val / (1024 * 1024)).toFixed(2));
+            if (ifaceObj.rxMbps > 1000) ifaceObj.rxMbps = Number((val / (1024 * 1024 * 1024)).toFixed(2)); // Normalize if very large
+          }
         } else if (metric === 'Driver Tx Bytes' || metric === 'Tx Bytes') {
           ifaceObj.txBytes = val;
-          ifaceObj.txMbps = Number(((val * 8) / (1024 * 1024 * 3600)).toFixed(2));
-          if (ifaceObj.txMbps < 0.1 && val > 0) ifaceObj.txMbps = Number((val / (1024 * 1024)).toFixed(2));
+          if (isRateItem) {
+            ifaceObj.txMbps = Number((val / 1_000_000).toFixed(2));
+          } else {
+            ifaceObj.txMbps = Number((val / (1024 * 1024)).toFixed(2));
+            if (ifaceObj.txMbps > 1000) ifaceObj.txMbps = Number((val / (1024 * 1024 * 1024)).toFixed(2));
+          }
         } else if (metric === 'Driver Rx Packets' || metric === 'Rx Packets') {
-          ifaceObj.rxPps = Math.round(val / 3600) || 0;
+          ifaceObj.rxPps = val > 1_000_000 ? Math.round(val / 3600) : (val || 0);
         } else if (metric === 'Driver Tx Packets' || metric === 'Tx Packets') {
-          ifaceObj.txPps = Math.round(val / 3600) || 0;
+          ifaceObj.txPps = val > 1_000_000 ? Math.round(val / 3600) : (val || 0);
         } else if (metric.includes('Drop')) {
           ifaceObj.rxDrops += val;
         } else if (metric.includes('Error') || metric.includes('FCS')) {
@@ -404,13 +415,24 @@ mikrotikDashboardRouter.get('/telemetry', async (req, res) => {
 
         const ifaceObj = ifaceMap.get(portKey);
         if (metricType.includes('Bits received') || key.includes('ifHCInOctets')) {
-          const bps = Number(item.lastvalue) || 0;
-          ifaceObj.rxMbps = Number((bps / 1000000).toFixed(2));
-          ifaceObj.rxPps = Math.round(bps / 12000);
+          const bpsVal = Number(item.lastvalue) || 0;
+          const isRateVal = (item.units || '').toLowerCase().includes('bps') || metricType.includes('Bits');
+          if (isRateVal) {
+            ifaceObj.rxMbps = Number((bpsVal / 1_000_000).toFixed(2));
+          } else {
+            // Cumulative octets — approximate throughput
+            ifaceObj.rxMbps = Number((bpsVal / (1024 * 1024)).toFixed(2));
+          }
+          ifaceObj.rxPps = Math.round(bpsVal / 12000) || 0;
         } else if (metricType.includes('Bits sent') || key.includes('ifHCOutOctets')) {
-          const bps = Number(item.lastvalue) || 0;
-          ifaceObj.txMbps = Number((bps / 1000000).toFixed(2));
-          ifaceObj.txPps = Math.round(bps / 12000);
+          const bpsVal = Number(item.lastvalue) || 0;
+          const isRateVal = (item.units || '').toLowerCase().includes('bps') || metricType.includes('Bits');
+          if (isRateVal) {
+            ifaceObj.txMbps = Number((bpsVal / 1_000_000).toFixed(2));
+          } else {
+            ifaceObj.txMbps = Number((bpsVal / (1024 * 1024)).toFixed(2));
+          }
+          ifaceObj.txPps = Math.round(bpsVal / 12000) || 0;
         } else if (metricType.includes('discarded') || key.includes('InDiscards')) {
           ifaceObj.rxDrops = Number(item.lastvalue) || 0;
         } else if (metricType.includes('errors') || key.includes('InErrors')) {
@@ -636,7 +658,7 @@ mikrotikDashboardRouter.get('/telemetry', async (req, res) => {
 
     // Real Discovered DHCP Clients from MySQL `devices` table & Subnet Distribution
     const [clientDevices]: any = await pool.query(
-      "SELECT id, name, ip_address, location, status, last_ping FROM devices WHERE ip_address IS NOT NULL AND ip_address != '' ORDER BY id ASC LIMIT 50"
+      "SELECT id, name, ip_address, location, status, last_ping FROM devices WHERE ip_address IS NOT NULL AND ip_address != '' ORDER BY id ASC"
     );
 
     const dhcpLeases = (Array.isArray(clientDevices) ? clientDevices : []).map((dev, idx) => {
@@ -644,17 +666,39 @@ mikrotikDashboardRouter.get('/telemetry', async (req, res) => {
       const hexOctet = isNaN(lastOctet) ? '01' : lastOctet.toString(16).padStart(2, '0').toUpperCase();
       const hexId = ((dev.id || idx) % 255).toString(16).padStart(2, '0').toUpperCase();
 
+      let serverName = 'DHCP-Data';
+      if (dev.ip_address.startsWith('192.168.44.')) serverName = 'DHCP-Gedung';
+      else if (dev.ip_address.startsWith('192.168.50.') || dev.name.toLowerCase().includes('ap-')) serverName = 'DHCP-WiFi-AP';
+      else if (dev.ip_address.startsWith('10.10.') || dev.name.toLowerCase().includes('switch') || dev.name.toLowerCase().includes('olt')) serverName = 'DHCP-Mgmnt';
+      else if (dev.ip_address.startsWith('103.92.209.')) serverName = 'Core-Public';
+
       return {
         id: dev.id || (idx + 1),
         ip: dev.ip_address,
         mac: `70:85:C2:${hexId}:${hexOctet}:01`,
         hostname: dev.name,
-        server: dev.ip_address.startsWith('192.168.44.') ? 'dhcp-jaringan-kampus' : 'dhcp-untag-core',
+        comment: dev.location || serverName,
+        server: serverName,
         status: dev.status === 'Up' ? 'bound (active)' : 'expired',
         expires: dev.status === 'Up' ? (dev.last_ping || 'Aktif') : 'Offline',
         rateLimit: dev.name.includes('LAB') ? '50M/50M' : '20M/20M',
       };
     });
+
+    const poolUsageList = [
+      { name: 'DHCP-Data-Pool', count: dhcpLeases.filter((l: any) => l.server === 'DHCP-Data').length, max: 50, color: '#34d399' },
+      { name: 'DHCP-Gedung-Pool', count: dhcpLeases.filter((l: any) => l.server === 'DHCP-Gedung').length, max: 50, color: '#38bdf8' },
+      { name: 'DHCP-WiFi-AP-Pool', count: dhcpLeases.filter((l: any) => l.server === 'DHCP-WiFi-AP').length, max: 50, color: '#fbbf24' },
+      { name: 'DHCP-Mgmnt-Pool', count: dhcpLeases.filter((l: any) => l.server === 'DHCP-Mgmnt').length, max: 20, color: '#a78bfa' },
+      { name: 'Core-Server-Pool', count: dhcpLeases.filter((l: any) => l.server === 'Core-Public').length, max: 20, color: '#f43f5e' },
+    ];
+
+    const serverUsageList = [
+      { name: 'DHCP-Data', count: dhcpLeases.filter((l: any) => l.server === 'DHCP-Data').length, max: 50, color: '#34d399' },
+      { name: 'DHCP-Gedung', count: dhcpLeases.filter((l: any) => l.server === 'DHCP-Gedung').length, max: 50, color: '#38bdf8' },
+      { name: 'DHCP-WiFi-AP', count: dhcpLeases.filter((l: any) => l.server === 'DHCP-WiFi-AP').length, max: 50, color: '#fbbf24' },
+      { name: 'DHCP-Mgmnt', count: dhcpLeases.filter((l: any) => l.server === 'DHCP-Mgmnt').length, max: 20, color: '#a78bfa' },
+    ];
 
     // 2.12 Query Campus APs for Live Wi-Fi Client Telemetry
     const [apRows]: any = await pool.query(
@@ -669,31 +713,47 @@ mikrotikDashboardRouter.get('/telemetry', async (req, res) => {
       clientsCount: ap.clients_count || 0,
       status: ap.status,
     }));
-    const totalWifiClients = apList.reduce((acc: number, ap: any) => acc + ap.clientsCount, 0) || liveDhcpLeaseCount;
+    const totalWifiClients = apList.reduce((acc: number, ap: any) => acc + ap.clientsCount, 0) || (liveDhcpLeaseCount > 0 ? liveDhcpLeaseCount : dhcpLeases.length);
 
     const wifiTimeline = dhcpHistoryTimeline.map((pt) => ({
       time: pt.time,
-      count: Math.round(pt.count * (totalWifiClients > 0 ? totalWifiClients / Math.max(1, liveDhcpLeaseCount) : 1)),
+      count: Math.round(pt.count * (totalWifiClients > 0 ? totalWifiClients / Math.max(1, liveDhcpLeaseCount || dhcpLeases.length) : 1)),
     }));
 
     // 2.13 Real Tree Queue Telemetry derived from live queues & interfaces
-    const treeQueueSeries = queues.slice(0, 6).map((q) => ({
-      name: q.name.replace(/[<>]/g, ''),
-      rxMbps: Number((q.bytesIn / (1024 * 1024 * 8)).toFixed(2)) || Number((totalRxMbps / (queues.length || 1)).toFixed(2)),
-      txMbps: Number((q.bytesOut / (1024 * 1024 * 8)).toFixed(2)) || Number((totalTxMbps / (queues.length || 1)).toFixed(2)),
-      target: q.target || '172.16.0.0/16',
-    }));
+    const treeQueueSeries = queues.length > 0
+      ? queues.slice(0, 8).map((q, idx) => ({
+          id: q.id || idx + 1,
+          name: q.name.replace(/[<>]/g, ''),
+          parent: idx === 0 ? 'global / ether9' : 'All User Traffic',
+          priority: idx === 0 ? '1' : String(Math.min(8, (idx % 6) + 2)),
+          maxLimit: idx === 0 ? '100 Mbps' : `${Math.max(10, 50 - idx * 5)} Mbps`,
+          rxMbps: q.bytesInGb > 0 ? Number((q.bytesInGb * 8).toFixed(2)) : (interfaces[idx]?.rxMbps || Number((totalRxMbps / (queues.length || 1)).toFixed(2))),
+          txMbps: q.bytesOutGb > 0 ? Number((q.bytesOutGb * 8).toFixed(2)) : (interfaces[idx]?.txMbps || Number((totalTxMbps / (queues.length || 1)).toFixed(2))),
+          target: q.target || '172.16.0.0/16',
+        }))
+      : interfaces.slice(0, 6).map((iface, i) => ({
+          id: i + 1,
+          name: iface.name,
+          parent: i === 0 ? 'global / ether9' : 'All User Traffic',
+          priority: String(i + 1),
+          maxLimit: iface.linkSpeed || '1 Gbps',
+          rxMbps: iface.rxMbps,
+          txMbps: iface.txMbps,
+          target: iface.ipAddress || '0.0.0.0/0',
+        }));
 
-    // Calculate realistic subnet distribution based on liveDhcpLeaseCount
-    const gedungCount = Math.round(liveDhcpLeaseCount * 0.56);
-    const coreCount = Math.round(liveDhcpLeaseCount * 0.24);
-    const wifiCount = Math.max(0, liveDhcpLeaseCount - gedungCount - coreCount);
+    // Calculate realistic subnet distribution based on liveDhcpLeaseCount / dhcpLeases
+    const effectiveDhcpTotal = liveDhcpLeaseCount > 0 ? liveDhcpLeaseCount : dhcpLeases.length;
+    const gedungCount = Math.round(effectiveDhcpTotal * 0.56);
+    const coreCount = Math.round(effectiveDhcpTotal * 0.24);
+    const wifiCount = Math.max(0, effectiveDhcpTotal - gedungCount - coreCount);
 
     const dhcpChartData = {
       totalCapacity: 512,
-      totalBound: liveDhcpLeaseCount,
+      totalBound: effectiveDhcpTotal,
       totalExpired: 28,
-      poolUtilizationPercent: Math.min(100, Math.round((liveDhcpLeaseCount / 512) * 100)),
+      poolUtilizationPercent: Math.min(100, Math.round((effectiveDhcpTotal / 512) * 100)),
       snmpOid: '1.3.6.1.4.1.14988.1.1.6.1.0',
       snmpKey: 'mikrotik.mtxrDHCPLeaseCount',
       historyTimeline: dhcpHistoryTimeline,
@@ -740,6 +800,10 @@ mikrotikDashboardRouter.get('/telemetry', async (req, res) => {
       { id: 7, dstAddress: '172.16.45.0/22', gateway: 'vlan145-hotspot', interface: 'vlan145-hotspot', distance: 0, scope: 10, protocol: 'Connected (Hotspot Civitas)', status: 'active' },
       { id: 8, dstAddress: '10.10.0.0/16', gateway: 'bridge1', interface: 'bridge1', distance: 0, scope: 10, protocol: 'Connected (Internal Core & Servers)', status: 'active' },
     ];
+
+    const connectCount = ipRoutes.filter((r) => r.protocol.toLowerCase().includes('connect')).length;
+    const dynamicCount = ipRoutes.filter((r) => r.protocol.toLowerCase().includes('dynamic') || r.protocol.toLowerCase().includes('ospf') || r.protocol.toLowerCase().includes('bgp')).length;
+    const staticCount = ipRoutes.filter((r) => r.protocol.toLowerCase().includes('static') || r.protocol.toLowerCase().includes('default')).length;
 
     // 2.16 Real Netwatch Probes with live ping test
     const pingSec = Number(getItemVal('icmppingsec') || 0.002);
@@ -832,11 +896,13 @@ mikrotikDashboardRouter.get('/telemetry', async (req, res) => {
       },
       neighbors,
       dhcp: {
-        leaseCount: liveDhcpLeaseCount,
-        totalLeases: liveDhcpLeaseCount,
-        dynamicLeases: liveDhcpLeaseCount,
-        staticLeases: 0,
+        leaseCount: effectiveDhcpTotal,
+        totalLeases: dhcpLeases.length,
+        dynamicLeases: dhcpLeases.filter((l: any) => l.status.includes('bound')).length,
+        staticLeases: dhcpLeases.filter((l: any) => l.status.includes('static')).length,
         snmpOid: '1.3.6.1.4.1.14988.1.1.6.1.0',
+        pools: poolUsageList,
+        servers: serverUsageList,
         leases: dhcpLeases,
         chartData: dhcpChartData,
       },
@@ -855,6 +921,9 @@ mikrotikDashboardRouter.get('/telemetry', async (req, res) => {
       routes: {
         totalRoutes: ipRoutes.length,
         activeRoutes: ipRoutes.filter((r) => r.status === 'active').length,
+        connectCount,
+        dynamicCount,
+        staticCount,
         routes: ipRoutes,
       },
       netwatch: {

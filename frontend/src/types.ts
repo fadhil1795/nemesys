@@ -141,6 +141,7 @@ export interface UserTicket {
   assigned_user_name: string | null;
   created_at: string;
   updated_at: string;
+  resolved_at?: string | null;
   resolution_notes?: string | null;
   image_url?: string | null;
   proof_before_url?: string | null;

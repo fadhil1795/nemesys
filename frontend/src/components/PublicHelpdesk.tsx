@@ -45,18 +45,64 @@ export const PublicHelpdesk: React.FC<PublicHelpdeskProps> = ({ onBackToLogin })
   const [searchResults, setSearchResults] = useState<UserTicket[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
 
+  const [uploadingImage, setUploadingImage] = useState(false);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert("Ukuran gambar maksimal 2MB!");
-      return;
-    }
-
+    setUploadingImage(true);
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setImageUrl(reader.result as string);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = async () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const MAX_SIZE = 1200;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height = Math.round((height * MAX_SIZE) / width);
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width = Math.round((width * MAX_SIZE) / height);
+              height = MAX_SIZE;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+          // Upload directly to Garage S3 via Backend
+          const res = await fetch(`${BACKEND_URL}/api/upload/ticket-photo-base64`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ image: dataUrl, folder: 'tickets' })
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            setImageUrl(data.url);
+          } else {
+            setImageUrl(dataUrl);
+          }
+        } catch (err) {
+          console.error('Upload failed:', err);
+          setImageUrl(event.target?.result as string);
+        } finally {
+          setUploadingImage(false);
+        }
+      };
+      img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
   };
@@ -690,11 +736,26 @@ export const PublicHelpdesk: React.FC<PublicHelpdeskProps> = ({ onBackToLogin })
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ fontSize: '13.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>Upload Foto Bukti Kendala</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label style={{ fontSize: '13.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  Upload Foto Bukti Kendala (Opsional)
+                </label>
+                {uploadingImage && (
+                  <span style={{ fontSize: '12px', color: '#38bdf8', fontWeight: 600 }}>
+                    Mengunggah ke Cloud Storage...
+                  </span>
+                )}
+                {imageUrl && !uploadingImage && (
+                  <span style={{ fontSize: '12px', color: '#10b981', fontWeight: 600 }}>
+                    ✓ Foto tersimpan
+                  </span>
+                )}
+              </div>
               <input 
                 type="file" 
                 accept="image/*"
                 onChange={handleFileChange}
+                disabled={uploadingImage}
                 style={{
                   padding: '10px 12px',
                   borderRadius: '8px',
