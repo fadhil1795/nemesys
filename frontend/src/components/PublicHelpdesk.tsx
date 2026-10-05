@@ -19,6 +19,41 @@ import {
 import { BACKEND_URL } from '../App';
 import type { UserTicket } from '../types';
 
+const SERVICE_TYPES = [
+  'Kendala Jaringan WiFi / LAN',
+  'Layanan Webmail & SSO',
+  'Kendala Teknis Hardware',
+  'Kendala Teknis Software',
+  'Koneksi Antar Gedung / Fiber Optic',
+  'Request Perubahan Data Website',
+  'Request Publikasi Informasi',
+  'Lainnya'
+];
+
+const CATEGORIES = [
+  'Mahasiswa',
+  'Dosen',
+  'Tendik',
+  'Staf Rektorat',
+  'Staf Fakultas / Prodi',
+  'Pimpinan',
+  'Lainnya'
+];
+
+const BUILDINGS = [
+  'Gedung B',
+  'Gedung C',
+  'Gedung D',
+  'Gedung F',
+  'Perpustakaan',
+  'Ormawa',
+  'Office',
+  'Rektorat',
+  'PMB',
+  'Perpenas',
+  'BAAK'
+];
+
 interface PublicHelpdeskProps {
   onBackToLogin: () => void;
 }
@@ -28,10 +63,10 @@ export const PublicHelpdesk: React.FC<PublicHelpdeskProps> = ({ onBackToLogin })
   const [fullName, setFullName] = useState('');
   const [idNumber, setIdNumber] = useState('');
   const [category, setCategory] = useState('Mahasiswa');
-  const [unitSpecification, setUnitSpecification] = useState('');
+  const [unitSpecification, setUnitSpecification] = useState('Gedung B');
   const [email, setEmail] = useState('');
   const [whatsappNumber, setWhatsappNumber] = useState('');
-  const [serviceType, setServiceType] = useState('Layanan Webmail');
+  const [serviceType, setServiceType] = useState('Kendala Jaringan WiFi / LAN');
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState<string | null>(null);
 
@@ -139,9 +174,11 @@ export const PublicHelpdesk: React.FC<PublicHelpdeskProps> = ({ onBackToLogin })
         // Reset form
         setFullName('');
         setIdNumber('');
-        setUnitSpecification('');
+        setCategory('Mahasiswa');
+        setUnitSpecification('Gedung B');
         setEmail('');
         setWhatsappNumber('');
+        setServiceType('Kendala Jaringan WiFi / LAN');
         setDescription('');
         setImageUrl(null);
       } else {
@@ -622,22 +659,15 @@ export const PublicHelpdesk: React.FC<PublicHelpdeskProps> = ({ onBackToLogin })
                     fontSize: '14px'
                   }}
                 >
-                  <option value="Mahasiswa">Mahasiswa</option>
-                  <option value="Dosen">Dosen</option>
-                  <option value="Tendik">Tendik (Tenaga Kependidikan)</option>
-                  <option value="Staf Rektorat">Staf Rektorat</option>
-                  <option value="Staf Fakultas/Prodi">Staf Fakultas/Prodi</option>
-                  <option value="Pimpinan">Pimpinan</option>
-                  <option value="Lainnya">Lainnya</option>
+                  {CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
                 </select>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <label style={{ fontSize: '13.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>Spesifikasi Unit/Instansi <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                <input 
-                  type="text" 
-                  required 
-                  placeholder="Contoh: Fakultas Teknik / Prodi Informatika"
+                <label style={{ fontSize: '13.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>Gedung / Unit Lokasi <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                <select
                   value={unitSpecification}
                   onChange={(e) => setUnitSpecification(e.target.value)}
                   style={{
@@ -648,7 +678,11 @@ export const PublicHelpdesk: React.FC<PublicHelpdeskProps> = ({ onBackToLogin })
                     color: '#fff',
                     fontSize: '14px'
                   }}
-                />
+                >
+                  {BUILDINGS.map((b) => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -706,12 +740,9 @@ export const PublicHelpdesk: React.FC<PublicHelpdeskProps> = ({ onBackToLogin })
                   fontSize: '14px'
                 }}
               >
-                <option value="Layanan Webmail">Layanan Webmail</option>
-                <option value="Kendala Teknis Hardware">Kendala Teknis Hardware</option>
-                <option value="Kendala Teknis Software">Kendala Teknis Software</option>
-                <option value="Kendala Jaringan">Kendala Jaringan</option>
-                <option value="Request Perubahan Data Website">Request Perubahan Data Website</option>
-                <option value="Request Publikasi Informasi">Request Publikasi Informasi</option>
+                {SERVICE_TYPES.map((st) => (
+                  <option key={st} value={st}>{st}</option>
+                ))}
               </select>
             </div>
 

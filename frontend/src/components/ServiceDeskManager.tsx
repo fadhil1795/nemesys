@@ -106,6 +106,7 @@ const SERVICE_TYPES = [
 const CATEGORIES = [
   'Mahasiswa',
   'Dosen',
+  'Tendik',
   'Staf Rektorat',
   'Staf Fakultas / Prodi',
   'Pimpinan',
@@ -114,15 +115,17 @@ const CATEGORIES = [
 ];
 
 const BUILDINGS = [
-  'Gedung Rektorat Lt. 1-3',
-  'Gedung Fakultas Teknik',
-  'Gedung Fakultas Ilmu Komputer',
-  'Gedung Perpustakaan Pusat',
-  'Gedung Laboratorium Terpadu',
-  'Gedung Pascasarjana',
-  'Auditorium Utama',
-  'Asrama Mahasiswa / Rusunawa',
-  'Area Outdoor Kampus'
+  'Gedung B',
+  'Gedung C',
+  'Gedung D',
+  'Gedung F',
+  'Perpustakaan',
+  'Ormawa',
+  'Office',
+  'Rektorat',
+  'PMB',
+  'Perpenas',
+  'BAAK'
 ];
 
 export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
@@ -179,7 +182,7 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
     full_name: '',
     id_number: '',
     category: 'Mahasiswa',
-    unit_specification: 'Gedung Rektorat Lt. 1-3',
+    unit_specification: 'Gedung B',
     email: '',
     whatsapp_number: '',
     service_type: 'Kendala Jaringan WiFi / LAN',
@@ -451,7 +454,7 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
           full_name: '',
           id_number: '',
           category: 'Mahasiswa',
-          unit_specification: 'Gedung Rektorat Lt. 1-3',
+          unit_specification: 'Gedung B',
           email: '',
           whatsapp_number: '',
           service_type: 'Kendala Jaringan WiFi / LAN',
