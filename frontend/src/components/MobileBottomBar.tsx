@@ -18,7 +18,8 @@ import {
   ShieldAlert, 
   Terminal, 
   User as UserIcon, 
-  Settings
+  Settings,
+  Building2
 } from 'lucide-react';
 import type { AuthUser } from '../App';
 
@@ -315,6 +316,11 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
 
                   {currentUser?.role === 'Administrator' && (
                     <>
+                      <button onClick={() => handleNavClick('master-gedung')} style={getItemStyle(currentMenu === 'master-gedung')}>
+                        <Building2 size={16} color="#3b82f6" />
+                        <span>Master Gedung</span>
+                      </button>
+
                       <button onClick={() => handleNavClick('manage')} style={getItemStyle(currentMenu === 'manage')}>
                         <ShieldAlert size={16} color="#f87171" />
                         <span>Manage System</span>

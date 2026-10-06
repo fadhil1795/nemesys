@@ -23,6 +23,7 @@ import {
   Award,
   Globe,
   MapPin,
+  Building2,
   User as UserIcon
 } from 'lucide-react';
 import { io } from 'socket.io-client';
@@ -43,6 +44,7 @@ import { TelegramBot } from './components/TelegramBot';
 import { Login } from './components/Login';
 import { CrudManager } from './components/CrudManager';
 import { EditLocation } from './components/EditLocation';
+import { MasterGedungRuangan } from './components/MasterGedungRuangan';
 import { PublicHelpdesk } from './components/PublicHelpdesk';
 import { ServiceDeskManager } from './components/ServiceDeskManager';
 import { GacsDeviceList } from './components/GacsDeviceList';
@@ -389,6 +391,9 @@ export default function App() {
         return <CrudManager devices={devices} users={users} token={token || ''} onRefresh={fetchData} />;
       case 'edit-location':
         return <EditLocation devices={devices} token={token || ''} onRefresh={fetchData} categories={categories} />;
+      case 'master-gedung':
+      case 'master-ruangan':
+        return <MasterGedungRuangan token={token || ''} currentUserRole={currentUser?.role} onRefresh={fetchData} />;
       // ---- GACS Routes ----
       case 'gacs-devices':
         if (selectedGacsDevice) {
@@ -535,7 +540,10 @@ export default function App() {
           {/* 4. Admin Panel */}
           {currentUser.role === 'Administrator' && (
             <>
-              <span className="menu-section-title">Admin Panel</span>
+              <span className="menu-section-title">Master Data &amp; Admin</span>
+              <a className={`menu-item ${currentMenu === 'master-gedung' ? 'active' : ''}`} onClick={() => setCurrentMenu('master-gedung')} title="Master Data → Gedung">
+                <Building2 size={17} /> <span className="menu-item-text">Master Gedung &amp; Ruangan</span>
+              </a>
               <a className={`menu-item ${currentMenu === 'manage' ? 'active' : ''}`} onClick={() => setCurrentMenu('manage')} title="Manage System">
                 <ShieldAlert size={17} /> <span className="menu-item-text">Manage System</span>
               </a>

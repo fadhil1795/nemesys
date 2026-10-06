@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldAlert, 
   Mail, 
@@ -81,6 +81,38 @@ export const PublicHelpdesk: React.FC<PublicHelpdeskProps> = ({ onBackToLogin })
   const [searchError, setSearchError] = useState<string | null>(null);
 
   const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Dynamic Master Gedung & Ruangan state
+  const [gedungsList, setGedungsList] = useState<Array<{ id: number; kode: string; nama: string }>>([]);
+  const [ruangansList, setRuangansList] = useState<Array<{ id: number; gedung_id: number; kode: string; nama: string; lantai: string }>>([]);
+  const [selectedGedungId, setSelectedGedungId] = useState<number | null>(null);
+  const [selectedRuanganId, setSelectedRuanganId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fetchMasterData = async () => {
+      try {
+        const [gRes, rRes] = await Promise.all([
+          fetch(`${BACKEND_URL}/api/gedungs?status=Aktif`),
+          fetch(`${BACKEND_URL}/api/ruangans?status=Aktif`)
+        ]);
+        if (gRes.ok) {
+          const gData = await gRes.json();
+          if (Array.isArray(gData) && gData.length > 0) {
+            setGedungsList(gData);
+          }
+        }
+        if (rRes.ok) {
+          const rData = await rRes.json();
+          if (Array.isArray(rData)) {
+            setRuangansList(rData);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load dynamic Gedung/Ruangan master data:', err);
+      }
+    };
+    fetchMasterData();
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -665,24 +697,76 @@ export const PublicHelpdesk: React.FC<PublicHelpdeskProps> = ({ onBackToLogin })
                 </select>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <label style={{ fontSize: '13.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>Gedung / Unit Lokasi <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                <select
-                  value={unitSpecification}
-                  onChange={(e) => setUnitSpecification(e.target.value)}
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    backgroundColor: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-color)',
-                    color: '#fff',
-                    fontSize: '14px'
-                  }}
-                >
-                  {BUILDINGS.map((b) => (
-                    <option key={b} value={b}>{b}</option>
-                  ))}
-                </select>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>Gedung Lokasi <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                  <select
+                    value={selectedGedungId || ''}
+                    onChange={(e) => {
+                      const gId = parseInt(e.target.value) || null;
+                      setSelectedGedungId(gId);
+                      setSelectedRuanganId(null);
+                      const gObj = gedungsList.find(g => g.id === gId);
+                      if (gObj) {
+                        setUnitSpecification(gObj.nama);
+                      } else {
+                        setUnitSpecification(e.target.value || 'Gedung B');
+                      }
+                    }}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      backgroundColor: 'var(--bg-secondary)',
+                      border: '1px solid var(--border-color)',
+                      color: '#fff',
+                      fontSize: '14px'
+                    }}
+                  >
+                    <option value="">-- Pilih Gedung --</option>
+                    {gedungsList.length > 0 ? (
+                      gedungsList.map((g) => (
+                        <option key={g.id} value={g.id}>{g.nama} ({g.kode})</option>
+                      ))
+                    ) : (
+                      BUILDINGS.map((b) => (
+                        <option key={b} value={b}>{b}</option>
+                      ))
+                    )}
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    Ruangan <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>(Opsional)</span>
+                  </label>
+                  <select
+                    value={selectedRuanganId || ''}
+                    disabled={!selectedGedungId}
+                    onChange={(e) => {
+                      const rId = parseInt(e.target.value) || null;
+                      setSelectedRuanganId(rId);
+                      const gObj = gedungsList.find(g => g.id === selectedGedungId);
+                      const rObj = ruangansList.find(r => r.id === rId);
+                      if (gObj) {
+                        setUnitSpecification(rObj ? `${gObj.nama} - ${rObj.nama} (${rObj.kode})` : gObj.nama);
+                      }
+                    }}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      backgroundColor: selectedGedungId ? 'var(--bg-secondary)' : 'rgba(255,255,255,0.05)',
+                      border: '1px solid var(--border-color)',
+                      color: selectedGedungId ? '#fff' : '#64748b',
+                      fontSize: '14px',
+                      cursor: selectedGedungId ? 'pointer' : 'not-allowed'
+                    }}
+                  >
+                    <option value="">{selectedGedungId ? '-- Pilih Ruangan --' : '-- Pilih Gedung Terlebih Dahulu --'}</option>
+                    {ruangansList.filter(r => r.gedung_id === selectedGedungId).map((r) => (
+                      <option key={r.id} value={r.id}>{r.nama} ({r.kode}) - Lt. {r.lantai}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 

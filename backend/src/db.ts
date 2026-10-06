@@ -149,7 +149,8 @@ export async function initializeDatabase() {
     try { await pool.query("ALTER TABLE custom_missions ADD COLUMN date_finished VARCHAR(100) NULL"); } catch (e) {}
     try { await pool.query("ALTER TABLE custom_missions ADD COLUMN duration_str VARCHAR(100) NULL"); } catch (e) {}
     try { await pool.query("ALTER TABLE custom_missions ADD COLUMN note TEXT NULL"); } catch (e) {}
-    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN mission_image VARCHAR(255) NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions ADD COLUMN mission_image LONGTEXT NULL"); } catch (e) {}
+    try { await pool.query("ALTER TABLE custom_missions MODIFY COLUMN mission_image LONGTEXT NULL"); } catch (e) {}
     try { await pool.query("ALTER TABLE custom_missions ADD COLUMN checklists LONGTEXT NULL"); } catch (e) {}
     try { await pool.query("ALTER TABLE custom_missions ADD COLUMN started_at VARCHAR(100) NULL"); } catch (e) {}
     try { await pool.query("ALTER TABLE custom_missions ADD COLUMN bast_number VARCHAR(100) NULL"); } catch (e) {}
@@ -1227,6 +1228,89 @@ export async function initializeDatabase() {
       `);
 
       console.log('Seeded initial Campus Infrastructure buildings, floors, APs, and fiber links.');
+    }
+
+    // =========================================================================
+    // MASTER DATA GEDUNG & RUANGAN TABLES
+    // =========================================================================
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS gedungs (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          kode VARCHAR(50) NOT NULL UNIQUE,
+          nama VARCHAR(150) NOT NULL,
+          keterangan TEXT NULL,
+          status ENUM('Aktif', 'Nonaktif') NOT NULL DEFAULT 'Aktif',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB;
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS ruangans (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          gedung_id INT NOT NULL,
+          kode VARCHAR(50) NOT NULL,
+          nama VARCHAR(150) NOT NULL,
+          lantai VARCHAR(50) NOT NULL DEFAULT '1',
+          keterangan TEXT NULL,
+          status ENUM('Aktif', 'Nonaktif') NOT NULL DEFAULT 'Aktif',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_ruangan_gedung (gedung_id),
+          UNIQUE KEY unique_gedung_kode (gedung_id, kode)
+        ) ENGINE=InnoDB;
+      `);
+
+      // Migration: Add gedung_id, gedung_nama, ruangan_id, ruangan_nama to open_tickets & user_tickets
+      try {
+        await pool.query("ALTER TABLE open_tickets ADD COLUMN gedung_id INT NULL");
+      } catch (e) {}
+      try {
+        await pool.query("ALTER TABLE open_tickets ADD COLUMN gedung_nama VARCHAR(150) NULL");
+      } catch (e) {}
+      try {
+        await pool.query("ALTER TABLE open_tickets ADD COLUMN ruangan_id INT NULL");
+      } catch (e) {}
+      try {
+        await pool.query("ALTER TABLE open_tickets ADD COLUMN ruangan_nama VARCHAR(150) NULL");
+      } catch (e) {}
+      try {
+        await pool.query("ALTER TABLE user_tickets ADD COLUMN gedung_id INT NULL");
+      } catch (e) {}
+      try {
+        await pool.query("ALTER TABLE user_tickets ADD COLUMN gedung_nama VARCHAR(150) NULL");
+      } catch (e) {}
+      try {
+        await pool.query("ALTER TABLE user_tickets ADD COLUMN ruangan_id INT NULL");
+      } catch (e) {}
+      try {
+        await pool.query("ALTER TABLE user_tickets ADD COLUMN ruangan_nama VARCHAR(150) NULL");
+      } catch (e) {}
+
+      // Seed initial gedungs & ruangans if empty
+      const [gRows]: any = await pool.query('SELECT COUNT(*) as count FROM gedungs');
+      if (gRows[0].count === 0) {
+        await pool.query(`
+          INSERT INTO gedungs (id, kode, nama, keterangan, status) VALUES
+          (1, 'GDG-A', 'Gedung A (Rektorat & BAAK)', 'Gedung Pusat Administrasi, Rektorat & BAAK', 'Aktif'),
+          (2, 'GDG-B', 'Gedung B (Fakultas Teknik)', 'Gedung perkuliahan & Laboratorium Komputer Teknik', 'Aktif'),
+          (3, 'GDG-C', 'Gedung C (Fakultas Ekonomi)', 'Gedung Dekanat Ekonomi & Ruang Kuliah Teori', 'Aktif')
+        `);
+
+        await pool.query(`
+          INSERT INTO ruangans (gedung_id, kode, nama, lantai, keterangan, status) VALUES
+          (1, 'A-101', 'Ruang Rektorat', '1', 'Ruang Kerja Utama Rektorat', 'Aktif'),
+          (1, 'A-102', 'Ruang BAAK', '1', 'Pelayanan Administrasi Akademik & Kemahasiswaan', 'Aktif'),
+          (1, 'A-201', 'Laboratorium Komputer', '2', 'Lab CBT & Riset Akademik', 'Aktif'),
+          (2, 'B-101', 'Ruang Dosen Teknik', '1', 'Ruang Dosen & Staff FT', 'Aktif'),
+          (2, 'B-102', 'Laboratorium Jaringan & Fiber', '1', 'Lab Networking, RouterOS & Optik', 'Aktif'),
+          (3, 'C-101', 'Ruang Dekanat FE', '1', 'Ruang Dekan & Sekretariat Fakultas Ekonomi', 'Aktif')
+        `);
+        console.log('Seeded initial Master Gedung & Ruangan data.');
+      }
+    } catch (gErr) {
+      console.error('Error creating gedungs/ruangans tables:', gErr);
     }
 
     console.log('Database tables verified/created successfully');

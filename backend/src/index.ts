@@ -55,6 +55,7 @@ import notificationRouter from './routes/notifications';
 import { mikrotikDashboardRouter } from './routes/mikrotikDashboard';
 import uploadRouter from './routes/upload';
 import { uploadBase64Image } from './services/storageService';
+import { gedungRuanganRouter } from './routes/gedungRuangan';
 
 // Static file serving for physical uploads (with CORS)
 const uploadsDirectory = path.join(__dirname, '../uploads');
@@ -74,6 +75,7 @@ app.use('/api/monitoring', nocMonitoringRouter);
 app.use('/api/notifications', requireAuth, notificationRouter);
 app.use('/api/mikrotik-dashboard', mikrotikDashboardRouter);
 app.use('/api/upload', uploadRouter);
+app.use('/api', gedungRuanganRouter);
 
 // Broadcast database change helper (no-op on Vercel)
 async function broadcastUpdate() {
@@ -493,10 +495,12 @@ app.post('/api/custom-missions', async (req, res) => {
   const createdAt = new Date().toLocaleString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(' pukul', ' -');
   const checklistJson = checklists ? JSON.stringify(checklists) : JSON.stringify([]);
 
+  const startedAt = req.body.started_at || createdAt;
+
   try {
     const [result]: any = await pool.query(
-      'INSERT INTO custom_missions (title, description, slots, progress_percent, created_at, status, created_by, date_finished, duration_str, note, mission_image, checklists, custom_header_logo, custom_header_title, custom_header_subtitle) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [title, description || null, slots || 1, progress_percent || 0, createdAt, status || 'Active', created_by || null, date_finished || null, duration_str || null, note || null, mission_image || null, checklistJson, custom_header_logo || null, custom_header_title || null, custom_header_subtitle || null]
+      'INSERT INTO custom_missions (title, description, slots, progress_percent, created_at, started_at, status, created_by, date_finished, duration_str, note, mission_image, checklists, custom_header_logo, custom_header_title, custom_header_subtitle) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [title, description || null, slots || 1, progress_percent || 0, createdAt, startedAt, status || 'Active', created_by || null, date_finished || null, duration_str || null, note || null, mission_image || null, checklistJson, custom_header_logo || null, custom_header_title || null, custom_header_subtitle || null]
     );
     const missionId = result.insertId;
 
@@ -667,6 +671,13 @@ app.put('/api/custom-missions/:id/progress', async (req, res) => {
     }
     fieldsToUpdate.push('status = ?'); values.push(nextStatus);
 
+    // If started_at is missing, ensure it defaults to created_at
+    if (!mission.started_at) {
+      const initialStart = mission.created_at || new Date().toLocaleString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(' pukul', ' -');
+      fieldsToUpdate.push('started_at = ?');
+      values.push(initialStart);
+    }
+
     // If Completing Mission (task 100%), record date & BAST number
     if (nextStatus === 'Completed') {
       const finishedAtStr = new Date().toLocaleString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(' pukul', ' -');
@@ -675,14 +686,9 @@ app.put('/api/custom-missions/:id/progress', async (req, res) => {
       }
 
       // Auto Duration string
-      if (mission.started_at && !mission.duration_str) {
-        const startTs = new Date(mission.started_at).getTime();
-        const endTs = Date.now();
-        const diffMs = Math.max(0, endTs - startTs);
-        const hours = Math.floor(diffMs / (1000 * 60 * 60));
-        const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-        const durationCalc = hours > 0 ? `${hours} jam ${minutes} menit` : `${minutes} menit`;
-        fieldsToUpdate.push('duration_str = ?'); values.push(durationCalc);
+      if (!mission.duration_str) {
+        fieldsToUpdate.push('duration_str = ?');
+        values.push('Selesai Tuntas');
       }
 
       // Auto BAST Number if not already set
@@ -2236,6 +2242,13 @@ if (!IS_VERCEL) {
       await syncZabbixHosts();
       broadcastUpdate();
     }, 30000);
+
+    // Broadcast live WebSocket telemetry stream every 5 seconds for NOC dashboard
+    setInterval(() => {
+      if (io) {
+        io.emit('mikrotik_telemetry_stream', { timestamp: Date.now() });
+      }
+    }, 5000);
 
     app.get('/api/system-logs', requireAuth, async (req, res) => {
       try {

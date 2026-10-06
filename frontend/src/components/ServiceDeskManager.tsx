@@ -141,6 +141,40 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
   const [refreshing, setRefreshing] = useState(false);
   const [_error, setError] = useState<string | null>(null);
 
+  // Master Gedung & Ruangan state
+  const [masterGedungs, setMasterGedungs] = useState<Array<{ id: number; kode: string; nama: string }>>([]);
+  const [masterRuangans, setMasterRuangans] = useState<Array<{ id: number; gedung_id: number; kode: string; nama: string; lantai?: number }>>([]);
+  const [selectedGedungIdModal, setSelectedGedungIdModal] = useState<number | null>(null);
+  const [selectedRuanganIdModal, setSelectedRuanganIdModal] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fetchMasterGedungRuangan = async () => {
+      try {
+        const [gRes, rRes] = await Promise.all([
+          fetch(`${BACKEND_URL}/api/gedungs?status=Aktif`),
+          fetch(`${BACKEND_URL}/api/ruangans?status=Aktif`)
+        ]);
+        if (gRes.ok) {
+          const gData = await gRes.json();
+          if (Array.isArray(gData)) setMasterGedungs(gData);
+        }
+        if (rRes.ok) {
+          const rData = await rRes.json();
+          if (Array.isArray(rData)) setMasterRuangans(rData);
+        }
+      } catch (err) {
+        console.error('Failed loading master gedung/ruangan in ServiceDeskManager:', err);
+      }
+    };
+    fetchMasterGedungRuangan();
+  }, []);
+
+  const allBuildingOptions = useMemo(() => {
+    const set = new Set<string>(BUILDINGS);
+    masterGedungs.forEach((g) => set.add(g.nama));
+    return Array.from(set);
+  }, [masterGedungs]);
+
   // View Controls
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [activeSubTab, setActiveSubTab] = useState<'all' | 'noc' | 'building' | 'watchdog' | 'csat'>('all');
@@ -1885,7 +1919,7 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
               style={{ maxWidth: '140px' }}
             >
               <option value="All">Semua Gedung</option>
-              {BUILDINGS.map((b) => (
+              {allBuildingOptions.map((b) => (
                 <option key={b} value={b}>{b}</option>
               ))}
             </select>
@@ -2651,14 +2685,57 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
                   </select>
                 </div>
                 <div className="sla-form-control">
-                  <label>Gedung / Unit Lokasi</label>
+                  <label>Gedung Lokasi</label>
                   <select
-                    value={newTicketForm.unit_specification}
-                    onChange={(e) => setNewTicketForm({ ...newTicketForm, unit_specification: e.target.value })}
+                    value={selectedGedungIdModal || ''}
+                    onChange={(e) => {
+                      const gId = parseInt(e.target.value) || null;
+                      setSelectedGedungIdModal(gId);
+                      setSelectedRuanganIdModal(null);
+                      const gObj = masterGedungs.find(g => g.id === gId);
+                      setNewTicketForm({
+                        ...newTicketForm,
+                        unit_specification: gObj ? gObj.nama : (e.target.value || 'Gedung B')
+                      });
+                    }}
                   >
-                    {BUILDINGS.map((b) => (
-                      <option key={b} value={b}>{b}</option>
-                    ))}
+                    <option value="">-- Pilih Gedung --</option>
+                    {masterGedungs.length > 0 ? (
+                      masterGedungs.map((g) => (
+                        <option key={g.id} value={g.id}>{g.nama} ({g.kode})</option>
+                      ))
+                    ) : (
+                      BUILDINGS.map((b) => (
+                        <option key={b} value={b}>{b}</option>
+                      ))
+                    )}
+                  </select>
+                </div>
+                <div className="sla-form-control">
+                  <label>Ruangan <span style={{ fontSize: '11px', color: '#94a3b8' }}>(Opsional)</span></label>
+                  <select
+                    value={selectedRuanganIdModal || ''}
+                    disabled={!selectedGedungIdModal}
+                    onChange={(e) => {
+                      const rId = parseInt(e.target.value) || null;
+                      setSelectedRuanganIdModal(rId);
+                      const gObj = masterGedungs.find(g => g.id === selectedGedungIdModal);
+                      const rObj = masterRuangans.find(r => r.id === rId);
+                      if (gObj) {
+                        setNewTicketForm({
+                          ...newTicketForm,
+                          unit_specification: rObj ? `${gObj.nama} - ${rObj.nama} (${rObj.kode})` : gObj.nama
+                        });
+                      }
+                    }}
+                  >
+                    <option value="">-- Pilih Ruangan --</option>
+                    {masterRuangans
+                      .filter(r => r.gedung_id === selectedGedungIdModal)
+                      .map((r) => (
+                        <option key={r.id} value={r.id}>{r.nama} (Lt. {r.lantai || '-'}, {r.kode})</option>
+                      ))
+                    }
                   </select>
                 </div>
               </div>
@@ -3506,7 +3583,7 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
                     onChange={(e) => setExportFilters({ ...exportFilters, building: e.target.value })}
                   >
                     <option value="All">Semua Lokasi / Gedung</option>
-                    {BUILDINGS.map((b) => (
+                    {allBuildingOptions.map((b) => (
                       <option key={b} value={b}>{b}</option>
                     ))}
                   </select>

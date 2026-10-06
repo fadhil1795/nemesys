@@ -4,9 +4,83 @@ import type { CustomMission, User, MissionChecklistItem } from '../types';
 import { 
   Search, X, RefreshCw, Plus, CheckSquare, Square, UserPlus, LogOut, 
   FileText, Printer, Clock, Users, 
-  Edit, Trash2, Layers, CheckCircle2, ShieldCheck, QrCode as QrIcon
+  Edit, Trash2, Layers, CheckCircle2, ShieldCheck, QrCode as QrIcon,
+  Camera
 } from 'lucide-react';
 import { BACKEND_URL } from '../App';
+import { getPhotoUrl } from './ServiceDeskManager';
+
+export const parseMissionImages = (missionImage?: string | null): string[] => {
+  if (!missionImage) return [];
+  if (typeof missionImage !== 'string') return [];
+  const trimmed = missionImage.trim();
+  if (!trimmed) return [];
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((item): item is string => typeof item === 'string' && !!item.trim());
+      }
+    } catch (e) {}
+  }
+  if (trimmed.includes(',')) {
+    return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+  }
+  return [trimmed];
+};
+
+const compressAndUploadImage = async (file: File): Promise<string> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = async () => {
+        try {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 1600;
+
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+          const res = await fetch(`${BACKEND_URL}/api/upload/ticket-photo-base64`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: dataUrl, folder: 'missions' })
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            resolve(data.url);
+          } else {
+            resolve(dataUrl);
+          }
+        } catch (err) {
+          console.error('Failed uploading photo:', err);
+          resolve(event.target?.result as string);
+        }
+      };
+      img.onerror = () => resolve(event.target?.result as string);
+      img.src = event.target?.result as string;
+    };
+    reader.onerror = () => resolve('');
+    reader.readAsDataURL(file);
+  });
+};
 
 interface MissionPageProps {
   customMissions: CustomMission[];
@@ -39,7 +113,8 @@ export const MissionPage: React.FC<MissionPageProps> = ({
   const [dateFinished, setDateFinished] = useState('');
   const [durationStr, setDurationStr] = useState('');
   const [note, setNote] = useState('');
-  const [missionImage, setMissionImage] = useState('');
+  const [adminImages, setAdminImages] = useState<string[]>([]);
+  const [uploadingAdminPhotos, setUploadingAdminPhotos] = useState(false);
   const [progressPercent, setProgressPercent] = useState(0);
   const [status, setStatus] = useState('Active');
   const [checklists, setChecklists] = useState<MissionChecklistItem[]>([]);
@@ -56,7 +131,11 @@ export const MissionPage: React.FC<MissionPageProps> = ({
   const [tempChecklists, setTempChecklists] = useState<MissionChecklistItem[]>([]);
   const [tempProgress, setTempProgress] = useState(0);
   const [tempNote, setTempNote] = useState('');
-  const [tempImage, setTempImage] = useState('');
+  const [tempImages, setTempImages] = useState<string[]>([]);
+  const [uploadingProgressPhotos, setUploadingProgressPhotos] = useState(false);
+
+  // Photo Lightbox Modal
+  const [lightboxImage, setLightboxImage] = useState<{ url: string; title: string } | null>(null);
 
   // BAST Document Modal State
   const [isBastModalOpen, setIsBastModalOpen] = useState(false);
@@ -90,7 +169,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
     setDateFinished('');
     setDurationStr('');
     setNote('');
-    setMissionImage('');
+    setAdminImages([]);
     setProgressPercent(0);
     setStatus('Active');
     setChecklists([
@@ -120,6 +199,46 @@ export const MissionPage: React.FC<MissionPageProps> = ({
     setChecklists(checklists.filter(c => c.id !== id));
   };
 
+  // Admin Photo Upload Handlers
+  const handleUploadAdminPhotos = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploadingAdminPhotos(true);
+    try {
+      const uploadPromises = Array.from(files).map(file => compressAndUploadImage(file));
+      const uploadedUrls = await Promise.all(uploadPromises);
+      setAdminImages(prev => [...prev, ...uploadedUrls.filter(Boolean)]);
+    } catch (err) {
+      console.error('Error uploading admin photos:', err);
+      alert('Terjadi kesalahan saat mengunggah foto.');
+    } finally {
+      setUploadingAdminPhotos(false);
+    }
+  };
+
+  const handleRemoveAdminPhoto = (indexToRemove: number) => {
+    setAdminImages(prev => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  // Technician Photo Upload Handlers
+  const handleUploadProgressPhotos = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploadingProgressPhotos(true);
+    try {
+      const uploadPromises = Array.from(files).map(file => compressAndUploadImage(file));
+      const uploadedUrls = await Promise.all(uploadPromises);
+      setTempImages(prev => [...prev, ...uploadedUrls.filter(Boolean)]);
+    } catch (err) {
+      console.error('Error uploading progress photos:', err);
+      alert('Terjadi kesalahan saat mengunggah foto.');
+    } finally {
+      setUploadingProgressPhotos(false);
+    }
+  };
+
+  const handleRemoveProgressPhoto = (indexToRemove: number) => {
+    setTempImages(prev => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
   // Handle Create/Edit Mission (Admin)
   const handleSaveMission = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,6 +254,8 @@ export const MissionPage: React.FC<MissionPageProps> = ({
       : `${BACKEND_URL}/api/custom-missions`;
     
     const method = missionId ? 'PUT' : 'POST';
+
+    const finalMissionImage = adminImages.length > 0 ? JSON.stringify(adminImages) : '';
 
     try {
       const response = await fetch(url, {
@@ -154,7 +275,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
           date_finished: dateFinished,
           duration_str: durationStr,
           note,
-          mission_image: missionImage,
+          mission_image: finalMissionImage,
           checklists,
           custom_header_logo: customLogo,
           custom_header_title: customTitle,
@@ -187,7 +308,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
     setDateFinished(m.date_finished || '');
     setDurationStr(m.duration_str || '');
     setNote(m.note || '');
-    setMissionImage(m.mission_image || '');
+    setAdminImages(parseMissionImages(m.mission_image));
     setProgressPercent(m.progress_percent || 0);
     setStatus(m.status || 'Active');
     setChecklists(m.checklists && m.checklists.length > 0 ? m.checklists : [
@@ -279,7 +400,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
     ]);
     setTempProgress(m.progress_percent || 0);
     setTempNote(m.note || '');
-    setTempImage(m.mission_image || '');
+    setTempImages(parseMissionImages(m.mission_image));
     setIsProgressModalOpen(true);
   };
 
@@ -305,6 +426,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
   const handleSaveProgress = async () => {
     if (!activeMission) return;
     try {
+      const finalMissionImage = tempImages.length > 0 ? JSON.stringify(tempImages) : '';
       const res = await fetch(`${BACKEND_URL}/api/custom-missions/${activeMission.id}/progress`, {
         method: 'PUT',
         headers: {
@@ -315,7 +437,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
           progress_percent: tempProgress,
           checklists: tempChecklists,
           note: tempNote,
-          mission_image: tempImage,
+          mission_image: finalMissionImage,
           status: tempProgress === 100 ? 'Completed' : 'In Progress'
         })
       });
@@ -326,7 +448,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
 
         // If progress reached 100%, prompt BAST modal
         if (tempProgress === 100) {
-          setTimeout(() => handleOpenBastModal(activeMission), 400);
+          setTimeout(() => handleOpenBastModal({ ...activeMission, mission_image: finalMissionImage, progress_percent: 100 }), 400);
         }
       }
     } catch (err) {
@@ -763,13 +885,39 @@ export const MissionPage: React.FC<MissionPageProps> = ({
                       </div>
                     </div>
 
-                    {/* Checklist Sub-tasks summary */}
-                    {totalChecklists > 0 && (
-                      <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <CheckSquare size={14} style={{ color: '#818cf8' }} />
-                        <span>Sub-task: <strong>{completedChecklists}/{totalChecklists}</strong> Selesai</span>
-                      </div>
-                    )}
+                    {/* Checklist Sub-tasks summary & Photos attached */}
+                    <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: 'var(--text-muted)', flexWrap: 'wrap', gap: '6px' }}>
+                      {totalChecklists > 0 ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <CheckSquare size={14} style={{ color: '#818cf8' }} />
+                          <span>Sub-task: <strong>{completedChecklists}/{totalChecklists}</strong> Selesai</span>
+                        </div>
+                      ) : <div />}
+
+                      {parseMissionImages(m.mission_image).length > 0 && (
+                        <div
+                          onClick={() => {
+                            const imgs = parseMissionImages(m.mission_image);
+                            setLightboxImage({ url: getPhotoUrl(imgs[0]), title: `Foto Dokumentasi - ${m.title}` });
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            color: '#38bdf8',
+                            backgroundColor: 'rgba(56, 189, 248, 0.12)',
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                          title="Lihat Foto Dokumentasi"
+                        >
+                          <Camera size={13} />
+                          <span>{parseMissionImages(m.mission_image).length} Foto</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Personnels Footer & Actions */}
@@ -952,6 +1100,29 @@ export const MissionPage: React.FC<MissionPageProps> = ({
                             {m.description}
                           </div>
                         )}
+                        {parseMissionImages(m.mission_image).length > 0 && (
+                          <div
+                            onClick={() => {
+                              const imgs = parseMissionImages(m.mission_image);
+                              setLightboxImage({ url: getPhotoUrl(imgs[0]), title: `Foto Dokumentasi - ${m.title}` });
+                            }}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              color: '#38bdf8',
+                              backgroundColor: 'rgba(56, 189, 248, 0.12)',
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              marginTop: '4px'
+                            }}
+                          >
+                            <Camera size={12} /> {parseMissionImages(m.mission_image).length} Foto
+                          </div>
+                        )}
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
@@ -1125,6 +1296,142 @@ export const MissionPage: React.FC<MissionPageProps> = ({
                 </div>
               </div>
 
+              {/* Foto Dokumentasi / Lampiran Awal (Multiple Upload) */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid var(--border-color)', padding: '14px', borderRadius: '8px', backgroundColor: 'rgba(15, 23, 42, 0.4)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Camera size={16} /> Foto Dokumentasi / Lampiran (Multiple)
+                  </label>
+                  {adminImages.length > 0 && (
+                    <span style={{ fontSize: '11px', color: '#34d399', backgroundColor: 'rgba(52, 211, 153, 0.15)', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                      ✓ {adminImages.length} Foto Terlampir
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <input
+                    type="file"
+                    id="admin-mission-photos-upload"
+                    multiple
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        handleUploadAdminPhotos(e.target.files);
+                        e.target.value = '';
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor="admin-mission-photos-upload"
+                    style={{
+                      backgroundColor: uploadingAdminPhotos ? 'rgba(56, 189, 248, 0.25)' : 'rgba(56, 189, 248, 0.15)',
+                      color: '#38bdf8',
+                      border: '1px solid rgba(56, 189, 248, 0.4)',
+                      borderRadius: '6px',
+                      padding: '8px 14px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      cursor: uploadingAdminPhotos ? 'wait' : 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {uploadingAdminPhotos ? (
+                      <>
+                        <RefreshCw size={15} className="animate-spin" />
+                        <span>Mengompres & Mengunggah...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Plus size={15} />
+                        <span>Unggah Foto Lampiran (+ Multiple)</span>
+                      </>
+                    )}
+                  </label>
+                  <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                    Bisa pilih & unggah beberapa foto sekaligus
+                  </span>
+                </div>
+
+                {/* Uploaded Thumbnails Grid */}
+                {adminImages.length > 0 && (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+                    gap: '10px',
+                    marginTop: '8px',
+                    maxHeight: '220px',
+                    overflowY: 'auto',
+                    padding: '4px'
+                  }}>
+                    {adminImages.map((imgUrl, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          position: 'relative',
+                          height: '90px',
+                          borderRadius: '6px',
+                          overflow: 'hidden',
+                          border: '1px solid rgba(56, 189, 248, 0.3)',
+                          backgroundColor: '#0f172a',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)'
+                        }}
+                      >
+                        <img
+                          src={getPhotoUrl(imgUrl)}
+                          alt={`Dokumentasi ${idx + 1}`}
+                          onClick={() => setLightboxImage({ url: getPhotoUrl(imgUrl), title: `Foto Dokumentasi #${idx + 1}` })}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
+                          onError={(e: any) => { e.target.src = 'https://placehold.co/300x200/1e293b/94a3b8?text=Invalid'; }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAdminPhoto(idx)}
+                          title="Hapus foto ini"
+                          style={{
+                            position: 'absolute',
+                            top: '4px',
+                            right: '4px',
+                            width: '22px',
+                            height: '22px',
+                            borderRadius: '50%',
+                            backgroundColor: 'rgba(239, 68, 68, 0.85)',
+                            border: 'none',
+                            color: '#fff',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                          }}
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                        <div
+                          style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+                            fontSize: '9.5px',
+                            color: '#cbd5e1',
+                            textAlign: 'center',
+                            padding: '2px 0'
+                          }}
+                        >
+                          Foto #{idx + 1}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Customizable BAST Header Options */}
               <div style={{ border: '1px solid var(--border-color)', padding: '14px', borderRadius: '8px', backgroundColor: 'rgba(15, 23, 42, 0.4)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <label style={{ fontSize: '13px', fontWeight: 700, color: '#facc15' }}>⚙️ Custom Kop Surat BAST (Opsional)</label>
@@ -1233,14 +1540,140 @@ export const MissionPage: React.FC<MissionPageProps> = ({
                 />
               </div>
 
-              {/* Foto Bukti Pekerjaan */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>URL / Link Foto Bukti Pekerjaan</label>
-                <input
-                  type="text" placeholder="https://example.com/foto-bukti.jpg..."
-                  value={tempImage} onChange={(e) => setTempImage(e.target.value)}
-                  style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 12px', fontSize: '13px', color: '#fff', outline: 'none' }}
-                />
+              {/* Foto Bukti / Dokumentasi Lapangan (Multiple Upload) */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid var(--border-color)', padding: '14px', borderRadius: '8px', backgroundColor: 'rgba(15, 23, 42, 0.4)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Camera size={16} /> Foto Dokumentasi Lapangan (Multiple)
+                  </label>
+                  {tempImages.length > 0 && (
+                    <span style={{ fontSize: '11px', color: '#34d399', backgroundColor: 'rgba(52, 211, 153, 0.15)', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                      ✓ {tempImages.length} Foto Terlampir
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <input
+                    type="file"
+                    id="mission-progress-photos-upload"
+                    multiple
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        handleUploadProgressPhotos(e.target.files);
+                        e.target.value = '';
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor="mission-progress-photos-upload"
+                    style={{
+                      backgroundColor: uploadingProgressPhotos ? 'rgba(56, 189, 248, 0.25)' : 'rgba(56, 189, 248, 0.15)',
+                      color: '#38bdf8',
+                      border: '1px solid rgba(56, 189, 248, 0.4)',
+                      borderRadius: '6px',
+                      padding: '8px 14px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      cursor: uploadingProgressPhotos ? 'wait' : 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {uploadingProgressPhotos ? (
+                      <>
+                        <RefreshCw size={15} className="animate-spin" />
+                        <span>Mengompres & Mengunggah...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Plus size={15} />
+                        <span>Unggah Foto Dokumentasi (+ Multiple)</span>
+                      </>
+                    )}
+                  </label>
+                  <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                    Bisa pilih & unggah lebih dari 1 foto sekaligus
+                  </span>
+                </div>
+
+                {/* Uploaded Thumbnails Grid */}
+                {tempImages.length > 0 && (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+                    gap: '10px',
+                    marginTop: '8px',
+                    maxHeight: '220px',
+                    overflowY: 'auto',
+                    padding: '4px'
+                  }}>
+                    {tempImages.map((imgUrl, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          position: 'relative',
+                          height: '90px',
+                          borderRadius: '6px',
+                          overflow: 'hidden',
+                          border: '1px solid rgba(56, 189, 248, 0.3)',
+                          backgroundColor: '#0f172a',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)'
+                        }}
+                      >
+                        <img
+                          src={getPhotoUrl(imgUrl)}
+                          alt={`Dokumentasi ${idx + 1}`}
+                          onClick={() => setLightboxImage({ url: getPhotoUrl(imgUrl), title: `Foto Dokumentasi #${idx + 1} - ${activeMission.title}` })}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
+                          onError={(e: any) => { e.target.src = 'https://placehold.co/300x200/1e293b/94a3b8?text=Invalid'; }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveProgressPhoto(idx)}
+                          title="Hapus foto ini"
+                          style={{
+                            position: 'absolute',
+                            top: '4px',
+                            right: '4px',
+                            width: '22px',
+                            height: '22px',
+                            borderRadius: '50%',
+                            backgroundColor: 'rgba(239, 68, 68, 0.85)',
+                            border: 'none',
+                            color: '#fff',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                          }}
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                        <div
+                          style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+                            fontSize: '9.5px',
+                            color: '#cbd5e1',
+                            textAlign: 'center',
+                            padding: '2px 0'
+                          }}
+                        >
+                          Foto #{idx + 1}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Catatan Lapangan */}
@@ -1420,30 +1853,64 @@ export const MissionPage: React.FC<MissionPageProps> = ({
 
               {/* DEKLARASI & RINCIAN MISI */}
               <div style={{ fontSize: '13px', lineHeight: 1.6, color: '#334155', marginBottom: '16px' }}>
-                Pada hari ini <strong>{bastMission.date_finished || bastMission.created_at}</strong>, telah diselesaikan pekerjaan tim IT Helpdesk dengan rincian sebagai berikut:
+                Pada hari ini, telah diselesaikan pekerjaan tim IT Helpdesk dengan rincian waktu pelaksanaan dan hasil pekerjaan sebagai berikut:
               </div>
 
-              {/* TABLE METADATA */}
+              {/* TABLE METADATA (RINGKAS & TERINTEGRASI) */}
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', marginBottom: '20px' }}>
                 <tbody>
                   <tr>
-                    <td style={{ padding: '6px 10px', fontWeight: 700, color: '#475569', width: '160px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Nama Misi / Pekerjaan</td>
-                    <td style={{ padding: '6px 10px', border: '1px solid #cbd5e1', fontWeight: 600 }}>{bastMission.title}</td>
+                    <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', width: '200px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Nama Misi / Pekerjaan</td>
+                    <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1', fontWeight: 600, color: '#0f172a' }}>{bastMission.title}</td>
                   </tr>
                   <tr>
-                    <td style={{ padding: '6px 10px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Deskripsi Pekerjaan</td>
-                    <td style={{ padding: '6px 10px', border: '1px solid #cbd5e1' }}>{bastMission.description || '-'}</td>
+                    <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Deskripsi Pekerjaan</td>
+                    <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1', color: '#334155' }}>{bastMission.description || '-'}</td>
                   </tr>
                   <tr>
-                    <td style={{ padding: '6px 10px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Tim Pelaksana (Teknisi)</td>
-                    <td style={{ padding: '6px 10px', border: '1px solid #cbd5e1' }}>
+                    <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Tim Pelaksana (Teknisi)</td>
+                    <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1', color: '#334155' }}>
                       {bastMission.personnels.map(p => `${p.name} (${p.role})`).join(', ') || '-'}
                     </td>
                   </tr>
                   <tr>
-                    <td style={{ padding: '6px 10px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Durasi Pelaksanaan</td>
-                    <td style={{ padding: '6px 10px', border: '1px solid #cbd5e1', fontWeight: 600, color: '#16a34a' }}>
-                      {bastMission.duration_str || 'Selesai'}
+                    <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Waktu Mulai Pekerjaan</td>
+                    <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1', fontWeight: 600, color: '#0369a1' }}>
+                      {bastMission.started_at || bastMission.created_at || '-'}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Waktu Selesai Pekerjaan</td>
+                    <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1', fontWeight: 600, color: '#16a34a' }}>
+                      {bastMission.date_finished || (bastMission.status === 'Completed' ? (bastMission.created_at || '-') : 'Dalam Proses (In Progress)')}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Total Durasi Pelaksanaan</td>
+                    <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1', fontWeight: 600, color: '#4f46e5' }}>
+                      {bastMission.duration_str || (bastMission.status === 'Completed' ? 'Selesai Tuntas' : 'Sedang Berlangsung')}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Pihak Pertama (Penyerah / IT)</td>
+                    <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1' }}>
+                      <div style={{ fontWeight: 700, color: '#0f172a' }}>
+                        {bastMission.bast_admin_approved_by || (currentUser?.name || 'Administrator Biro TI')}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#64748b' }}>
+                        Biro Teknologi Informasi (BTI) {bastMission.bast_admin_approved_at ? ` • Disahkan: ${bastMission.bast_admin_approved_at}` : ''}
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Pihak Kedua (Penerima Pekerjaan)</td>
+                    <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1' }}>
+                      <div style={{ fontWeight: 700, color: '#0f172a' }}>
+                        {bastMission.bast_tech_approved_by || signerName || bastMission.bast_signer_name || (bastMission.personnels[0]?.name || 'Penanggung Jawab Lokasi')}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#64748b' }}>
+                        {signerRole || bastMission.bast_signer_role || 'Penanggung Jawab Lokasi'} {bastMission.bast_tech_approved_at ? ` • Disahkan: ${bastMission.bast_tech_approved_at}` : ''}
+                      </div>
                     </td>
                   </tr>
                 </tbody>
@@ -1479,17 +1946,38 @@ export const MissionPage: React.FC<MissionPageProps> = ({
               )}
 
               {/* LAMPIRAN FOTO & CATATAN */}
-              {bastMission.mission_image && (
-                <div style={{ marginBottom: '20px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
-                    Lampiran Foto Bukti Pekerjaan:
+              {(() => {
+                const bastImages = parseMissionImages(bastMission.mission_image);
+                if (bastImages.length === 0) return null;
+                return (
+                  <div style={{ marginBottom: '20px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Camera size={15} color="#2563eb" />
+                      <span>Lampiran Foto Bukti Pekerjaan Lapangan ({bastImages.length} Foto):</span>
+                    </div>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: bastImages.length === 1 ? '1fr' : 'repeat(auto-fill, minmax(180px, 1fr))',
+                      gap: '12px'
+                    }}>
+                      {bastImages.map((imgUrl, idx) => (
+                        <div key={idx} style={{ border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', backgroundColor: '#f8fafc', padding: '4px' }}>
+                          <img
+                            src={getPhotoUrl(imgUrl)}
+                            alt={`Foto Dokumentasi ${idx + 1}`}
+                            onClick={() => setLightboxImage({ url: getPhotoUrl(imgUrl), title: `Foto Dokumentasi #${idx + 1} - ${bastMission.title}` })}
+                            style={{ width: '100%', height: bastImages.length === 1 ? '220px' : '140px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
+                            onError={(e: any) => { e.target.src = 'https://placehold.co/400x300/1e293b/94a3b8?text=Invalid+Image'; }}
+                          />
+                          <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', textAlign: 'center', padding: '4px 0 2px 0' }}>
+                            Dokumentasi #{idx + 1}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <img
-                    src={bastMission.mission_image} alt="Foto Bukti Pekerjaan"
-                    style={{ maxWidth: '100%', maxHeight: '220px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                  />
-                </div>
-              )}
+                );
+              })()}
 
               {/* CATATAN BAST */}
               {bastMission.note && (
@@ -1497,63 +1985,6 @@ export const MissionPage: React.FC<MissionPageProps> = ({
                   <strong>Catatan Tambahan:</strong> {bastMission.note}
                 </div>
               )}
-
-              {/* KOLOM PENGESAHAN DUA PIHAK (100% PURE DIGITAL STAMP - A4 PRINT VIEW) */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', marginTop: '30px', textAlign: 'center' }}>
-                {/* Pihak I: Admin / Manager */}
-                <div>
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#334155' }}>PIHAK PERTAMA (Penyerah / IT Team)</div>
-                  <div style={{ height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '10px' }}>
-                    {bastMission.bast_admin_approved_by ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px dashed #16a34a', padding: '6px 16px', borderRadius: '6px', backgroundColor: '#f0fdf4' }}>
-                        <span style={{ fontSize: '11px', color: '#15803d', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <ShieldCheck size={14} /> [ PENGESAHAN DIGITAL SYSTEM ]
-                        </span>
-                        <span style={{ fontSize: '9.5px', color: '#64748b', marginTop: '2px' }}>
-                          {bastMission.bast_admin_approved_at}
-                        </span>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px dashed #f59e0b', padding: '6px 16px', borderRadius: '6px', backgroundColor: '#fffbeb' }}>
-                        <span style={{ fontSize: '11px', color: '#b45309', fontWeight: 800 }}>⏳ Menunggu Pengesahan Admin</span>
-                        <span style={{ fontSize: '9.5px', color: '#92400e', marginTop: '2px' }}>Belum disetujui</span>
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#0f172a', borderTop: '1px solid #cbd5e1', paddingTop: '4px' }}>
-                    {bastMission.bast_admin_approved_by || '— Menunggu —'}
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#64748b' }}>Biro Teknologi Informasi (BTI)</div>
-                </div>
-
-                {/* Pihak II: Penerima / Lead Teknisi */}
-                <div>
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#334155' }}>PIHAK KEDUA (Penerima Pekerjaan)</div>
-                  <div style={{ height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '10px' }}>
-                    {bastMission.bast_tech_approved_by ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px dashed #16a34a', padding: '6px 16px', borderRadius: '6px', backgroundColor: '#f0fdf4' }}>
-                        <span style={{ fontSize: '11px', color: '#15803d', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <ShieldCheck size={14} /> [ PENGESAHAN DIGITAL SYSTEM ]
-                        </span>
-                        <span style={{ fontSize: '9.5px', color: '#64748b', marginTop: '2px' }}>
-                          {bastMission.bast_tech_approved_at}
-                        </span>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px dashed #f59e0b', padding: '6px 16px', borderRadius: '6px', backgroundColor: '#fffbeb' }}>
-                        <span style={{ fontSize: '11px', color: '#b45309', fontWeight: 800 }}>⏳ Menunggu Konfirmasi Teknisi</span>
-                        <span style={{ fontSize: '9.5px', color: '#92400e', marginTop: '2px' }}>Belum dikonfirmasi</span>
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#0f172a', borderTop: '1px solid #cbd5e1', paddingTop: '4px' }}>
-                    {bastMission.bast_tech_approved_by || signerName || bastMission.bast_signer_name || '— Menunggu —'}
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#64748b' }}>
-                    {bastMission.bast_tech_approved_by ? (signerRole || bastMission.bast_signer_role || 'Teknisi Pelaksana') : 'Menunggu Konfirmasi'}
-                  </div>
-                </div>
-              </div>
 
               {/* EMBEDDED VERIFICATION QR CODE BLOCK - Only shown when BOTH parties have approved */}
               {bastMission.bast_admin_approved_by && bastMission.bast_tech_approved_by ? (
@@ -1807,6 +2238,81 @@ export const MissionPage: React.FC<MissionPageProps> = ({
           }
         }
       `}</style>
+
+      {/* PHOTO LIGHTBOX MODAL */}
+      {lightboxImage && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 99999,
+            backgroundColor: 'rgba(0,0,0,0.85)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+          onClick={() => setLightboxImage(null)}
+        >
+          <div
+            style={{
+              position: 'relative',
+              maxWidth: '90vw',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                width: '100%',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '8px',
+                color: '#ffffff'
+              }}
+            >
+              <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{lightboxImage.title}</span>
+              <button
+                onClick={() => setLightboxImage(null)}
+                style={{
+                  background: 'rgba(255,255,255,0.15)',
+                  border: 'none',
+                  color: '#ffffff',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <img
+              src={lightboxImage.url}
+              alt="Preview"
+              style={{
+                maxWidth: '100%',
+                maxHeight: '80vh',
+                borderRadius: '8px',
+                objectFit: 'contain',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.8)'
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

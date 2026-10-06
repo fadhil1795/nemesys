@@ -14,6 +14,7 @@ import {
 import { io } from 'socket.io-client';
 import { BACKEND_URL } from '../App';
 import { NocBandwidth } from './NocMonitoring/NocBandwidth';
+import { MikrotikNocExecutive } from './MikrotikNocExecutive';
 import type { NocBandwidthData, InterfaceTrafficInfo } from '../types/noc';
 
 interface MikroTikDeviceOption {
@@ -318,6 +319,7 @@ interface MikrotikDashboardProps {
 }
 
 export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token, socket }) => {
+  const [viewMode, setViewMode] = useState<'noc-executive' | 'winbox-telemetry'>('noc-executive');
   const [bandwidthData, setBandwidthData] = useState<NocBandwidthData | null>(null);
 
   // Real-time Queue Tree & Wi-Fi state from WebSocket stream
@@ -923,6 +925,16 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token, soc
 
 
 
+  if (viewMode === 'noc-executive') {
+    return (
+      <MikrotikNocExecutive
+        token={token}
+        socket={socket}
+        onSwitchToDetailView={() => setViewMode('winbox-telemetry')}
+      />
+    );
+  }
+
   return (
     <div className="mt-dashboard-wrapper" style={{ background: '#0b0f19', color: '#f3f4f6', minHeight: '100vh', padding: '1.25rem', fontFamily: "'Outfit', system-ui, sans-serif" }}>
       {/* =========================================================================
@@ -934,7 +946,27 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token, soc
         borderRadius: '8px', padding: '0.6rem 1rem', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem'
       }}>
         {/* Left: Breadcrumbs & Title */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setViewMode('noc-executive')}
+            style={{
+              backgroundColor: '#0284c7',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '5px 12px',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.15s'
+            }}
+          >
+            <span>← Kembali ke NOC Jaringan</span>
+          </button>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', color: '#94a3b8' }}>
             <Globe size={16} className="text-cyan-400" />
             <span>General</span>

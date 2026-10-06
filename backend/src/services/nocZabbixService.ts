@@ -654,15 +654,22 @@ export function classifyZabbixDevice(
 }
 
 export class NocZabbixService {
-  // Check if live Zabbix server is configured & reachable
+  private static liveConnCache: { at: number; res: { connected: boolean; version?: string; authenticated?: boolean; hostCount?: number; error?: string } } | null = null;
+
+  // Check if live Zabbix server is configured & reachable (cached 15s)
   static async isLiveZabbixConnected(): Promise<{ connected: boolean; version?: string; authenticated?: boolean; hostCount?: number; error?: string }> {
+    if (this.liveConnCache && Date.now() - this.liveConnCache.at < 15000) {
+      return this.liveConnCache.res;
+    }
     if (!process.env.ZABBIX_API_URL) {
       return { connected: false, error: 'ZABBIX_API_URL not configured in .env' };
     }
     try {
       const version = await callZabbixRPC<string>('apiinfo.version', []);
       if (!version) {
-        return { connected: false, error: 'Server unreachable or invalid Zabbix JSON-RPC endpoint' };
+        const r = { connected: false, error: 'Server unreachable or invalid Zabbix JSON-RPC endpoint' };
+        this.liveConnCache = { at: Date.now(), res: r };
+        return r;
       }
 
       const hosts = await callZabbixRPC<any[]>('host.get', {
@@ -670,12 +677,18 @@ export class NocZabbixService {
         limit: 5,
       });
 
+      let r: any;
       if (hosts && Array.isArray(hosts)) {
-        return { connected: true, version, authenticated: true, hostCount: hosts.length };
+        r = { connected: true, version, authenticated: true, hostCount: hosts.length };
+      } else {
+        r = { connected: true, version, authenticated: false, error: `Zabbix server reachable (v${version}), but authentication failed. Check ZABBIX_USER / ZABBIX_PASSWORD / ZABBIX_API_TOKEN in .env` };
       }
-      return { connected: true, version, authenticated: false, error: `Zabbix server reachable (v${version}), but authentication failed. Check ZABBIX_USER / ZABBIX_PASSWORD / ZABBIX_API_TOKEN in .env` };
+      this.liveConnCache = { at: Date.now(), res: r };
+      return r;
     } catch (err: any) {
-      return { connected: false, error: err.message || 'Connection timeout' };
+      const r = { connected: false, error: err.message || 'Connection timeout' };
+      this.liveConnCache = { at: Date.now(), res: r };
+      return r;
     }
   }
 
@@ -727,7 +740,7 @@ export class NocZabbixService {
     }
 
     try {
-      // Query hosts with host groups, tags, and items for C-Data OLT / Generic Network Device ONUs
+      // Query hosts with host groups, tags, and interfaces (lightweight without selectItems)
       const zHosts = await callZabbixRPC<any[]>('host.get', {
         output: ['hostid', 'name', 'status', 'available'],
         selectInterfaces: ['ip', 'port'],
@@ -735,17 +748,31 @@ export class NocZabbixService {
         selectHostGroups: ['groupid', 'name'],
         selectGroups: ['groupid', 'name'],
         selectTags: ['tag', 'value'],
-        selectItems: ['itemid', 'name', 'key_', 'lastvalue', 'units'],
       });
 
       if (!zHosts || zHosts.length === 0) {
         return [];
       }
 
+      const hostIds = zHosts.map((h: any) => h.hostid);
+      const hostItems = await callZabbixRPC<any[]>('item.get', {
+        output: ['hostid', 'itemid', 'name', 'key_', 'lastvalue', 'units'],
+        hostids: hostIds,
+        limit: 800,
+      }).catch(() => []);
+
+      const itemsByHost = new Map<string, any[]>();
+      if (Array.isArray(hostItems)) {
+        for (const it of hostItems) {
+          if (!itemsByHost.has(it.hostid)) itemsByHost.set(it.hostid, []);
+          itemsByHost.get(it.hostid)!.push(it);
+        }
+      }
+
       return zHosts.map((zh) => {
         const groups = zh.hostgroups || zh.groups || [];
         const tags = zh.tags || [];
-        const items = zh.items || [];
+        const items = itemsByHost.get(zh.hostid) || [];
         const category = classifyZabbixDevice(zh.name, groups, tags);
 
         const activeTriggers = zh.triggers?.filter((t: any) => t.value === '1') || [];
