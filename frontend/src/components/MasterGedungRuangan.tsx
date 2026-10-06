@@ -11,9 +11,7 @@ import {
   CheckCircle2,
   X,
   RefreshCw,
-  Layers,
-  Building,
-  Info
+  Building
 } from 'lucide-react';
 import { BACKEND_URL } from '../App';
 
