@@ -7169,10 +7169,17 @@ html, body {
   gap: 0.85rem;
 }
 
+.sla-form-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.85rem;
+}
+
 .sla-form-control {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 .sla-form-control label {
@@ -7191,6 +7198,10 @@ html, body {
   color: #ffffff;
   font-size: 0.82rem;
   outline: none;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  text-overflow: ellipsis;
 }
 
 .sla-form-control input:focus,
@@ -7198,6 +7209,74 @@ html, body {
 .sla-form-control textarea:focus {
   border-color: #38bdf8;
   box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+}
+
+/* Responsive Helpdesk Form Styles */
+.helpdesk-form-row-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  width: 100%;
+}
+
+.helpdesk-form-row-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  width: 100%;
+}
+
+.helpdesk-input-control {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.helpdesk-input-control label {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.helpdesk-input-control input,
+.helpdesk-input-control select,
+.helpdesk-input-control textarea {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.helpdesk-input-control select {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.helpdesk-input-control input:focus,
+.helpdesk-input-control select:focus,
+.helpdesk-input-control textarea:focus {
+  border-color: var(--accent-primary, #6366f1);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+@media (max-width: 768px) {
+  .helpdesk-form-row-2,
+  .helpdesk-form-row-3,
+  .sla-form-grid,
+  .sla-form-grid-3 {
+    grid-template-columns: 1fr !important;
+    gap: 16px;
+  }
 }
 
 /* ==========================================================================

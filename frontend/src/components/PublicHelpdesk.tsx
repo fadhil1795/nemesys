@@ -636,60 +636,38 @@ export const PublicHelpdesk: React.FC<PublicHelpdeskProps> = ({ onBackToLogin })
 
         {!submitSuccess && (
           <form onSubmit={handleFormSubmit} className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <label style={{ fontSize: '13.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>Nama Lengkap <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            {/* Row 1: Identitas */}
+            <div className="helpdesk-form-row-2">
+              <div className="helpdesk-input-control">
+                <label>Nama Lengkap <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                 <input 
                   type="text" 
                   required 
                   placeholder="Contoh: Muhammad Fadil"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    backgroundColor: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-color)',
-                    color: '#fff',
-                    fontSize: '14px'
-                  }}
                 />
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <label style={{ fontSize: '13.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>NIP / NIM <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+              <div className="helpdesk-input-control">
+                <label>NIP / NIM <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                 <input 
                   type="text" 
                   required 
                   placeholder="Contoh: 122110034 / 1989122501"
                   value={idNumber}
                   onChange={(e) => setIdNumber(e.target.value)}
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    backgroundColor: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-color)',
-                    color: '#fff',
-                    fontSize: '14px'
-                  }}
                 />
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <label style={{ fontSize: '13.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>Kategori Pengguna (Unit) <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            {/* Row 2: Kategori & Lokasi (Gedung & Ruangan) */}
+            <div className="helpdesk-form-row-3">
+              <div className="helpdesk-input-control">
+                <label>Kategori Pengguna (Unit) <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    backgroundColor: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-color)',
-                    color: '#fff',
-                    fontSize: '14px'
-                  }}
                 >
                   {CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>{cat}</option>
@@ -697,132 +675,96 @@ export const PublicHelpdesk: React.FC<PublicHelpdeskProps> = ({ onBackToLogin })
                 </select>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <label style={{ fontSize: '13.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>Gedung Lokasi <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                  <select
-                    value={selectedGedungId || ''}
-                    onChange={(e) => {
-                      const gId = parseInt(e.target.value) || null;
-                      setSelectedGedungId(gId);
-                      setSelectedRuanganId(null);
-                      const gObj = gedungsList.find(g => g.id === gId);
-                      if (gObj) {
-                        setUnitSpecification(gObj.nama);
-                      } else {
-                        setUnitSpecification(e.target.value || 'Gedung B');
-                      }
-                    }}
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      backgroundColor: 'var(--bg-secondary)',
-                      border: '1px solid var(--border-color)',
-                      color: '#fff',
-                      fontSize: '14px'
-                    }}
-                  >
-                    <option value="">-- Pilih Gedung --</option>
-                    {gedungsList.length > 0 ? (
-                      gedungsList.map((g) => (
-                        <option key={g.id} value={g.id}>{g.nama} ({g.kode})</option>
-                      ))
-                    ) : (
-                      BUILDINGS.map((b) => (
-                        <option key={b} value={b}>{b}</option>
-                      ))
-                    )}
-                  </select>
-                </div>
+              <div className="helpdesk-input-control">
+                <label>Gedung Lokasi <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                <select
+                  value={selectedGedungId || ''}
+                  onChange={(e) => {
+                    const gId = parseInt(e.target.value) || null;
+                    setSelectedGedungId(gId);
+                    setSelectedRuanganId(null);
+                    const gObj = gedungsList.find(g => g.id === gId);
+                    if (gObj) {
+                      setUnitSpecification(gObj.nama);
+                    } else {
+                      setUnitSpecification(e.target.value || 'Gedung B');
+                    }
+                  }}
+                >
+                  <option value="">-- Pilih Gedung --</option>
+                  {gedungsList.length > 0 ? (
+                    gedungsList.map((g) => (
+                      <option key={g.id} value={g.id}>{g.nama} ({g.kode})</option>
+                    ))
+                  ) : (
+                    BUILDINGS.map((b) => (
+                      <option key={b} value={b}>{b}</option>
+                    ))
+                  )}
+                </select>
+              </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <label style={{ fontSize: '13.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                    Ruangan <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>(Opsional)</span>
-                  </label>
-                  <select
-                    value={selectedRuanganId || ''}
-                    disabled={!selectedGedungId}
-                    onChange={(e) => {
-                      const rId = parseInt(e.target.value) || null;
-                      setSelectedRuanganId(rId);
-                      const gObj = gedungsList.find(g => g.id === selectedGedungId);
-                      const rObj = ruangansList.find(r => r.id === rId);
-                      if (gObj) {
-                        setUnitSpecification(rObj ? `${gObj.nama} - ${rObj.nama} (${rObj.kode})` : gObj.nama);
-                      }
-                    }}
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      backgroundColor: selectedGedungId ? 'var(--bg-secondary)' : 'rgba(255,255,255,0.05)',
-                      border: '1px solid var(--border-color)',
-                      color: selectedGedungId ? '#fff' : '#64748b',
-                      fontSize: '14px',
-                      cursor: selectedGedungId ? 'pointer' : 'not-allowed'
-                    }}
-                  >
-                    <option value="">{selectedGedungId ? '-- Pilih Ruangan --' : '-- Pilih Gedung Terlebih Dahulu --'}</option>
-                    {ruangansList.filter(r => r.gedung_id === selectedGedungId).map((r) => (
-                      <option key={r.id} value={r.id}>{r.nama} ({r.kode}) - Lt. {r.lantai}</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="helpdesk-input-control">
+                <label>
+                  Ruangan <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>(Opsional)</span>
+                </label>
+                <select
+                  value={selectedRuanganId || ''}
+                  disabled={!selectedGedungId}
+                  onChange={(e) => {
+                    const rId = parseInt(e.target.value) || null;
+                    setSelectedRuanganId(rId);
+                    const gObj = gedungsList.find(g => g.id === selectedGedungId);
+                    const rObj = ruangansList.find(r => r.id === rId);
+                    if (gObj) {
+                      setUnitSpecification(rObj ? `${gObj.nama} - ${rObj.nama} (${rObj.kode})` : gObj.nama);
+                    }
+                  }}
+                  style={{
+                    backgroundColor: selectedGedungId ? 'var(--bg-secondary)' : 'rgba(255,255,255,0.05)',
+                    color: selectedGedungId ? '#fff' : '#64748b',
+                    cursor: selectedGedungId ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  <option value="">{selectedGedungId ? '-- Pilih Ruangan --' : '-- Pilih Gedung Terlebih Dahulu --'}</option>
+                  {ruangansList.filter(r => r.gedung_id === selectedGedungId).map((r) => (
+                    <option key={r.id} value={r.id}>{r.nama} ({r.kode}) - Lt. {r.lantai}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <label style={{ fontSize: '13.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>Alamat Email Aktif <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            {/* Row 3: Kontak Email & WhatsApp */}
+            <div className="helpdesk-form-row-2">
+              <div className="helpdesk-input-control">
+                <label>Alamat Email Aktif <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                 <input 
                   type="email" 
                   required 
                   placeholder="Contoh: fadil@gmail.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    backgroundColor: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-color)',
-                    color: '#fff',
-                    fontSize: '14px'
-                  }}
                 />
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <label style={{ fontSize: '13.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>Nomor WhatsApp <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+              <div className="helpdesk-input-control">
+                <label>Nomor WhatsApp <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                 <input 
                   type="text" 
                   required 
                   placeholder="Contoh: 08123456789"
                   value={whatsappNumber}
                   onChange={(e) => setWhatsappNumber(e.target.value)}
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    backgroundColor: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-color)',
-                    color: '#fff',
-                    fontSize: '14px'
-                  }}
                 />
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ fontSize: '13.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>Kategori Layanan yang Dibutuhkan <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            {/* Row 4: Kategori Layanan */}
+            <div className="helpdesk-input-control">
+              <label>Kategori Layanan yang Dibutuhkan <span style={{ color: 'var(--color-danger)' }}>*</span></label>
               <select
                 value={serviceType}
                 onChange={(e) => setServiceType(e.target.value)}
-                style={{
-                  padding: '10px 12px',
-                  borderRadius: '8px',
-                  backgroundColor: 'var(--bg-secondary)',
-                  border: '1px solid var(--border-color)',
-                  color: '#fff',
-                  fontSize: '14px'
-                }}
               >
                 {SERVICE_TYPES.map((st) => (
                   <option key={st} value={st}>{st}</option>
@@ -830,23 +772,16 @@ export const PublicHelpdesk: React.FC<PublicHelpdeskProps> = ({ onBackToLogin })
               </select>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ fontSize: '13.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>Deskripsi Detail Permasalahan <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            {/* Row 5: Deskripsi Kendala */}
+            <div className="helpdesk-input-control">
+              <label>Deskripsi Detail Permasalahan <span style={{ color: 'var(--color-danger)' }}>*</span></label>
               <textarea 
                 required 
                 rows={5}
                 placeholder="Tuliskan kendala secara jelas dan runut. Tuliskan kode error, merk perangkat, atau nama portal web jika relevan..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                style={{
-                  padding: '10px 12px',
-                  borderRadius: '8px',
-                  backgroundColor: 'var(--bg-secondary)',
-                  border: '1px solid var(--border-color)',
-                  color: '#fff',
-                  fontSize: '14px',
-                  resize: 'vertical'
-                }}
+                style={{ resize: 'vertical' }}
               />
             </div>
 
