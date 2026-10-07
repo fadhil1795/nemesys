@@ -214,7 +214,7 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
   // Forms State
   const [newTicketForm, setNewTicketForm] = useState({
     full_name: '',
-    id_number: '',
+    id_number: '-',
     category: 'Mahasiswa',
     unit_specification: 'Gedung B',
     email: '',
@@ -486,7 +486,7 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
         setShowCreateModal(false);
         setNewTicketForm({
           full_name: '',
-          id_number: '',
+          id_number: '-',
           category: 'Mahasiswa',
           unit_specification: 'Gedung B',
           email: '',
@@ -2649,27 +2649,15 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
             </div>
 
             <form onSubmit={handleCreateTicket} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
-              <div className="sla-form-grid">
-                <div className="sla-form-control">
-                  <label>Nama Lengkap Civitas *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: Dr. Budi Santoso"
-                    value={newTicketForm.full_name}
-                    onChange={(e) => setNewTicketForm({ ...newTicketForm, full_name: e.target.value })}
-                  />
-                </div>
-                <div className="sla-form-control">
-                  <label>NIM / NIP / ID Civitas *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: 19820315... / 20210801..."
-                    value={newTicketForm.id_number}
-                    onChange={(e) => setNewTicketForm({ ...newTicketForm, id_number: e.target.value })}
-                  />
-                </div>
+              <div className="sla-form-control" style={{ marginBottom: '1rem' }}>
+                <label>Nama Lengkap Civitas *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: Dr. Budi Santoso"
+                  value={newTicketForm.full_name}
+                  onChange={(e) => setNewTicketForm({ ...newTicketForm, full_name: e.target.value })}
+                />
               </div>
 
               <div className="sla-form-grid">
@@ -2740,22 +2728,23 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
                 </div>
               </div>
 
+              <div style={{ fontSize: '13px', color: '#94a3b8', fontStyle: 'italic', marginBottom: '0.5rem' }}>
+                *Apabila ingin dihubungi admin lebih lanjut bisa mengisikan email dan no telponnya
+              </div>
               <div className="sla-form-grid">
                 <div className="sla-form-control">
-                  <label>Email Resmi *</label>
+                  <label>Email Resmi (Opsional)</label>
                   <input
                     type="email"
-                    required
                     placeholder="civitas@kampus.ac.id"
                     value={newTicketForm.email}
                     onChange={(e) => setNewTicketForm({ ...newTicketForm, email: e.target.value })}
                   />
                 </div>
                 <div className="sla-form-control">
-                  <label>Nomor WhatsApp *</label>
+                  <label>Nomor WhatsApp (Opsional)</label>
                   <input
                     type="text"
-                    required
                     placeholder="081234567890"
                     value={newTicketForm.whatsapp_number}
                     onChange={(e) => setNewTicketForm({ ...newTicketForm, whatsapp_number: e.target.value })}

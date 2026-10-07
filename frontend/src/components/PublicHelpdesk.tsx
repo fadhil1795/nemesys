@@ -61,7 +61,6 @@ interface PublicHelpdeskProps {
 export const PublicHelpdesk: React.FC<PublicHelpdeskProps> = ({ onBackToLogin }) => {
   // Form state
   const [fullName, setFullName] = useState('');
-  const [idNumber, setIdNumber] = useState('');
   const [category, setCategory] = useState('Mahasiswa');
   const [unitSpecification, setUnitSpecification] = useState('Gedung B');
   const [email, setEmail] = useState('');
@@ -188,7 +187,7 @@ export const PublicHelpdesk: React.FC<PublicHelpdeskProps> = ({ onBackToLogin })
         },
         body: JSON.stringify({
           full_name: fullName,
-          id_number: idNumber,
+          id_number: '-',
           category,
           unit_specification: unitSpecification,
           email,
@@ -205,7 +204,6 @@ export const PublicHelpdesk: React.FC<PublicHelpdeskProps> = ({ onBackToLogin })
         setSubmitSuccess(data.ticket_number);
         // Reset form
         setFullName('');
-        setIdNumber('');
         setCategory('Mahasiswa');
         setUnitSpecification('Gedung B');
         setEmail('');
@@ -637,7 +635,7 @@ export const PublicHelpdesk: React.FC<PublicHelpdeskProps> = ({ onBackToLogin })
         {!submitSuccess && (
           <form onSubmit={handleFormSubmit} className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {/* Row 1: Identitas */}
-            <div className="helpdesk-form-row-2">
+            <div className="helpdesk-form-row-1">
               <div className="helpdesk-input-control">
                 <label>Nama Lengkap <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                 <input 
@@ -646,17 +644,6 @@ export const PublicHelpdesk: React.FC<PublicHelpdeskProps> = ({ onBackToLogin })
                   placeholder="Contoh: Muhammad Fadil"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                />
-              </div>
-
-              <div className="helpdesk-input-control">
-                <label>NIP / NIM <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                <input 
-                  type="text" 
-                  required 
-                  placeholder="Contoh: 122110034 / 1989122501"
-                  value={idNumber}
-                  onChange={(e) => setIdNumber(e.target.value)}
                 />
               </div>
             </div>
@@ -735,12 +722,14 @@ export const PublicHelpdesk: React.FC<PublicHelpdeskProps> = ({ onBackToLogin })
             </div>
 
             {/* Row 3: Kontak Email & WhatsApp */}
+            <div style={{ padding: '0 4px', fontSize: '13px', color: '#94a3b8', fontStyle: 'italic', marginBottom: '-10px' }}>
+              *Apabila ingin dihubungi admin lebih lanjut bisa mengisikan email dan no telponnya
+            </div>
             <div className="helpdesk-form-row-2">
               <div className="helpdesk-input-control">
-                <label>Alamat Email Aktif <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                <label>Alamat Email Aktif (Opsional)</label>
                 <input 
                   type="email" 
-                  required 
                   placeholder="Contoh: fadil@gmail.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -748,10 +737,9 @@ export const PublicHelpdesk: React.FC<PublicHelpdeskProps> = ({ onBackToLogin })
               </div>
 
               <div className="helpdesk-input-control">
-                <label>Nomor WhatsApp <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                <label>Nomor WhatsApp (Opsional)</label>
                 <input 
                   type="text" 
-                  required 
                   placeholder="Contoh: 08123456789"
                   value={whatsappNumber}
                   onChange={(e) => setWhatsappNumber(e.target.value)}

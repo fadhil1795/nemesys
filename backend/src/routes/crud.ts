@@ -533,7 +533,7 @@ router.post('/open-tickets', async (req, res) => {
     proof_before_url = null
   } = req.body;
 
-  if (!full_name || !id_number || !category || !email || !whatsapp_number || !service_type || !description) {
+  if (!full_name || !category || !service_type || !description) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 

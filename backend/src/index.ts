@@ -1192,8 +1192,8 @@ app.post('/api/public/submit-ticket', async (req, res) => {
   const { full_name, id_number, category, unit_specification, email, whatsapp_number, service_type, description, image_url } = req.body;
 
   // Validate required fields
-  if (!full_name || !id_number || !category || !email || !whatsapp_number || !service_type || !description) {
-    return res.status(400).json({ error: 'Semua field harus diisi' });
+  if (!full_name || !category || !service_type || !description) {
+    return res.status(400).json({ error: 'Nama Lengkap, Kategori, Layanan, dan Deskripsi harus diisi' });
   }
 
   try {
