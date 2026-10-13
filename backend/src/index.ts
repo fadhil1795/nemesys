@@ -768,6 +768,15 @@ app.get('/api/custom-missions/:id/bast-verify', async (req, res) => {
       WHERE mp.mission_id = ?
     `, [id]);
 
+    // Dedicated resolution for Pihak I (Administrator) & Pihak II (Teknisi)
+    const adminParticipant = participants.find((p: any) => p.role === 'Administrator' || p.role === 'Manager');
+    const designatedAdmin = mission.bast_admin_approved_by || mission.created_by || adminParticipant?.name || 'Administrator Biro TI';
+
+    const techParticipants = participants.filter((p: any) => p.role === 'Teknisi');
+    const nonAdminParticipants = participants.filter((p: any) => p.role !== 'Administrator' && p.role !== 'Manager');
+    const candidateTechs = techParticipants.length > 0 ? techParticipants : nonAdminParticipants;
+    const designatedTech = mission.bast_tech_approved_by || (candidateTechs.length > 0 ? candidateTechs.map((p: any) => p.name).join(', ') : (participants[0]?.name || 'Tim Teknisi Pelaksana'));
+
     // Verified only when BOTH admin AND tech have explicitly approved
     const adminApproved = Boolean(mission.bast_admin_approved_by);
     const techApproved = Boolean(mission.bast_tech_approved_by);
@@ -776,7 +785,17 @@ app.get('/api/custom-missions/:id/bast-verify', async (req, res) => {
     const isVerified = isFullyVerified;
     const bastNumber = mission.bast_number || `BAST-MIS/${new Date().getFullYear()}/${id}`;
     const defaultHash = mission.bast_hash || `SHA256-NEMESYS-${id}-${bastNumber.replace(/[^A-Z0-9]/gi, '')}`;
-    const checklists = mission.checklists ? JSON.parse(mission.checklists) : [];
+    let rawChecklists: any[] = [];
+    try {
+      rawChecklists = mission.checklists ? (typeof mission.checklists === 'string' ? JSON.parse(mission.checklists) : mission.checklists) : [];
+    } catch (e) {
+      rawChecklists = [];
+    }
+    const checklists = rawChecklists.map((c: any) => ({
+      ...c,
+      completed: Boolean(c.completed || (c as any).completed === 'true' || (c as any).completed === 1 || mission.status === 'Completed' || (mission.progress_percent !== undefined && mission.progress_percent >= 100)),
+      completed_by: c.completed_by || designatedTech || 'Teknisi Lapangan'
+    }));
 
     // If client explicitly requested JSON format (API call)
     const acceptsJson = req.headers.accept?.includes('application/json') && !req.headers.accept?.includes('text/html');
@@ -793,22 +812,24 @@ app.get('/api/custom-missions/:id/bast-verify', async (req, res) => {
         title: mission.title,
         description: mission.description,
         date_finished: mission.date_finished || '-',
-        created_by: mission.created_by || 'Administrator',
+        created_by: designatedAdmin,
         approvals: {
           admin: {
-            approved_by: mission.bast_admin_approved_by || null,
+            approved_by: mission.bast_admin_approved_by || designatedAdmin,
             approved_at: mission.bast_admin_approved_at || null,
-            status: adminApproved ? 'Approved & Validated' : 'Menunggu Persetujuan'
+            is_approved: adminApproved,
+            status: adminApproved ? 'Approved & Validated' : 'Menunggu Persetujuan Administrator'
           },
           tech: {
-            approved_by: mission.bast_tech_approved_by || null,
+            approved_by: mission.bast_tech_approved_by || designatedTech,
             approved_at: mission.bast_tech_approved_at || null,
+            is_approved: techApproved,
             status: techApproved ? 'Disahkan & Dikonfirmasi' : 'Menunggu Konfirmasi Teknisi'
           },
           signer: {
-            name: mission.bast_signer_name || null,
-            role: mission.bast_signer_role || null,
-            signed_at: mission.bast_signed_at || null
+            name: designatedTech,
+            role: 'Teknisi Pelaksana Lapangan',
+            signed_at: mission.bast_tech_approved_at || mission.bast_signed_at || null
           }
         },
         checklists: checklists,
@@ -849,9 +870,14 @@ app.get('/api/custom-missions/:id/bast-verify', async (req, res) => {
         <div class="checklist-box">
           <div class="checklist-title">🛠️ Rincian Item Pekerjaan Terverifikasi (${checklists.length} Item)</div>
           ${checklists.map((c: any) => `
-            <div class="checklist-item">
-              <span style="color: #4ade80; font-weight: 800;">✓</span>
-              <span>${c.text}</span>
+            <div class="checklist-item" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="color: #4ade80; font-weight: 800;">✓</span>
+                <span style="font-weight: 600; color: #f1f5f9;">${c.text}</span>
+              </div>
+              <span style="font-size: 11px; color: #94a3b8; font-weight: 500; background: rgba(255,255,255,0.06); padding: 2px 8px; border-radius: 4px; white-space: nowrap;">
+                ${c.completed_by ? `Pelaksana: ${c.completed_by}` : 'Terverifikasi Selesai'}
+              </span>
             </div>
           `).join('')}
         </div>
@@ -1073,20 +1099,20 @@ app.get('/api/custom-missions/:id/bast-verify', async (req, res) => {
 
     <div class="approval-grid">
       <div class="approval-card" style="${adminApproved ? '' : 'border-color:rgba(245,158,11,0.4);'}">
-        <div class="approval-role">👑 Manager BTI / Admin</div>
-        <div class="approval-name">${adminApprovedBy || '— Belum Disahkan —'}</div>
+        <div class="approval-role">👑 PIHAK I: ADMINISTRATOR BIRO TI</div>
+        <div class="approval-name">${adminApprovedBy || designatedAdmin}</div>
         <div class="approval-status" style="${adminApproved ? '' : 'color:#fbbf24;'}">
-          ${adminApproved ? '✅ Approved & Validated' : '⏳ Menunggu Persetujuan'}
+          ${adminApproved ? '✅ Approved & Validated' : '⏳ Menunggu Persetujuan Administrator'}
         </div>
-        <div class="approval-time">${adminApprovedAt || '-'}</div>
+        <div class="approval-time">${adminApprovedAt || 'Belum Disahkan'}</div>
       </div>
       <div class="approval-card" style="${techApproved ? '' : 'border-color:rgba(245,158,11,0.4);'}">
-        <div class="approval-role">👷 Pelaksana / Lead Teknisi</div>
-        <div class="approval-name">${techApprovedBy || '— Belum Dikonfirmasi —'}</div>
+        <div class="approval-role">👷 PIHAK II: TEKNISI PELAKSANA</div>
+        <div class="approval-name">${techApprovedBy || designatedTech}</div>
         <div class="approval-status" style="${techApproved ? '' : 'color:#fbbf24;'}">
           ${techApproved ? '✅ Disahkan & Dikonfirmasi' : '⏳ Menunggu Konfirmasi Teknisi'}
         </div>
-        <div class="approval-time">${techApprovedAt || '-'}</div>
+        <div class="approval-time">${techApprovedAt || 'Belum Disahkan'}</div>
       </div>
     </div>
 

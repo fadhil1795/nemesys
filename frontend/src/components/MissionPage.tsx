@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import type { CustomMission, User, MissionChecklistItem } from '../types';
 import { 
@@ -82,6 +82,95 @@ const compressAndUploadImage = async (file: File): Promise<string> => {
   });
 };
 
+export interface BastPartyInfo {
+  name: string;
+  role: string;
+  isApproved: boolean;
+  approvedAt: string | null;
+  allTechNames?: string[];
+}
+
+export const getBastAdministrator = (mission: CustomMission | null | undefined): BastPartyInfo => {
+  if (!mission) {
+    return { name: 'Administrator Biro TI', role: 'Administrator Biro TI', isApproved: false, approvedAt: null };
+  }
+  // 1. If explicitly approved by admin
+  if (mission.bast_admin_approved_by) {
+    return {
+      name: mission.bast_admin_approved_by,
+      role: 'Administrator Biro TI',
+      isApproved: true,
+      approvedAt: mission.bast_admin_approved_at || null
+    };
+  }
+  // 2. Mission creator (Admin who created it)
+  if (mission.created_by && mission.created_by.trim() !== '') {
+    return {
+      name: mission.created_by.trim(),
+      role: 'Administrator Biro TI',
+      isApproved: false,
+      approvedAt: null
+    };
+  }
+  // 3. Assigned personnel with role 'Administrator' or 'Manager'
+  const adminPersonnel = mission.personnels?.find(p => p.role === 'Administrator' || p.role === 'Manager');
+  if (adminPersonnel) {
+    return {
+      name: adminPersonnel.name,
+      role: 'Administrator Biro TI',
+      isApproved: false,
+      approvedAt: null
+    };
+  }
+  // 4. Fallback default
+  return {
+    name: 'Administrator Biro TI',
+    role: 'Administrator Biro TI',
+    isApproved: false,
+    approvedAt: null
+  };
+};
+
+export const getBastTechnician = (mission: CustomMission | null | undefined): BastPartyInfo => {
+  if (!mission) {
+    return { name: 'Teknisi Pelaksana', role: 'Teknisi Lapangan Biro TI', isApproved: false, approvedAt: null, allTechNames: [] };
+  }
+  // All technicians in personnels
+  const techPersonnels = mission.personnels?.filter(p => p.role === 'Teknisi') || [];
+  const nonAdminPersonnels = mission.personnels?.filter(p => p.role !== 'Administrator' && p.role !== 'Manager') || [];
+  const candidateTechs = techPersonnels.length > 0 ? techPersonnels : (nonAdminPersonnels.length > 0 ? nonAdminPersonnels : mission.personnels || []);
+  const allTechNames = candidateTechs.map(p => p.name);
+
+  // 1. If explicitly approved by tech
+  if (mission.bast_tech_approved_by) {
+    return {
+      name: mission.bast_tech_approved_by,
+      role: 'Teknisi Lapangan Biro TI',
+      isApproved: true,
+      approvedAt: mission.bast_tech_approved_at || null,
+      allTechNames
+    };
+  }
+  // 2. Assigned candidate technicians
+  if (allTechNames.length > 0) {
+    return {
+      name: allTechNames.join(', '),
+      role: allTechNames.length > 1 ? 'Tim Teknisi Lapangan Biro TI' : 'Teknisi Lapangan Biro TI',
+      isApproved: false,
+      approvedAt: null,
+      allTechNames
+    };
+  }
+  // 3. Fallback
+  return {
+    name: 'Teknisi Lapangan BTI',
+    role: 'Teknisi Lapangan Biro TI',
+    isApproved: false,
+    approvedAt: null,
+    allTechNames: []
+  };
+};
+
 interface MissionPageProps {
   customMissions: CustomMission[];
   users: User[];
@@ -151,6 +240,39 @@ export const MissionPage: React.FC<MissionPageProps> = ({
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
   const [verifyData, setVerifyData] = useState<any>(null);
   const [isVerifyingLoading, setIsVerifyingLoading] = useState(false);
+
+  // Auto-sync bastMission when customMissions is refreshed from server
+  useEffect(() => {
+    if (bastMission && isBastModalOpen) {
+      const fresh = customMissions.find(m => m.id === bastMission.id);
+      if (fresh) {
+        let freshChecklists = fresh.checklists;
+        if (typeof (fresh as any).checklists === 'string') {
+          try {
+            freshChecklists = JSON.parse((fresh as any).checklists);
+          } catch (e) {
+            freshChecklists = [];
+          }
+        }
+        if ((fresh.status === 'Completed' || (fresh.progress_percent !== undefined && fresh.progress_percent >= 100)) && freshChecklists) {
+          freshChecklists = freshChecklists.map(c => ({
+            ...c,
+            completed: true,
+            completed_by: c.completed_by || getBastTechnician(fresh).name
+          }));
+        }
+        setBastMission(prev => prev ? ({
+          ...fresh,
+          checklists: freshChecklists,
+          bast_signer_name: signerName || fresh.bast_signer_name,
+          bast_signer_role: signerRole || fresh.bast_signer_role,
+          bast_notes: bastNotes || fresh.bast_notes,
+          bast_signature_url: signatureDataUrl || fresh.bast_signature_url,
+          bast_tech_signature_url: techSignatureDataUrl || fresh.bast_tech_signature_url
+        }) : null);
+      }
+    }
+  }, [customMissions]);
 
   // Filters State
   const [searchTitle, setSearchTitle] = useState('');
@@ -395,9 +517,17 @@ export const MissionPage: React.FC<MissionPageProps> = ({
   // Open Progress Modal for Technician
   const handleOpenProgressModal = (m: CustomMission) => {
     setActiveMission(m);
-    setTempChecklists(m.checklists && m.checklists.length > 0 ? [...m.checklists] : [
+    let initialChecklists = m.checklists && m.checklists.length > 0 ? [...m.checklists] : [
       { id: '1', text: 'Pengerjaan Utama', completed: false }
-    ]);
+    ];
+    if (m.progress_percent === 100 || m.status === 'Completed') {
+      initialChecklists = initialChecklists.map(c => ({
+        ...c,
+        completed: true,
+        completed_by: c.completed_by || currentUser?.name
+      }));
+    }
+    setTempChecklists(initialChecklists);
     setTempProgress(m.progress_percent || 0);
     setTempNote(m.note || '');
     setTempImages(parseMissionImages(m.mission_image));
@@ -427,6 +557,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
     if (!activeMission) return;
     try {
       const finalMissionImage = tempImages.length > 0 ? JSON.stringify(tempImages) : '';
+      const newStatus = tempProgress === 100 ? 'Completed' : 'In Progress';
       const res = await fetch(`${BACKEND_URL}/api/custom-missions/${activeMission.id}/progress`, {
         method: 'PUT',
         headers: {
@@ -438,7 +569,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
           checklists: tempChecklists,
           note: tempNote,
           mission_image: finalMissionImage,
-          status: tempProgress === 100 ? 'Completed' : 'In Progress'
+          status: newStatus
         })
       });
       if (res.ok) {
@@ -446,9 +577,17 @@ export const MissionPage: React.FC<MissionPageProps> = ({
         setIsProgressModalOpen(false);
         onRefresh();
 
-        // If progress reached 100%, prompt BAST modal
+        // If progress reached 100%, prompt BAST modal with full updated checklist and mission data
         if (tempProgress === 100) {
-          setTimeout(() => handleOpenBastModal({ ...activeMission, mission_image: finalMissionImage, progress_percent: 100 }), 400);
+          const updatedMissionForBast: CustomMission = {
+            ...activeMission,
+            checklists: tempChecklists,
+            mission_image: finalMissionImage,
+            progress_percent: 100,
+            status: 'Completed',
+            note: tempNote
+          };
+          setTimeout(() => handleOpenBastModal(updatedMissionForBast), 400);
         }
       }
     } catch (err) {
@@ -458,15 +597,37 @@ export const MissionPage: React.FC<MissionPageProps> = ({
 
   // Open BAST Modal & Generate QR Code
   const handleOpenBastModal = (m: CustomMission) => {
-    setBastMission(m);
-    setSignerName(m.bast_signer_name || (currentUser && !isAdmin ? currentUser.name : ''));
-    setSignerRole(m.bast_signer_role || (!isAdmin ? 'Teknisi Lapangan / Penerima' : 'Penanggung Jawab Lokasi'));
-    setBastNotes(m.bast_notes || '');
-    setSignatureDataUrl(m.bast_signature_url || '');
-    setTechSignatureDataUrl(m.bast_tech_signature_url || '');
+    let resolvedChecklists = m.checklists;
+    if (typeof (m as any).checklists === 'string') {
+      try {
+        resolvedChecklists = JSON.parse((m as any).checklists);
+      } catch (e) {
+        resolvedChecklists = [];
+      }
+    }
+    const resolvedTech = getBastTechnician(m);
+    if ((m.status === 'Completed' || (m.progress_percent !== undefined && m.progress_percent >= 100)) && resolvedChecklists) {
+      resolvedChecklists = resolvedChecklists.map(c => ({
+        ...c,
+        completed: true,
+        completed_by: c.completed_by || resolvedTech.name
+      }));
+    }
+
+    const normalizedMission: CustomMission = {
+      ...m,
+      checklists: resolvedChecklists
+    };
+
+    setBastMission(normalizedMission);
+    setSignerName(normalizedMission.bast_signer_name || resolvedTech.name);
+    setSignerRole(normalizedMission.bast_signer_role || resolvedTech.role);
+    setBastNotes(normalizedMission.bast_notes || '');
+    setSignatureDataUrl(normalizedMission.bast_signature_url || '');
+    setTechSignatureDataUrl(normalizedMission.bast_tech_signature_url || '');
 
     // Generate Verification QR Code
-    const verifyUrl = `${BACKEND_URL}/api/custom-missions/${m.id}/bast-verify`;
+    const verifyUrl = `${BACKEND_URL}/api/custom-missions/${normalizedMission.id}/bast-verify`;
     QRCode.toDataURL(verifyUrl, {
       width: 180,
       margin: 1,
@@ -481,28 +642,41 @@ export const MissionPage: React.FC<MissionPageProps> = ({
     setIsBastModalOpen(true);
   };
 
-  // Digital Approval Handler (Administrator / Manager BTI or Lead Technician)
+  // Digital Approval Handler (Administrator or Technician)
   const handleDigitalApproval = async (roleType: 'admin' | 'tech') => {
     if (!bastMission || !currentUser) return;
     const now = new Date().toLocaleString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(' pukul', ' -');
     const hash = `SHA256-NEMESYS-${bastMission.id}-${Date.now().toString(36).toUpperCase()}`;
 
+    const resolvedAdmin = getBastAdministrator(bastMission);
+    const resolvedTech = getBastTechnician(bastMission);
+
+    // Ensure all checklists are marked completed when digitally approving BAST
+    const completedChecklists = (bastMission.checklists || []).map(c => ({
+      ...c,
+      completed: true,
+      completed_by: c.completed_by || resolvedTech.name || currentUser.name
+    }));
+
     const updateBody: any = {
       status: 'Completed',
       progress_percent: 100,
       bast_notes: bastNotes,
-      bast_signer_name: signerName,
-      bast_signer_role: signerRole,
+      bast_signer_name: resolvedTech.name,
+      bast_signer_role: resolvedTech.role,
       bast_signature_url: signatureDataUrl,
       bast_tech_signature_url: techSignatureDataUrl,
-      bast_hash: hash
+      bast_hash: hash,
+      checklists: completedChecklists
     };
 
     if (roleType === 'admin') {
-      updateBody.bast_admin_approved_by = currentUser.name;
+      const adminName = (currentUser.role === 'Administrator' || currentUser.role === 'Manager') ? currentUser.name : resolvedAdmin.name;
+      updateBody.bast_admin_approved_by = adminName;
       updateBody.bast_admin_approved_at = now;
     } else {
-      updateBody.bast_tech_approved_by = currentUser.name;
+      const techApprover = currentUser.role === 'Teknisi' ? currentUser.name : (resolvedTech.name || currentUser.name);
+      updateBody.bast_tech_approved_by = techApprover;
       updateBody.bast_tech_approved_at = now;
     }
 
@@ -516,9 +690,9 @@ export const MissionPage: React.FC<MissionPageProps> = ({
         body: JSON.stringify(updateBody)
       });
       if (res.ok) {
-        setMsg(`Pengesahan Digital BAST oleh ${roleType === 'admin' ? 'Manager/Admin' : 'Teknisi'} berhasil disahkan!`);
+        setMsg(`Pengesahan Digital BAST oleh ${roleType === 'admin' ? 'Administrator' : 'Teknisi'} berhasil disahkan!`);
+        setBastMission(prev => prev ? ({ ...prev, ...updateBody }) : null);
         onRefresh();
-        setIsBastModalOpen(false);
       } else {
         alert('Gagal menyimpan pengesahan digital BAST.');
       }
@@ -549,6 +723,13 @@ export const MissionPage: React.FC<MissionPageProps> = ({
   // Save BAST Document
   const handleSaveBast = async () => {
     if (!bastMission) return;
+    const resolvedTech = getBastTechnician(bastMission);
+    const completedChecklists = (bastMission.checklists || []).map(c => ({
+      ...c,
+      completed: true,
+      completed_by: c.completed_by || resolvedTech.name || currentUser?.name
+    }));
+
     try {
       const res = await fetch(`${BACKEND_URL}/api/custom-missions/${bastMission.id}/progress`, {
         method: 'PUT',
@@ -559,15 +740,23 @@ export const MissionPage: React.FC<MissionPageProps> = ({
         body: JSON.stringify({
           status: 'Completed',
           progress_percent: 100,
-          bast_signer_name: signerName,
-          bast_signer_role: signerRole,
+          bast_signer_name: resolvedTech.name,
+          bast_signer_role: resolvedTech.role,
           bast_signature_url: signatureDataUrl,
           bast_tech_signature_url: techSignatureDataUrl,
-          bast_notes: bastNotes
+          bast_notes: bastNotes,
+          checklists: completedChecklists
         })
       });
       if (res.ok) {
-        setMsg('Dokumen BAST & Laporan Pekerjaan berhasil diterbitkan!');
+        setMsg('Dokumen BAST & Laporan Pekerjaan berhasil diperbarui!');
+        setBastMission(prev => prev ? ({
+          ...prev,
+          bast_signer_name: resolvedTech.name,
+          bast_signer_role: resolvedTech.role,
+          bast_notes: bastNotes,
+          checklists: completedChecklists
+        }) : null);
         onRefresh();
       }
     } catch (err) {
@@ -817,7 +1006,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
               const slotsTotal = m.slots;
               const isFull = filledSlots >= slotsTotal;
               const hasJoined = currentUser ? m.personnels.some(p => p.id === currentUser.id) : false;
-              const completedChecklists = m.checklists ? m.checklists.filter(c => c.completed).length : 0;
+              const completedChecklists = m.checklists ? m.checklists.filter(c => Boolean(c.completed || (c as any).completed === 'true' || (c as any).completed === 1 || m.status === 'Completed' || (m.progress_percent !== undefined && m.progress_percent >= 100))).length : 0;
               const totalChecklists = m.checklists ? m.checklists.length : 0;
 
               return (
@@ -1535,7 +1724,18 @@ export const MissionPage: React.FC<MissionPageProps> = ({
                   <span style={{ color: '#4ade80', fontWeight: 700 }}>{tempProgress}%</span>
                 </div>
                 <input
-                  type="range" min={0} max={100} value={tempProgress} onChange={(e) => setTempProgress(parseInt(e.target.value))}
+                  type="range" min={0} max={100} value={tempProgress}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 0;
+                    setTempProgress(val);
+                    if (val === 100) {
+                      setTempChecklists(prev => prev.map(c => ({
+                        ...c,
+                        completed: true,
+                        completed_by: c.completed_by || currentUser?.name
+                      })));
+                    }
+                  }}
                   style={{ accentColor: '#22c55e', cursor: 'pointer' }}
                 />
               </div>
@@ -1711,352 +1911,521 @@ export const MissionPage: React.FC<MissionPageProps> = ({
       {/* ============================================================ */}
       {/* MODAL 3: BAST & OFFICIAL MISSION REPORT (PRINTABLE LAYOUT)   */}
       {/* ============================================================ */}
-      {isBastModalOpen && bastMission && (
-        <div className="bast-modal-overlay" style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px'
-        }}>
-          <div className="bast-modal-card" style={{
-            backgroundColor: '#ffffff', color: '#0f172a',
-            width: '100%', maxWidth: '820px', borderRadius: '8px', padding: '32px',
-            maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)', position: 'relative'
+      {isBastModalOpen && bastMission && (() => {
+        const bastAdmin = getBastAdministrator(bastMission);
+        const bastTech = getBastTechnician(bastMission);
+        return (
+          <div className="bast-modal-overlay" style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(6px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px'
           }}>
-            {/* Close Button (Hidden on Print) */}
-            <button
-              className="no-print"
-              onClick={() => setIsBastModalOpen(false)}
-              style={{ position: 'absolute', right: '16px', top: '16px', background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '24px' }}
-            >
-              &times;
-            </button>
-
-            {/* Print Header Actions (Hidden on Print) */}
-            <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', paddingBottom: '14px', borderBottom: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '16px', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <FileText size={20} color="#2563eb" />
-                <span>Dokumen Berita Acara Serah Terima (BAST) & Laporan Pekerjaan</span>
-              </div>
+            <div className="bast-modal-card" style={{
+              backgroundColor: '#ffffff', color: '#0f172a',
+              width: '100%', maxWidth: '820px', borderRadius: '8px', padding: '32px',
+              maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)', position: 'relative'
+            }}>
+              {/* Close Button (Hidden on Print) */}
               <button
-                onClick={handlePrintBast}
-                style={{
-                  backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
-                }}
+                className="no-print"
+                onClick={() => setIsBastModalOpen(false)}
+                style={{ position: 'absolute', right: '16px', top: '16px', background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '24px' }}
               >
-                <Printer size={16} /> Cetak / Export PDF
+                &times;
               </button>
-            </div>
 
-            {/* PANEL CONTROL PENGESAHAN DIGITAL (LUAR DOKUMEN - Hidden on Print) */}
-            <div className="no-print" style={{ backgroundColor: '#f1f5f9', padding: '16px', borderRadius: '10px', border: '1px solid #cbd5e1', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <ShieldCheck size={18} color="#16a34a" /> Panel Pengesahan & Approval BAST Digital (100% Paperless)
+              {/* Print Header Actions (Hidden on Print) */}
+              <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', paddingBottom: '14px', borderBottom: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '16px', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FileText size={20} color="#2563eb" />
+                  <span>Dokumen Berita Acara Serah Terima (BAST) & Laporan Pekerjaan</span>
                 </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    onClick={() => handleVerifyBast(bastMission.id)}
-                    style={{ backgroundColor: 'rgba(22, 163, 74, 0.1)', color: '#16a34a', border: '1px solid #16a34a', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                  >
-                    <QrIcon size={14} /> Portal Scan QR
-                  </button>
-                  <button
-                    onClick={handleSaveBast}
-                    style={{ backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 16px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                  >
-                    <CheckCircle2 size={14} /> Simpan Pengesahan
-                  </button>
-                </div>
+                <button
+                  onClick={handlePrintBast}
+                  style={{
+                    backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
+                  }}
+                >
+                  <Printer size={16} /> Cetak / Export PDF
+                </button>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                {/* Data Penerima / Pihak II */}
-                <div style={{ backgroundColor: '#ffffff', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                    👤 Data Penanggung Jawab / Penerima Pekerjaan (Pihak II)
+              {/* PANEL CONTROL PENGESAHAN DIGITAL (LUAR DOKUMEN - Hidden on Print) */}
+              <div className="no-print" style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '10px', border: '1px solid #cbd5e1', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <ShieldCheck size={18} color="#16a34a" /> Panel Pengesahan & Approval BAST Digital (100% Paperless)
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <input
-                      type="text" placeholder="Nama Penerima / User *"
-                      value={signerName} onChange={(e) => setSignerName(e.target.value)}
-                      style={{ flex: 1, padding: '6px 10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', outline: 'none' }}
-                    />
-                    <input
-                      type="text" placeholder="Jabatan"
-                      value={signerRole} onChange={(e) => setSignerRole(e.target.value)}
-                      style={{ flex: 1, padding: '6px 10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', outline: 'none' }}
-                    />
-                  </div>
-                </div>
-
-                {/* Tombol Approval Digital */}
-                <div style={{ backgroundColor: '#ffffff', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '6px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#334155' }}>
-                    🛡️ Pengesahan Digital Stempel System
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    {isAdmin && (
-                      <button
-                        onClick={() => handleDigitalApproval('admin')}
-                        style={{ flex: 1, backgroundColor: '#1e40af', color: '#ffffff', border: 'none', borderRadius: '6px', padding: '7px 10px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
-                      >
-                        <ShieldCheck size={14} /> Sahkan (Manager BTI)
-                      </button>
-                    )}
                     <button
-                      onClick={() => handleDigitalApproval('tech')}
-                      style={{ flex: 1, backgroundColor: '#16a34a', color: '#ffffff', border: 'none', borderRadius: '6px', padding: '7px 10px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
+                      onClick={() => handleVerifyBast(bastMission.id)}
+                      style={{ backgroundColor: 'rgba(22, 163, 74, 0.1)', color: '#16a34a', border: '1px solid #16a34a', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                     >
-                      <CheckCircle2 size={14} /> Sahkan (Teknisi)
+                      <QrIcon size={14} /> Portal Scan QR
+                    </button>
+                    <button
+                      onClick={handleSaveBast}
+                      style={{ backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 16px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                    >
+                      <CheckCircle2 size={14} /> Simpan Pengesahan
                     </button>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* PURE PRINTABLE AREA CONTENT */}
-            <div id="bast-print-area">
-              {/* KOP SURAT INSTITUSI */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '20px', borderBottom: '3px double #0f172a', paddingBottom: '14px', marginBottom: '20px' }}>
-                <div style={{ width: '75px', height: '75px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <img
-                    src={bastMission.custom_header_logo || '/logo_perpenas.png'}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/logo_perpenas.png';
-                    }}
-                    alt="Logo Institusi Perpenas"
-                    style={{ width: '75px', height: '75px', objectFit: 'contain' }}
-                  />
-                </div>
-                <div style={{ flex: 1, textAlign: 'center' }}>
-                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#0f172a', letterSpacing: '0.5px' }}>
-                    {bastMission.custom_header_title || 'UNIVERSITAS 17 AGUSTUS 1945 BANYUWANGI'}
-                  </h3>
-                  <h4 style={{ margin: '2px 0 0 0', fontSize: '14px', fontWeight: 700, color: '#2563eb' }}>
-                    {bastMission.custom_header_subtitle || 'BIRO TEKNOLOGI INFORMASI (BTI)'}
-                  </h4>
-                  <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
-                    Jl. Lintas Selatan No. 1, Banyuwangi, Jawa Timur | Telp: (0333) 417618 | Email: bti@untag-banyuwangi.ac.id
-                  </div>
-                </div>
-              </div>
-
-              {/* DOKUMEN TITLE */}
-              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, textDecoration: 'underline', color: '#0f172a' }}>
-                  BERITA ACARA SERAH TERIMA PEKERJAAN (BAST)
-                </h3>
-                <div style={{ fontSize: '13px', color: '#475569', marginTop: '4px', fontWeight: 600 }}>
-                  Nomor: {bastMission.bast_number || `BAST-MIS/${new Date().getFullYear()}/${bastMission.id.toString().padStart(3, '0')}`}
-                </div>
-              </div>
-
-              {/* DEKLARASI & RINCIAN MISI */}
-              <div style={{ fontSize: '13px', lineHeight: 1.6, color: '#334155', marginBottom: '16px' }}>
-                Pada hari ini, telah diselesaikan pekerjaan tim IT Helpdesk dengan rincian waktu pelaksanaan dan hasil pekerjaan sebagai berikut:
-              </div>
-
-              {/* TABLE METADATA (RINGKAS & TERINTEGRASI) */}
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', marginBottom: '20px' }}>
-                <tbody>
-                  <tr>
-                    <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', width: '200px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Nama Misi / Pekerjaan</td>
-                    <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1', fontWeight: 600, color: '#0f172a' }}>{bastMission.title}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Deskripsi Pekerjaan</td>
-                    <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1', color: '#334155' }}>{bastMission.description || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Tim Pelaksana (Teknisi)</td>
-                    <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1', color: '#334155' }}>
-                      {bastMission.personnels.map(p => `${p.name} (${p.role})`).join(', ') || '-'}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Waktu Mulai Pekerjaan</td>
-                    <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1', fontWeight: 600, color: '#0369a1' }}>
-                      {bastMission.started_at || bastMission.created_at || '-'}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Waktu Selesai Pekerjaan</td>
-                    <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1', fontWeight: 600, color: '#16a34a' }}>
-                      {bastMission.date_finished || (bastMission.status === 'Completed' ? (bastMission.created_at || '-') : 'Dalam Proses (In Progress)')}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Total Durasi Pelaksanaan</td>
-                    <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1', fontWeight: 600, color: '#4f46e5' }}>
-                      {bastMission.duration_str || (bastMission.status === 'Completed' ? 'Selesai Tuntas' : 'Sedang Berlangsung')}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Pihak Pertama (Penyerah / IT)</td>
-                    <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1' }}>
-                      <div style={{ fontWeight: 700, color: '#0f172a' }}>
-                        {bastMission.bast_admin_approved_by || (currentUser?.name || 'Administrator Biro TI')}
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#64748b' }}>
-                        Biro Teknologi Informasi (BTI) {bastMission.bast_admin_approved_at ? ` • Disahkan: ${bastMission.bast_admin_approved_at}` : ''}
-                      </div>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Pihak Kedua (Penerima Pekerjaan)</td>
-                    <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1' }}>
-                      <div style={{ fontWeight: 700, color: '#0f172a' }}>
-                        {bastMission.bast_tech_approved_by || signerName || bastMission.bast_signer_name || (bastMission.personnels[0]?.name || 'Penanggung Jawab Lokasi')}
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#64748b' }}>
-                        {signerRole || bastMission.bast_signer_role || 'Penanggung Jawab Lokasi'} {bastMission.bast_tech_approved_at ? ` • Disahkan: ${bastMission.bast_tech_approved_at}` : ''}
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-
-              {/* TABEL CHECKLIST SUB-TASK */}
-              {bastMission.checklists && bastMission.checklists.length > 0 && (
-                <div style={{ marginBottom: '20px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
-                    Rincian Item Pekerjaan yang Diselesaikan:
-                  </div>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                    <thead>
-                      <tr style={{ backgroundColor: '#f1f5f9', color: '#334155' }}>
-                        <th style={{ border: '1px solid #cbd5e1', padding: '6px', width: '40px' }}>NO</th>
-                        <th style={{ border: '1px solid #cbd5e1', padding: '6px', textAlign: 'left' }}>ITEM PEKERJAAN</th>
-                        <th style={{ border: '1px solid #cbd5e1', padding: '6px', width: '100px' }}>STATUS</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {bastMission.checklists.map((c, i) => (
-                        <tr key={c.id}>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px', textAlign: 'center' }}>{i + 1}</td>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px' }}>{c.text}</td>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px', textAlign: 'center', color: '#16a34a', fontWeight: 700 }}>
-                            {c.completed ? '✓ SELESAI' : '-'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {/* LAMPIRAN FOTO & CATATAN */}
-              {(() => {
-                const bastImages = parseMissionImages(bastMission.mission_image);
-                if (bastImages.length === 0) return null;
-                return (
-                  <div style={{ marginBottom: '20px' }}>
-                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Camera size={15} color="#2563eb" />
-                      <span>Lampiran Foto Bukti Pekerjaan Lapangan ({bastImages.length} Foto):</span>
-                    </div>
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: bastImages.length === 1 ? '1fr' : 'repeat(auto-fill, minmax(180px, 1fr))',
-                      gap: '12px'
-                    }}>
-                      {bastImages.map((imgUrl, idx) => (
-                        <div key={idx} style={{ border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', backgroundColor: '#f8fafc', padding: '4px' }}>
-                          <img
-                            src={getPhotoUrl(imgUrl)}
-                            alt={`Foto Dokumentasi ${idx + 1}`}
-                            onClick={() => setLightboxImage({ url: getPhotoUrl(imgUrl), title: `Foto Dokumentasi #${idx + 1} - ${bastMission.title}` })}
-                            style={{ width: '100%', height: bastImages.length === 1 ? '220px' : '140px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
-                            onError={(e: any) => { e.target.src = 'https://placehold.co/400x300/1e293b/94a3b8?text=Invalid+Image'; }}
-                          />
-                          <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', textAlign: 'center', padding: '4px 0 2px 0' }}>
-                            Dokumentasi #{idx + 1}
-                          </div>
+                {/* DUA KARTU ENTITAS RESMI: PIHAK I (ADMINISTRATOR) & PIHAK II (TEKNISI) */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  {/* Kartu Pihak I: Administrator */}
+                  <div style={{ backgroundColor: '#ffffff', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                      <div>
+                        <div style={{ fontSize: '11px', fontWeight: 800, color: '#1e40af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          👑 Pihak I: Administrator Biro TI
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* CATATAN BAST */}
-              {bastMission.note && (
-                <div style={{ fontSize: '12px', color: '#475569', marginBottom: '20px', backgroundColor: '#f8fafc', padding: '10px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
-                  <strong>Catatan Tambahan:</strong> {bastMission.note}
-                </div>
-              )}
-
-              {/* EMBEDDED VERIFICATION QR CODE BLOCK - Only shown when BOTH parties have approved */}
-              {bastMission.bast_admin_approved_by && bastMission.bast_tech_approved_by ? (
-                <div style={{ marginTop: '24px', borderTop: '2px dashed #cbd5e1', paddingTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: '10px', paddingRight: '10px' }}>
-                  <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <ShieldCheck size={16} color="#16a34a" /> VERIFIKASI DIGITAL DOKUMEN BAST RESMI
-                    </div>
-                    <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '3px', maxWidth: '420px' }}>
-                      Dokumen ini telah disahkan secara digital oleh Tim Teknisi & Administrator Biro TI. Pindai QR Code untuk menguji keaslian dokumen dan audit trail pengesahan.
-                    </div>
-                    <div style={{ fontSize: '10px', color: '#64748b', fontFamily: 'monospace', marginTop: '4px' }}>
-                      HASH: {bastMission.bast_hash || `SHA256-NEMESYS-${bastMission.id}`}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'center' }}>
-                    {bastQrImageSrc ? (
-                      <img
-                        src={bastQrImageSrc}
-                        alt="QR Code Verifikasi BAST"
-                        onClick={() => handleVerifyBast(bastMission.id)}
-                        style={{ width: '90px', height: '90px', borderRadius: '4px', border: '1px solid #cbd5e1', padding: '3px', backgroundColor: '#fff', cursor: 'pointer' }}
-                      />
-                    ) : (
-                      <div style={{ width: '90px', height: '90px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: '#64748b' }}>
-                        QR Code
+                        <div style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
+                          {bastAdmin.name}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>
+                          Pemberi Tugas / Administrator Biro TI
+                        </div>
                       </div>
-                    )}
-                    <div style={{ fontSize: '9.5px', color: '#64748b', fontWeight: 700, marginTop: '2px' }}>
-                      ID: VERIFY-{bastMission.id}
+                      {bastMission.bast_admin_approved_by ? (
+                        <span style={{ fontSize: '11px', backgroundColor: '#dcfce7', color: '#15803d', padding: '3px 8px', borderRadius: '12px', fontWeight: 700 }}>
+                          ✓ Disahkan
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '11px', backgroundColor: '#fef3c7', color: '#b45309', padding: '3px 8px', borderRadius: '12px', fontWeight: 700 }}>
+                          Menunggu
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '10px', marginTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: '11px', color: '#64748b' }}>
+                        {bastMission.bast_admin_approved_at ? `Disahkan: ${bastMission.bast_admin_approved_at}` : 'Belum disahkan'}
+                      </div>
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleDigitalApproval('admin')}
+                          style={{
+                            backgroundColor: bastMission.bast_admin_approved_by ? '#f1f5f9' : '#1e40af',
+                            color: bastMission.bast_admin_approved_by ? '#475569' : '#ffffff',
+                            border: bastMission.bast_admin_approved_by ? '1px solid #cbd5e1' : 'none',
+                            borderRadius: '6px', padding: '6px 12px', fontSize: '11.5px', fontWeight: 700,
+                            cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px'
+                          }}
+                        >
+                          <ShieldCheck size={13} /> {bastMission.bast_admin_approved_by ? 'Sahkan Ulang (Admin)' : 'Sahkan (Admin)'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Kartu Pihak II: Teknisi Pelaksana */}
+                  <div style={{ backgroundColor: '#ffffff', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                      <div>
+                        <div style={{ fontSize: '11px', fontWeight: 800, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          👷 Pihak II: Teknisi Pelaksana
+                        </div>
+                        <div style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
+                          {bastTech.name}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>
+                          Tim Pelaksana Pekerjaan Lapangan
+                        </div>
+                      </div>
+                      {bastMission.bast_tech_approved_by ? (
+                        <span style={{ fontSize: '11px', backgroundColor: '#dcfce7', color: '#15803d', padding: '3px 8px', borderRadius: '12px', fontWeight: 700 }}>
+                          ✓ Disahkan
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '11px', backgroundColor: '#fef3c7', color: '#b45309', padding: '3px 8px', borderRadius: '12px', fontWeight: 700 }}>
+                          Menunggu
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '10px', marginTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: '11px', color: '#64748b' }}>
+                        {bastMission.bast_tech_approved_at ? `Disahkan: ${bastMission.bast_tech_approved_at}` : 'Belum disahkan'}
+                      </div>
+                      <button
+                        onClick={() => handleDigitalApproval('tech')}
+                        style={{
+                          backgroundColor: bastMission.bast_tech_approved_by ? '#f1f5f9' : '#16a34a',
+                          color: bastMission.bast_tech_approved_by ? '#475569' : '#ffffff',
+                          border: bastMission.bast_tech_approved_by ? '1px solid #cbd5e1' : 'none',
+                          borderRadius: '6px', padding: '6px 12px', fontSize: '11.5px', fontWeight: 700,
+                          cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px'
+                        }}
+                      >
+                        <CheckCircle2 size={13} /> {bastMission.bast_tech_approved_by ? 'Sahkan Ulang (Teknisi)' : 'Sahkan (Teknisi)'}
+                      </button>
                     </div>
                   </div>
                 </div>
-              ) : (
-                <div style={{ marginTop: '24px', borderTop: '2px dashed #fde68a', paddingTop: '14px', backgroundColor: '#fffbeb', borderRadius: '6px', padding: '12px 16px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#92400e' }}>
-                    ⏳ QR Code Verifikasi belum tersedia
+
+                {/* Informative Note: Ketetapan Pihak BAST */}
+                <div style={{ marginTop: '10px', fontSize: '11.5px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#f1f5f9', padding: '8px 12px', borderRadius: '6px' }}>
+                  <span>ℹ️</span>
+                  <span><strong>Ketetapan Pihak BAST:</strong> Pihak Pertama adalah Administrator Biro TI dan Pihak Kedua adalah Teknisi Pelaksana penugasan. Identitas ini terikat permanen pada data penugasan misi ini dan tidak dapat diganti bebas.</span>
+                </div>
+              </div>
+
+              {/* PURE PRINTABLE AREA CONTENT */}
+              <div id="bast-print-area">
+                {/* KOP SURAT INSTITUSI */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', borderBottom: '3px double #0f172a', paddingBottom: '14px', marginBottom: '20px' }}>
+                  <div style={{ width: '75px', height: '75px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <img
+                      src={bastMission.custom_header_logo || '/logo_perpenas.png'}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/logo_perpenas.png';
+                      }}
+                      alt="Logo Institusi Perpenas"
+                      style={{ width: '75px', height: '75px', objectFit: 'contain' }}
+                    />
                   </div>
-                  <div style={{ fontSize: '11px', color: '#b45309', marginTop: '4px' }}>
-                    QR Code & Hash Digital akan muncul setelah <strong>kedua pihak</strong> (Manager BTI & Teknisi) menyelesaikan pengesahan digital.
+                  <div style={{ flex: 1, textAlign: 'center' }}>
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#0f172a', letterSpacing: '0.5px' }}>
+                      {bastMission.custom_header_title || 'UNIVERSITAS 17 AGUSTUS 1945 BANYUWANGI'}
+                    </h3>
+                    <h4 style={{ margin: '2px 0 0 0', fontSize: '14px', fontWeight: 700, color: '#2563eb' }}>
+                      {bastMission.custom_header_subtitle || 'BIRO TEKNOLOGI INFORMASI (BTI)'}
+                    </h4>
+                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
+                      Jl. Adi Sucipto No.26, Taman Baru, Kec. Banyuwangi, Kabupaten Banyuwangi, Jawa Timur 68416 | Telp: (0333) 423235 | Email: ti@untag-banyuwangi.ac.id
+                    </div>
                   </div>
                 </div>
-              )}
 
-            </div>
+                {/* DOKUMEN TITLE */}
+                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, textDecoration: 'underline', color: '#0f172a' }}>
+                    BERITA ACARA SERAH TERIMA PEKERJAAN (BAST)
+                  </h3>
+                  <div style={{ fontSize: '13px', color: '#475569', marginTop: '4px', fontWeight: 600 }}>
+                    Nomor: {bastMission.bast_number || `BAST-MIS/${new Date().getFullYear()}/${bastMission.id.toString().padStart(3, '0')}`}
+                  </div>
+                </div>
 
-            {/* Bottom Modal Close & Print Controls */}
-            <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px' }}>
-              <button
-                onClick={() => handleVerifyBast(bastMission.id)}
-                style={{ backgroundColor: 'rgba(56, 189, 248, 0.15)', border: '1px solid #38bdf8', color: '#38bdf8', borderRadius: '6px', padding: '9px 18px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <QrIcon size={16} /> Pratinjau Tampilan Scan QR Code
-              </button>
-              <div style={{ display: 'flex', gap: '10px' }}>
+                {/* DEKLARASI & RINCIAN MISI */}
+                <div style={{ fontSize: '13px', lineHeight: 1.6, color: '#334155', marginBottom: '16px' }}>
+                  Pada hari ini, telah diselesaikan pekerjaan tim IT Helpdesk dengan rincian waktu pelaksanaan dan hasil pekerjaan sebagai berikut:
+                </div>
+
+                {/* TABLE METADATA (RINGKAS & TERINTEGRASI) */}
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', marginBottom: '20px' }}>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', width: '200px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Nama Misi / Pekerjaan</td>
+                      <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1', fontWeight: 600, color: '#0f172a' }}>{bastMission.title}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Deskripsi Pekerjaan</td>
+                      <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1', color: '#334155' }}>{bastMission.description || '-'}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Tim Pelaksana (Teknisi)</td>
+                      <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1', color: '#334155' }}>
+                        {bastMission.personnels.map(p => `${p.name} (${p.role})`).join(', ') || '-'}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Waktu Mulai Pekerjaan</td>
+                      <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1', fontWeight: 600, color: '#0369a1' }}>
+                        {bastMission.started_at || bastMission.created_at || '-'}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Waktu Selesai Pekerjaan</td>
+                      <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1', fontWeight: 600, color: '#16a34a' }}>
+                        {bastMission.date_finished || (bastMission.status === 'Completed' ? (bastMission.created_at || '-') : 'Dalam Proses (In Progress)')}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>Total Durasi Pelaksanaan</td>
+                      <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1', fontWeight: 600, color: '#4f46e5' }}>
+                        {bastMission.duration_str || (bastMission.status === 'Completed' ? 'Selesai Tuntas' : 'Sedang Berlangsung')}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>
+                        Pihak Pertama (Administrator / Pemberi Tugas)
+                      </td>
+                      <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1' }}>
+                        <div style={{ fontWeight: 700, color: '#0f172a' }}>
+                          {bastAdmin.name}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>
+                          Administrator Biro Teknologi Informasi (BTI) {bastMission.bast_admin_approved_at ? ` • Disahkan: ${bastMission.bast_admin_approved_at}` : ' • (Menunggu Pengesahan Digital)'}
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '7px 12px', fontWeight: 700, color: '#475569', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>
+                        Pihak Kedua (Teknisi / Pelaksana Pekerjaan)
+                      </td>
+                      <td style={{ padding: '7px 12px', border: '1px solid #cbd5e1' }}>
+                        <div style={{ fontWeight: 700, color: '#0f172a' }}>
+                          {bastTech.name}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>
+                          Teknisi Lapangan Biro Teknologi Informasi (BTI) {bastMission.bast_tech_approved_at ? ` • Disahkan: ${bastMission.bast_tech_approved_at}` : ' • (Menunggu Pengesahan Digital)'}
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {/* TABEL CHECKLIST SUB-TASK */}
+                {bastMission.checklists && bastMission.checklists.length > 0 && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span>Rincian Item Pekerjaan yang Diselesaikan:</span>
+                      <span style={{ fontSize: '11px', fontWeight: 600, color: '#16a34a', backgroundColor: '#dcfce7', padding: '2px 8px', borderRadius: '4px', border: '1px solid #bbf7d0' }}>
+                        {bastMission.checklists.filter(c => Boolean(c.completed || (c as any).completed === 'true' || (c as any).completed === 1 || bastMission.status === 'Completed' || (bastMission.progress_percent !== undefined && bastMission.progress_percent >= 100))).length} dari {bastMission.checklists.length} Item Selesai
+                      </span>
+                    </div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#f1f5f9', color: '#1e293b' }}>
+                          <th style={{ border: '1px solid #cbd5e1', padding: '8px 6px', width: '38px', textAlign: 'center' }}>NO</th>
+                          <th style={{ border: '1px solid #cbd5e1', padding: '8px 10px', textAlign: 'left' }}>ITEM PEKERJAAN</th>
+                          <th style={{ border: '1px solid #cbd5e1', padding: '8px 10px', width: '115px', textAlign: 'center' }}>STATUS</th>
+                          <th style={{ border: '1px solid #cbd5e1', padding: '8px 10px', width: '220px', textAlign: 'left' }}>KETERANGAN / PELAKSANA</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bastMission.checklists.map((c, i) => {
+                          const isDone = Boolean(
+                            c.completed === true ||
+                            (c as any).completed === 'true' ||
+                            (c as any).completed === 1 ||
+                            bastMission.status === 'Completed' ||
+                            (bastMission.progress_percent !== undefined && bastMission.progress_percent >= 100)
+                          );
+                          const executorName = c.completed_by || bastTech.name || 'Teknisi Lapangan BTI';
+
+                          return (
+                            <tr key={c.id || i} style={{ backgroundColor: i % 2 === 1 ? '#f8fafc' : '#ffffff' }}>
+                              <td style={{ border: '1px solid #cbd5e1', padding: '7px 6px', textAlign: 'center', fontWeight: 600 }}>{i + 1}</td>
+                              <td style={{ border: '1px solid #cbd5e1', padding: '7px 10px', color: '#0f172a', fontWeight: 500 }}>{c.text}</td>
+                              <td style={{ border: '1px solid #cbd5e1', padding: '7px 8px', textAlign: 'center' }}>
+                                {isDone ? (
+                                  <span style={{
+                                    display: 'inline-block',
+                                    padding: '3px 8px',
+                                    borderRadius: '4px',
+                                    backgroundColor: '#dcfce7',
+                                    color: '#15803d',
+                                    fontWeight: 700,
+                                    fontSize: '11px',
+                                    border: '1px solid #86efac'
+                                  }}>
+                                    ✓ SELESAI
+                                  </span>
+                                ) : (
+                                  <span style={{
+                                    display: 'inline-block',
+                                    padding: '3px 8px',
+                                    borderRadius: '4px',
+                                    backgroundColor: '#fef3c7',
+                                    color: '#b45309',
+                                    fontWeight: 600,
+                                    fontSize: '11px',
+                                    border: '1px solid #fde68a'
+                                  }}>
+                                    PROSES
+                                  </span>
+                                )}
+                              </td>
+                              <td style={{ border: '1px solid #cbd5e1', padding: '7px 10px' }}>
+                                <div style={{ fontWeight: 600, color: isDone ? '#15803d' : '#475569', fontSize: '11.5px' }}>
+                                  {isDone ? '✓ Selesai Terverifikasi Lapangan' : 'Dalam Proses Pelaksanaan'}
+                                </div>
+                                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                                  Pelaksana: <span style={{ fontWeight: 600, color: '#334155' }}>{executorName}</span>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* LAMPIRAN FOTO & CATATAN */}
+                {(() => {
+                  const bastImages = parseMissionImages(bastMission.mission_image);
+                  if (bastImages.length === 0) return null;
+                  return (
+                    <div style={{ marginBottom: '20px' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Camera size={15} color="#2563eb" />
+                        <span>Lampiran Foto Bukti Pekerjaan Lapangan ({bastImages.length} Foto):</span>
+                      </div>
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: bastImages.length === 1 ? '1fr' : 'repeat(auto-fill, minmax(180px, 1fr))',
+                        gap: '12px'
+                      }}>
+                        {bastImages.map((imgUrl, idx) => (
+                          <div key={idx} style={{ border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', backgroundColor: '#f8fafc', padding: '4px' }}>
+                            <img
+                              src={getPhotoUrl(imgUrl)}
+                              alt={`Foto Dokumentasi ${idx + 1}`}
+                              onClick={() => setLightboxImage({ url: getPhotoUrl(imgUrl), title: `Foto Dokumentasi #${idx + 1} - ${bastMission.title}` })}
+                              style={{ width: '100%', height: bastImages.length === 1 ? '220px' : '140px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
+                              onError={(e: any) => { e.target.src = 'https://placehold.co/400x300/1e293b/94a3b8?text=Invalid+Image'; }}
+                            />
+                            <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', textAlign: 'center', padding: '4px 0 2px 0' }}>
+                              Dokumentasi #{idx + 1}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* CATATAN BAST */}
+                {bastMission.note && (
+                  <div style={{ fontSize: '12px', color: '#475569', marginBottom: '20px', backgroundColor: '#f8fafc', padding: '10px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                    <strong>Catatan Tambahan:</strong> {bastMission.note}
+                  </div>
+                )}
+
+                {/* LEMBAR PENGESAHAN DUA PIHAK RESMI (PIHAK I & PIHAK II) */}
+                <div style={{ marginTop: '24px', marginBottom: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', pageBreakInside: 'avoid' }}>
+                  {/* PIHAK PERTAMA */}
+                  <div style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '14px', textAlign: 'center', backgroundColor: '#f8fafc' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 800, color: '#1e40af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      PIHAK PERTAMA (ADMINISTRATOR)
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                      Biro Teknologi Informasi (BTI)
+                    </div>
+                    <div style={{ minHeight: '64px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '8px 0' }}>
+                      {bastMission.bast_admin_approved_by ? (
+                        <div style={{ border: '2px solid #16a34a', color: '#16a34a', padding: '6px 14px', borderRadius: '6px', fontWeight: 800, fontSize: '11px', transform: 'rotate(-2deg)', display: 'inline-flex', alignItems: 'center', gap: '5px', backgroundColor: 'rgba(22, 163, 74, 0.06)' }}>
+                          <CheckCircle2 size={14} /> DISAHKAN DIGITAL
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic', border: '1px dashed #cbd5e1', padding: '6px 14px', borderRadius: '4px' }}>
+                          (Menunggu Pengesahan Administrator)
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ fontWeight: 800, fontSize: '13px', color: '#0f172a', textDecoration: 'underline' }}>
+                      {bastAdmin.name}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                      Administrator Biro TI {bastMission.bast_admin_approved_at ? `(${bastMission.bast_admin_approved_at})` : ''}
+                    </div>
+                  </div>
+
+                  {/* PIHAK KEDUA */}
+                  <div style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '14px', textAlign: 'center', backgroundColor: '#f8fafc' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 800, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      PIHAK KEDUA (TEKNISI PELAKSANA)
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                      Tim Pelaksana Lapangan BTI
+                    </div>
+                    <div style={{ minHeight: '64px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '8px 0' }}>
+                      {bastMission.bast_tech_approved_by ? (
+                        <div style={{ border: '2px solid #16a34a', color: '#16a34a', padding: '6px 14px', borderRadius: '6px', fontWeight: 800, fontSize: '11px', transform: 'rotate(-2deg)', display: 'inline-flex', alignItems: 'center', gap: '5px', backgroundColor: 'rgba(22, 163, 74, 0.06)' }}>
+                          <CheckCircle2 size={14} /> DISAHKAN DIGITAL
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic', border: '1px dashed #cbd5e1', padding: '6px 14px', borderRadius: '4px' }}>
+                          (Menunggu Pengesahan Teknisi)
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ fontWeight: 800, fontSize: '13px', color: '#0f172a', textDecoration: 'underline' }}>
+                      {bastTech.name}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                      Teknisi Lapangan BTI {bastMission.bast_tech_approved_at ? `(${bastMission.bast_tech_approved_at})` : ''}
+                    </div>
+                  </div>
+                </div>
+
+                {/* EMBEDDED VERIFICATION QR CODE BLOCK - Only shown when BOTH parties have approved */}
+                {bastMission.bast_admin_approved_by && bastMission.bast_tech_approved_by ? (
+                  <div style={{ marginTop: '24px', borderTop: '2px dashed #cbd5e1', paddingTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: '10px', paddingRight: '10px' }}>
+                    <div style={{ textAlign: 'left' }}>
+                      <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <ShieldCheck size={16} color="#16a34a" /> VERIFIKASI DIGITAL DOKUMEN BAST RESMI
+                      </div>
+                      <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '3px', maxWidth: '420px' }}>
+                        Dokumen ini telah disahkan secara digital oleh Tim Teknisi & Administrator Biro TI. Pindai QR Code untuk menguji keaslian dokumen dan audit trail pengesahan.
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#64748b', fontFamily: 'monospace', marginTop: '4px' }}>
+                        HASH: {bastMission.bast_hash || `SHA256-NEMESYS-${bastMission.id}`}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      {bastQrImageSrc ? (
+                        <img
+                          src={bastQrImageSrc}
+                          alt="QR Code Verifikasi BAST"
+                          onClick={() => handleVerifyBast(bastMission.id)}
+                          style={{ width: '90px', height: '90px', borderRadius: '4px', border: '1px solid #cbd5e1', padding: '3px', backgroundColor: '#fff', cursor: 'pointer' }}
+                        />
+                      ) : (
+                        <div style={{ width: '90px', height: '90px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: '#64748b' }}>
+                          QR Code
+                        </div>
+                      )}
+                      <div style={{ fontSize: '9.5px', color: '#64748b', fontWeight: 700, marginTop: '2px' }}>
+                        ID: VERIFY-{bastMission.id}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ marginTop: '24px', borderTop: '2px dashed #fde68a', paddingTop: '14px', backgroundColor: '#fffbeb', borderRadius: '6px', padding: '12px 16px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#92400e' }}>
+                      ⏳ QR Code Verifikasi belum tersedia
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#b45309', marginTop: '4px' }}>
+                      QR Code & Hash Digital akan muncul setelah <strong>kedua pihak</strong> (Administrator BTI & Teknisi Pelaksana) menyelesaikan pengesahan digital.
+                    </div>
+                  </div>
+                )}
+
+              </div>
+
+              {/* Bottom Modal Close & Print Controls */}
+              <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px' }}>
                 <button
-                  onClick={() => setIsBastModalOpen(false)}
-                  style={{ backgroundColor: '#64748b', color: '#ffffff', border: 'none', borderRadius: '6px', padding: '9px 20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+                  onClick={() => handleVerifyBast(bastMission.id)}
+                  style={{ backgroundColor: 'rgba(56, 189, 248, 0.15)', border: '1px solid #38bdf8', color: '#38bdf8', borderRadius: '6px', padding: '9px 18px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  Tutup Dokumen
+                  <QrIcon size={16} /> Pratinjau Tampilan Scan QR Code
                 </button>
-                <button
-                  onClick={handlePrintBast}
-                  style={{ backgroundColor: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '6px', padding: '9px 20px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-                >
-                  <Printer size={16} /> Cetak BAST (A4)
-                </button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={() => setIsBastModalOpen(false)}
+                    style={{ backgroundColor: '#64748b', color: '#ffffff', border: 'none', borderRadius: '6px', padding: '9px 20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Tutup Dokumen
+                  </button>
+                  <button
+                    onClick={handlePrintBast}
+                    style={{ backgroundColor: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '6px', padding: '9px 20px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Printer size={16} /> Cetak BAST (A4)
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 9. MODAL PORTAL VERIFIKASI QR CODE (SCAN RESULTS SIMULATOR) */}
       {isVerifyModalOpen && (
@@ -2107,7 +2476,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     {/* Admin / Manager Approval */}
                     <div style={{ backgroundColor: 'rgba(30, 58, 138, 0.3)', border: '1px solid rgba(59, 130, 246, 0.4)', borderRadius: '8px', padding: '12px' }}>
-                      <div style={{ fontSize: '11px', color: '#93c5fd', fontWeight: 700, marginBottom: '4px' }}>👑 PEMBERI TUGAS / MANAGER BTI</div>
+                      <div style={{ fontSize: '11px', color: '#93c5fd', fontWeight: 700, marginBottom: '4px' }}>👑 PIHAK I: ADMINISTRATOR BIRO TI</div>
                       <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>{verifyData.approvals?.admin?.approved_by}</div>
                       <div style={{ fontSize: '11px', color: '#4ade80', marginTop: '4px', fontWeight: 600 }}>
                         ✅ {verifyData.approvals?.admin?.status}
@@ -2119,7 +2488,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
 
                     {/* Teknisi Approval */}
                     <div style={{ backgroundColor: 'rgba(20, 83, 45, 0.3)', border: '1px solid rgba(34, 197, 94, 0.4)', borderRadius: '8px', padding: '12px' }}>
-                      <div style={{ fontSize: '11px', color: '#86efac', fontWeight: 700, marginBottom: '4px' }}>👷 PELAKSANA / LEAD TEKNISI</div>
+                      <div style={{ fontSize: '11px', color: '#86efac', fontWeight: 700, marginBottom: '4px' }}>👷 PIHAK II: TEKNISI PELAKSANA</div>
                       <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>{verifyData.approvals?.tech?.approved_by}</div>
                       <div style={{ fontSize: '11px', color: '#4ade80', marginTop: '4px', fontWeight: 600 }}>
                         ✅ {verifyData.approvals?.tech?.status}
@@ -2137,9 +2506,14 @@ export const MissionPage: React.FC<MissionPageProps> = ({
                     <div style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, marginBottom: '8px' }}>🛠️ Rincian Checklist Terverifikasi ({verifyData.checklists.length} Item)</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       {verifyData.checklists.map((c: any, i: number) => (
-                        <div key={i} style={{ fontSize: '12px', color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ color: '#4ade80', fontWeight: 700 }}>✓</span>
-                          <span>{c.text}</span>
+                        <div key={i} style={{ fontSize: '12px', color: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ color: '#4ade80', fontWeight: 700 }}>✓</span>
+                            <span>{c.text}</span>
+                          </div>
+                          <span style={{ fontSize: '11px', color: '#94a3b8', backgroundColor: 'rgba(255,255,255,0.06)', padding: '2px 8px', borderRadius: '4px' }}>
+                            {c.completed_by ? `Pelaksana: ${c.completed_by}` : 'Selesai Terverifikasi'}
+                          </span>
                         </div>
                       ))}
                     </div>
