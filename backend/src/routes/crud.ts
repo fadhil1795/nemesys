@@ -860,6 +860,52 @@ router.put('/open-tickets/:id/escalate', async (req, res) => {
   }
 });
 
+// UPDATE TICKET RESOLUTION / JAWABAN SOLUSI TEKNISI
+router.put('/open-tickets/:id/resolution', async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { resolution_notes, status } = req.body;
+
+  try {
+    const now = new Date().toLocaleString('id-ID');
+    const [ticketRows]: any = await pool.query('SELECT * FROM open_tickets WHERE id = ?', [id]);
+    if (ticketRows.length === 0) {
+      return res.status(404).json({ error: 'Tiket tidak ditemukan' });
+    }
+    const currentTicket = ticketRows[0];
+
+    let updateQuery = 'UPDATE open_tickets SET resolution_notes = ?, updated_at = ?';
+    const params: any[] = [resolution_notes ?? '', now];
+
+    if (status && ['Open', 'In Progress', 'Resolved', 'Closed', 'Rejected'].includes(status)) {
+      updateQuery += ', status = ?';
+      params.push(status);
+      if (['Resolved', 'Closed'].includes(status)) {
+        if (!currentTicket.resolved_at || !['Resolved', 'Closed'].includes(currentTicket.status)) {
+          updateQuery += ', resolved_at = ?';
+          params.push(now);
+        }
+      } else if (['Open', 'In Progress'].includes(status)) {
+        updateQuery += ', resolved_at = NULL';
+      }
+    }
+
+    updateQuery += ' WHERE id = ?';
+    params.push(id);
+
+    await pool.query(updateQuery, params);
+
+    res.json({ 
+      message: 'Jawaban / Solusi tiket berhasil disimpan',
+      resolution_notes,
+      status: status || currentTicket.status
+    });
+  } catch (error) {
+    console.error('Error updating ticket resolution:', error);
+    res.status(500).json({ error: 'Database error updating ticket resolution' });
+  }
+});
+
+
 // DELETE open ticket
 router.delete('/open-tickets/:id', async (req, res) => {
   const id = parseInt(req.params.id);

@@ -35,7 +35,8 @@ import {
   Phone,
   Mail,
   MapPin,
-  Maximize2
+  Maximize2,
+  Edit3
 } from 'lucide-react';
 import { BACKEND_URL } from '../App';
 import type { UserTicket, User as TechUser } from '../types';
@@ -194,6 +195,15 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showEditAnswerModal, setShowEditAnswerModal] = useState(false);
+  const [answerForm, setAnswerForm] = useState<{
+    resolution_notes: string;
+    status: 'Open' | 'In Progress' | 'Resolved' | 'Closed' | 'Rejected';
+  }>({
+    resolution_notes: '',
+    status: 'Resolved'
+  });
+  const [savingAnswer, setSavingAnswer] = useState(false);
   const [detailTicket, setDetailTicket] = useState<UserTicket | null>(null);
   const [lightboxImage, setLightboxImage] = useState<{ url: string; title: string } | null>(null);
 
@@ -582,6 +592,86 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
       }
     } catch (err) {
       alert('Gagal menyelesaikan tiket.');
+    }
+  };
+
+  const handleOpenEditAnswer = (ticket: UserTicket) => {
+    setActiveTicket(ticket);
+    const initialStatus = (ticket.status === 'Open' || ticket.status === 'In Progress') 
+      ? 'Resolved' 
+      : ((ticket.status as any) || 'Resolved');
+    setAnswerForm({
+      resolution_notes: ticket.resolution_notes || '',
+      status: initialStatus
+    });
+    setShowEditAnswerModal(true);
+  };
+
+  const handleSaveEditAnswer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeTicket) return;
+
+    setSavingAnswer(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/open-tickets/${activeTicket.id}/resolution`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          resolution_notes: answerForm.resolution_notes,
+          status: answerForm.status
+        })
+      });
+
+      if (res.ok) {
+        const nowStr = new Date().toLocaleString('id-ID');
+        // Optimistically update tickets state
+        setTickets((prev) =>
+          prev.map((t) => {
+            if (t.id === activeTicket.id) {
+              return {
+                ...t,
+                resolution_notes: answerForm.resolution_notes,
+                status: answerForm.status,
+                resolved_at:
+                  answerForm.status === 'Resolved' || answerForm.status === 'Closed'
+                    ? t.resolved_at || nowStr
+                    : t.resolved_at
+              };
+            }
+            return t;
+          })
+        );
+
+        if (detailTicket && detailTicket.id === activeTicket.id) {
+          setDetailTicket((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  resolution_notes: answerForm.resolution_notes,
+                  status: answerForm.status,
+                  resolved_at:
+                    answerForm.status === 'Resolved' || answerForm.status === 'Closed'
+                      ? prev.resolved_at || nowStr
+                      : prev.resolved_at
+                }
+              : null
+          );
+        }
+
+        setShowEditAnswerModal(false);
+        fetchData(true);
+        if (onRefresh) onRefresh();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.error || 'Gagal menyimpan perubahan jawaban.');
+      }
+    } catch (err) {
+      alert('Gagal menghubungi server untuk menyimpan jawaban.');
+    } finally {
+      setSavingAnswer(false);
     }
   };
 
@@ -2024,6 +2114,54 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
                           <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: '2px 0 0 0', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ticket.description}>
                             {ticket.description}
                           </p>
+                          {ticket.resolution_notes ? (
+                            <div
+                              onClick={() => handleOpenEditAnswer(ticket)}
+                              style={{
+                                marginTop: '5px',
+                                padding: '3px 8px',
+                                borderRadius: '5px',
+                                background: 'rgba(16, 185, 129, 0.12)',
+                                border: '1px solid rgba(16, 185, 129, 0.3)',
+                                fontSize: '0.71rem',
+                                color: '#6ee7b7',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                maxWidth: '240px',
+                                transition: 'all 0.15s ease'
+                              }}
+                              title={`Jawaban / Solusi: "${ticket.resolution_notes}"\nKlik untuk mengedit jawaban`}
+                            >
+                              <CheckCircle2 size={11} className="text-emerald-400" style={{ flexShrink: 0 }} />
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                                <strong>Solusi:</strong> {ticket.resolution_notes}
+                              </span>
+                              <Edit3 size={10} style={{ flexShrink: 0, opacity: 0.8 }} />
+                            </div>
+                          ) : (ticket.status === 'In Progress' || ticket.status === 'Resolved' || ticket.status === 'Closed') ? (
+                            <div
+                              onClick={() => handleOpenEditAnswer(ticket)}
+                              style={{
+                                marginTop: '4px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                fontSize: '0.68rem',
+                                color: '#94a3b8',
+                                background: 'rgba(30, 41, 59, 0.6)',
+                                border: '1px dashed rgba(71, 85, 105, 0.6)',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                              title="Tulis jawaban / solusi penyelesaian"
+                            >
+                              <Edit3 size={10} />
+                              <span>+ Tulis Jawaban</span>
+                            </div>
+                          ) : null}
                         </td>
 
                         {/* 4. Priority & Escalation Level */}
@@ -2179,6 +2317,21 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
                             >
                               <Eye size={12} />
                               <span>Detail</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleOpenEditAnswer(ticket)}
+                              className="sla-action-btn"
+                              style={{
+                                background: ticket.resolution_notes ? 'rgba(16, 185, 129, 0.18)' : 'rgba(30, 41, 59, 0.8)',
+                                borderColor: ticket.resolution_notes ? 'rgba(16, 185, 129, 0.45)' : 'rgba(71, 85, 105, 0.6)',
+                                color: ticket.resolution_notes ? '#34d399' : '#cbd5e1',
+                                fontWeight: 600
+                              }}
+                              title={ticket.resolution_notes ? 'Edit Jawaban / Catatan Solusi' : 'Tulis Jawaban Solusi'}
+                            >
+                              <Edit3 size={12} />
+                              <span>Jawaban</span>
                             </button>
 
                             {ticket.status === 'Open' && (
@@ -2538,6 +2691,16 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
                         )}
 
                         <button
+                          onClick={() => handleOpenEditAnswer(ticket)}
+                          className="sla-action-btn"
+                          style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399' }}
+                          title="Edit Jawaban / Solusi"
+                        >
+                          <Edit3 size={11} />
+                          <span>Jawaban</span>
+                        </button>
+
+                        <button
                           onClick={() => {
                             setActiveTicket(ticket);
                             setBastSignerName(ticket.bast_signer_name || ticket.full_name || '');
@@ -2623,17 +2786,28 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
 
                       <div className="kanban-card-actions">
                         <span style={{ color: '#34d399', fontWeight: 600 }}>✓ Arsip BAST</span>
-                        <button
-                          onClick={() => {
-                            setActiveTicket(ticket);
-                            setShowBastModal(true);
-                          }}
-                          className="sla-action-btn"
-                          style={{ background: 'rgba(30,41,59,0.9)', color: '#f1f5f9' }}
-                        >
-                          <FileText size={11} />
-                          <span>Lihat</span>
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <button
+                            onClick={() => handleOpenEditAnswer(ticket)}
+                            className="sla-action-btn"
+                            style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399' }}
+                            title="Edit Jawaban / Solusi"
+                          >
+                            <Edit3 size={11} />
+                            <span>Jawaban</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setActiveTicket(ticket);
+                              setShowBastModal(true);
+                            }}
+                            className="sla-action-btn"
+                            style={{ background: 'rgba(30,41,59,0.9)', color: '#f1f5f9' }}
+                          >
+                            <FileText size={11} />
+                            <span>Lihat</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -3407,6 +3581,152 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
         </div>
       )}
 
+      {/* G2. EDIT JAWABAN / SOLUSI TIKET MODAL */}
+      {showEditAnswerModal && activeTicket && (
+        <div className="sla-modal-overlay">
+          <div className="sla-modal-box" style={{ maxWidth: '540px', borderColor: 'rgba(16, 185, 129, 0.6)' }}>
+            <div className="sla-modal-header" style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(51, 65, 85, 0.8)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Edit3 size={20} className="text-emerald-400" />
+                <div>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ffffff', margin: 0 }}>
+                    Edit Jawaban / Solusi Tiket
+                  </h3>
+                  <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>
+                    #{activeTicket.ticket_number} &bull; {activeTicket.full_name} ({activeTicket.unit_specification || 'Civitas'})
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setShowEditAnswerModal(false)} className="sla-btn-refresh">
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditAnswer} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {/* Info Permasalahan Pelapor */}
+              <div style={{ background: 'rgba(15, 23, 42, 0.7)', border: '1px solid rgba(51, 65, 85, 0.8)', padding: '12px 14px', borderRadius: '8px', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#94a3b8' }}>Layanan / Kategori:</span>
+                  <span style={{ fontWeight: 700, color: '#38bdf8' }}>{activeTicket.service_type}</span>
+                </div>
+                <div style={{ color: '#94a3b8', marginTop: '2px' }}>Keluhan / Kendala Dilaporkan:</div>
+                <div style={{ color: '#e2e8f0', background: 'rgba(30, 41, 59, 0.6)', padding: '8px 10px', borderRadius: '6px', fontSize: '0.78rem', lineHeight: '1.4', maxHeight: '70px', overflowY: 'auto' }}>
+                  {activeTicket.description || '-'}
+                </div>
+              </div>
+
+              {/* Status Tiket */}
+              <div className="sla-form-control">
+                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Status Tiket</span>
+                  <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 400 }}>
+                    Status saat ini: <strong style={{ color: '#38bdf8' }}>{activeTicket.status}</strong>
+                  </span>
+                </label>
+                <select
+                  value={answerForm.status}
+                  onChange={(e: any) => setAnswerForm({ ...answerForm, status: e.target.value })}
+                >
+                  <option value="Resolved">Resolved (Tindakan Selesai &amp; Solusi Diberikan)</option>
+                  <option value="Closed">Closed (Selesai &amp; Arsip Ditutup)</option>
+                  <option value="In Progress">In Progress (Sedang Dikerjakan / Draft)</option>
+                  <option value="Open">Open (Masuk Antrean)</option>
+                  <option value="Rejected">Rejected (Permintaan Ditolak)</option>
+                </select>
+              </div>
+
+              {/* Template Cepat */}
+              <div>
+                <label style={{ fontSize: '0.74rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '6px' }}>
+                  Template Jawaban Cepat (Klik untuk menyisipkan):
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {[
+                    'Perbaikan selesai & koneksi normal kembali.',
+                    'Reset dan konfigurasi ulang Access Point / Switch telah selesai.',
+                    'Penggantian kabel LAN / patch cord Cat6 selesai dilakukan.',
+                    'Akun SSO / email telah di-reset dan diverifikasi aktif.',
+                    'Verifikasi di lokasi selesai, civitas telah konfirmasi lancar.'
+                  ].map((tmpl, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setAnswerForm((prev) => ({
+                          ...prev,
+                          resolution_notes: prev.resolution_notes
+                            ? `${prev.resolution_notes}\n${tmpl}`
+                            : tmpl
+                        }));
+                      }}
+                      style={{
+                        background: 'rgba(30, 41, 59, 0.8)',
+                        border: '1px solid rgba(71, 85, 105, 0.6)',
+                        color: '#94a3b8',
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        fontSize: '0.7rem',
+                        cursor: 'pointer',
+                        textAlign: 'left'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = '#34d399';
+                        e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = '#94a3b8';
+                        e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.6)';
+                      }}
+                    >
+                      + {tmpl}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Textarea Jawaban */}
+              <div className="sla-form-control">
+                <label style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Jawaban / Tindakan Resolusi Teknisi *</span>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 400 }}>
+                    {answerForm.resolution_notes.length} karakter
+                  </span>
+                </label>
+                <textarea
+                  rows={4}
+                  required
+                  placeholder="Tuliskan detail jawaban solusi atau tindakan penanganan teknis yang diberikan kepada pemohon..."
+                  value={answerForm.resolution_notes}
+                  onChange={(e) => setAnswerForm({ ...answerForm, resolution_notes: e.target.value })}
+                />
+              </div>
+
+              {/* Footer Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(51,65,85,0.6)' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowEditAnswerModal(false)}
+                  className="sla-btn"
+                  style={{ background: 'rgba(30,41,59,0.8)', color: '#cbd5e1' }}
+                  disabled={savingAnswer}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="sla-btn sla-btn-excel"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                  disabled={savingAnswer}
+                >
+                  <CheckCircle2 size={15} />
+                  <span>{savingAnswer ? 'Menyimpan...' : 'Simpan Jawaban'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* H. EXPORT REPORT MODAL - Excel & PDF with Date Range */}
       {showExportModal && (
         <div className="sla-modal-overlay">
@@ -4018,11 +4338,21 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
                       gap: '0.75rem'
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid rgba(51, 65, 85, 0.5)', paddingBottom: '0.5rem' }}>
-                      <UserCheck size={16} className="text-emerald-400" />
-                      <h4 style={{ margin: 0, fontSize: '0.88rem', fontWeight: 800, color: '#f1f5f9', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                        Penanganan &amp; Teknisi NOC
-                      </h4>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(51, 65, 85, 0.5)', paddingBottom: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <UserCheck size={16} className="text-emerald-400" />
+                        <h4 style={{ margin: 0, fontSize: '0.88rem', fontWeight: 800, color: '#f1f5f9', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          Penanganan &amp; Teknisi NOC
+                        </h4>
+                      </div>
+                      <button
+                        onClick={() => handleOpenEditAnswer(detailTicket)}
+                        className="sla-action-btn"
+                        style={{ fontSize: '0.72rem', padding: '3px 8px', background: 'rgba(16, 185, 129, 0.2)', borderColor: 'rgba(16, 185, 129, 0.5)', color: '#34d399' }}
+                      >
+                        <Edit3 size={11} />
+                        <span>Edit Jawaban</span>
+                      </button>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: '0.5rem 0.75rem', fontSize: '0.82rem' }}>
@@ -4040,7 +4370,23 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
                           whiteSpace: 'pre-wrap'
                         }}
                       >
-                        {detailTicket.resolution_notes || 'Belum ada catatan penyelesaian teknis.'}
+                        {detailTicket.resolution_notes ? (
+                          detailTicket.resolution_notes
+                        ) : (
+                          <span style={{ color: '#64748b', fontStyle: 'italic' }}>
+                            Belum ada catatan penyelesaian teknis.
+                          </span>
+                        )}
+                        <div style={{ marginTop: '8px', textAlign: 'right' }}>
+                          <button
+                            onClick={() => handleOpenEditAnswer(detailTicket)}
+                            className="sla-action-btn"
+                            style={{ fontSize: '0.7rem', padding: '2px 7px', background: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.4)', color: '#34d399' }}
+                          >
+                            <Edit3 size={10} />
+                            <span>{detailTicket.resolution_notes ? 'Ubah Catatan Jawaban' : '+ Tulis Jawaban'}</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
