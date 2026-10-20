@@ -1190,10 +1190,12 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
         'No WhatsApp': t.whatsapp_number || '-',
         'Email': t.email || '-',
         'Jenis Layanan / Kendala': t.service_type,
+        'Keluhan / Uraian Masalah': t.description || '-',
         'Prioritas': t.priority || 'Medium',
         'Jenjang Eskalasi': `Level ${t.escalation_level || 1}`,
         'Status Tiket': t.status,
         'Teknisi NOC': t.assigned_user_name || 'Belum ditugaskan',
+        'Uraian yang Dikerjakan / Tindakan': t.resolution_notes || '-',
         'Waktu Penyelesaian': sla.resolvedFormatted,
         'Total Durasi Pengerjaan': sla.durationText,
         'Target SLA (Menit)': t.sla_limit_minutes || 60,
@@ -1276,7 +1278,7 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
           <style>
             @page {
               size: A4 landscape;
-              margin: 10mm 12mm;
+              margin: 8mm 8mm;
             }
             * {
               box-sizing: border-box;
@@ -1400,13 +1402,13 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
             .table-report {
               width: 100%;
               border-collapse: collapse;
-              font-size: 9.5px;
+              font-size: 8px;
               margin-bottom: 14px;
             }
             .table-report th, .table-report td {
               border: 1px solid #cbd5e1;
-              padding: 4px 5px;
-              vertical-align: middle;
+              padding: 4px 4px;
+              vertical-align: top;
             }
             .table-report th {
               background-color: #f1f5f9;
@@ -1414,6 +1416,7 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
               font-weight: bold;
               text-align: left;
               font-family: sans-serif;
+              font-size: 8px;
             }
             .status-badge {
               display: inline-block;
@@ -1480,18 +1483,20 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
           <table class="table-report">
             <thead>
               <tr>
-                <th style="width: 22px; text-align: center;">No</th>
-                <th>No. Tiket</th>
-                <th>Pelapor &amp; Unit</th>
-                <th>Layanan / Kendala</th>
-                <th>Waktu Masuk</th>
-                <th>Waktu Selesai</th>
-                <th>Durasi</th>
-                <th>Status SLA</th>
-                <th style="width: 58px; text-align: center;">Foto Awal</th>
-                <th style="width: 58px; text-align: center;">Foto Akhir</th>
-                <th>Status</th>
-                <th>Teknisi NOC</th>
+                <th style="width: 18px; text-align: center;">No</th>
+                <th style="width: 70px;">No. Tiket</th>
+                <th style="width: 95px;">Pelapor &amp; Unit</th>
+                <th style="width: 75px;">Layanan</th>
+                <th style="min-width: 105px;">Keluhan / Masalah</th>
+                <th style="min-width: 115px;">Uraian yang Dikerjakan</th>
+                <th style="width: 65px;">Waktu Masuk</th>
+                <th style="width: 65px;">Waktu Selesai</th>
+                <th style="width: 44px;">Durasi</th>
+                <th style="width: 50px;">Status SLA</th>
+                <th style="width: 44px; text-align: center;">Foto Awal</th>
+                <th style="width: 44px; text-align: center;">Foto Akhir</th>
+                <th style="width: 48px; text-align: center;">Status</th>
+                <th style="width: 70px;">Teknisi NOC</th>
               </tr>
             </thead>
             <tbody>
@@ -1504,13 +1509,19 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
                 return `
                   <tr>
                     <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
-                    <td style="font-family: monospace; font-weight: bold; font-size: 9px;">${t.ticket_number}</td>
-                    <td><strong>${t.full_name}</strong><br><span style="color: #64748b; font-size: 8.5px;">${t.unit_specification || t.category}</span></td>
-                    <td>${t.service_type}</td>
-                    <td style="color: #0369a1; font-weight: bold; font-size: 9px;">${sla.createdFormatted}</td>
-                    <td style="color: #059669; font-weight: bold; font-size: 9px;">${sla.resolvedFormatted}</td>
-                    <td style="color: #7c3aed; font-weight: bold; font-size: 9px;">${sla.durationText}</td>
-                    <td style="font-weight: bold; font-size: 9px; color: ${sla.isBreached ? '#dc2626' : '#16a34a'};">
+                    <td style="font-family: monospace; font-weight: bold; font-size: 8px;">${t.ticket_number}</td>
+                    <td><strong>${t.full_name}</strong><br><span style="color: #64748b; font-size: 7.5px;">${t.unit_specification || t.category}</span></td>
+                    <td style="font-weight: 600; color: #0369a1; font-size: 8px;">${t.service_type}</td>
+                    <td style="font-size: 8px; color: #1e293b; line-height: 1.3; word-break: break-word;">
+                      ${t.description ? t.description : '<span style="color: #94a3b8; font-style: italic;">-</span>'}
+                    </td>
+                    <td style="font-size: 8px; color: #0f172a; line-height: 1.3; word-break: break-word;">
+                      ${t.resolution_notes ? t.resolution_notes : '<span style="color: #94a3b8; font-style: italic;">Belum ada uraian</span>'}
+                    </td>
+                    <td style="color: #0369a1; font-weight: bold; font-size: 8px;">${sla.createdFormatted}</td>
+                    <td style="color: #059669; font-weight: bold; font-size: 8px;">${sla.resolvedFormatted}</td>
+                    <td style="color: #7c3aed; font-weight: bold; font-size: 8px;">${sla.durationText}</td>
+                    <td style="font-weight: bold; font-size: 8px; color: ${sla.isBreached ? '#dc2626' : '#16a34a'};">
                       ${sla.isBreached ? 'Melanggar' : (sla.isCompleted ? 'Sesuai SLA' : 'Berjalan')}
                     </td>
                     <td style="text-align: center;">
@@ -1523,8 +1534,8 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
                         <img src="${afterUrl}" class="photo-thumb" alt="After" />
                       ` : '<span style="color: #94a3b8; font-size: 8px;">-</span>'}
                     </td>
-                    <td><span class="status-badge ${badgeClass}">${t.status}</span></td>
-                    <td>${t.assigned_user_name || '-'}</td>
+                    <td style="text-align: center;"><span class="status-badge ${badgeClass}">${t.status}</span></td>
+                    <td style="font-weight: 600; font-size: 8px;">${t.assigned_user_name || '-'}</td>
                   </tr>
                 `;
               }).join('')}
@@ -1547,8 +1558,12 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
                         <span>${t.ticket_number}</span>
                         <span style="color: #475569; font-size: 9.5px;">${t.service_type}</span>
                       </div>
-                      <div style="color: #1e293b; margin-bottom: 8px; font-weight: 600; font-size: 10px;">
+                      <div style="color: #1e293b; margin-bottom: 6px; font-weight: 600; font-size: 10px;">
                         ${t.full_name} <span style="color: #64748b; font-weight: normal;">— ${t.unit_specification || t.category}</span>
+                      </div>
+                      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 8px; margin-bottom: 8px; font-size: 8.5px; color: #334155; line-height: 1.35;">
+                        <div style="margin-bottom: 3px;"><strong>Keluhan / Masalah:</strong> ${t.description || '-'}</div>
+                        <div><strong>Uraian yang Dikerjakan:</strong> ${t.resolution_notes || '-'}</div>
                       </div>
                       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; text-align: center;">
                         <div style="background: #ffffff; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
