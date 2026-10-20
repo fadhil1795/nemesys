@@ -6486,6 +6486,13 @@ html, body {
   border: 2px solid #fbbf24;
 }
 
+.kop-logo-img {
+  width: 68px;
+  height: 68px;
+  object-fit: contain;
+  display: block;
+}
+
 .kop-seal-nemesys {
   width: 68px;
   height: 68px;

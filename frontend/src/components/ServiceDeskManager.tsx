@@ -1084,11 +1084,11 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
         </head>
         <body>
           <div class="kop-surat">
-            <div class="kop-seal-untag">UNTAG</div>
+            <img src="${window.location.origin}/Logo%20IT%20Helpdesk%20yan.png" alt="Logo IT Helpdesk" style="width: 64px; height: 64px; object-fit: contain;" />
             <div class="kop-text">
               <h3>UNIVERSITAS 17 AGUSTUS 1945 BANYUWANGI</h3>
-              <h4>DIREKTORAT TEKNOLOGI INFORMASI & KOMUNIKASI (DTIK)</h4>
-              <h5>PUSAT DATA & INFRASTRUKTUR JARINGAN KAMPUS (NOC)</h5>
+              <h4>TEKNOLOGI INFORMASI & JARINGAN (NOC)</h4>
+              <h5>INFRASTRUKTUR JARINGAN KAMPUS (NOC)</h5>
               <p>Jl. Adi Sucipto No. 26 Banyuwangi, Jawa Timur 68416 | Telp: (0333) 412345 | Web: www.untag-banyuwangi.ac.id</p>
             </div>
             <div class="kop-seal-nemesys">NEMESYS</div>
@@ -1532,11 +1532,11 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
         </head>
         <body>
           <div class="kop-surat">
-            <div class="kop-seal-untag">UNTAG</div>
+            <img src="${window.location.origin}/Logo%20IT%20Helpdesk%20yan.png" alt="Logo IT Helpdesk" style="width: 64px; height: 64px; object-fit: contain;" />
             <div class="kop-text">
               <h3>UNIVERSITAS 17 AGUSTUS 1945 BANYUWANGI</h3>
-              <h4>DIREKTORAT TEKNOLOGI INFORMASI & KOMUNIKASI (DTIK)</h4>
-              <h5>PUSAT DATA & INFRASTRUKTUR JARINGAN KAMPUS (NOC)</h5>
+              <h4>TEKNOLOGI INFORMASI & JARINGAN (NOC)</h4>
+              <h5>INFRASTRUKTUR JARINGAN KAMPUS (NOC)</h5>
               <p>Jl. Adi Sucipto No. 26 Banyuwangi, Jawa Timur 68416 | Telp: (0333) 412345 | Web: www.untag-banyuwangi.ac.id</p>
             </div>
             <div class="kop-seal-nemesys">NEMESYS</div>
@@ -3271,12 +3271,17 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
               {/* KOP SURAT RESMI */}
               <div className="doc-kop-surat">
                 <div className="kop-logo-left">
-                  <div className="kop-seal-untag">UNTAG</div>
+                  <img
+                    src="/Logo%20IT%20Helpdesk%20yan.png"
+                    alt="Logo IT Helpdesk"
+                    className="kop-logo-img"
+                    style={{ width: '68px', height: '68px', objectFit: 'contain' }}
+                  />
                 </div>
                 <div className="kop-text">
                   <h3>UNIVERSITAS 17 AGUSTUS 1945 BANYUWANGI</h3>
-                  <h4>DIREKTORAT TEKNOLOGI INFORMASI &amp; KOMUNIKASI (DTIK)</h4>
-                  <h5>PUSAT DATA &amp; INFRASTRUKTUR JARINGAN KAMPUS (NOC)</h5>
+                  <h4>TEKNOLOGI INFORMASI &amp; JARINGAN (NOC)</h4>
+                  <h5>INFRASTRUKTUR JARINGAN KAMPUS (NOC)</h5>
                   <p>Jl. Adi Sucipto No. 26 Banyuwangi, Jawa Timur 68416 | Telp: (0333) 412345 | Web: www.untag-banyuwangi.ac.id</p>
                 </div>
                 <div className="kop-logo-right">

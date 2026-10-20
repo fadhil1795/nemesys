@@ -956,11 +956,16 @@ export const SlaReportManager: React.FC<Props> = ({
               {/* KOP SURAT RESMI */}
               <div className="doc-kop-surat">
                 <div className="kop-logo-left">
-                  <div className="kop-seal-untag">UNTAG</div>
+                  <img
+                    src="/Logo%20IT%20Helpdesk%20yan.png"
+                    alt="Logo IT Helpdesk"
+                    className="kop-logo-img"
+                    style={{ width: '68px', height: '68px', objectFit: 'contain' }}
+                  />
                 </div>
                 <div className="kop-text">
                   <h3>UNIVERSITAS 17 AGUSTUS 1945 BANYUWANGI</h3>
-                  <h4>DIREKTORAT TEKNOLOGI INFORMASI &amp; KOMUNIKASI (DTIK)</h4>
+                  <h4>TEKNOLOGI INFORMASI &amp; JARINGAN (NOC)</h4>
                   <h5>NETWORK OPERATIONS CENTER (NOC) &amp; INFRASTRUKTUR JARINGAN</h5>
                   <p>Jl. Adi Sucipto No. 26 Banyuwangi, Jawa Timur 68416 | Telp: (0333) 412345 | Web: www.untag-banyuwangi.ac.id</p>
                 </div>
