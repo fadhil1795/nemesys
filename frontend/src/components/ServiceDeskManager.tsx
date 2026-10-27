@@ -272,7 +272,7 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
         waktu_masuk: activeTicket.created_at,
         waktu_penyelesaian: activeTicket.resolved_at || activeTicket.updated_at,
         status: 'VERIFIED & RESOLVED BY NOC',
-        institusi: 'DTIK - Universitas 17 Agustus 1945 Banyuwangi',
+        institusi: 'Universitas 17 Agustus 1945 Banyuwangi',
         sistem: 'NEMESYS Network Management System'
       }, null, 2);
 
@@ -898,7 +898,7 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
           waktu_masuk: activeTicket.created_at,
           waktu_penyelesaian: activeTicket.resolved_at || activeTicket.updated_at,
           status: 'VERIFIED & RESOLVED BY NOC',
-          institusi: 'DTIK - Universitas 17 Agustus 1945 Banyuwangi',
+          institusi: 'Universitas 17 Agustus 1945 Banyuwangi',
           sistem: 'NEMESYS Network Management System'
         }, null, 2);
         currentQrUrl = await QRCode.toDataURL(qrPayload, { width: 140, margin: 1 });
@@ -944,14 +944,14 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
               justify-content: space-between;
               text-align: center;
               padding-bottom: 8px;
-              border-bottom: 3px double #000000;
+              border-bottom: 3px double #e22329;
               margin-bottom: 16px;
             }
             .kop-seal-untag {
               width: 64px;
               height: 64px;
               border-radius: 50%;
-              background: #1e3a8a;
+              background: #8c151b;
               color: #ffffff;
               display: flex;
               align-items: center;
@@ -959,7 +959,7 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
               font-weight: bold;
               font-size: 13px;
               font-family: sans-serif;
-              border: 2px solid #fbbf24;
+              border: 2px solid #e22329;
             }
             .kop-seal-nemesys {
               width: 64px;
@@ -973,13 +973,13 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
               font-weight: bold;
               font-size: 11px;
               font-family: sans-serif;
-              border: 2px solid #0284c7;
+              border: 2px solid #e22329;
             }
             .kop-text h3 {
               margin: 0;
               font-size: 14px;
               font-weight: bold;
-              color: #1e3a8a;
+              color: #8c151b;
               font-family: sans-serif;
               letter-spacing: 0.5px;
             }
@@ -994,7 +994,7 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
               margin: 2px 0;
               font-size: 11.5px;
               font-weight: bold;
-              color: #0284c7;
+              color: #e22329;
               font-family: sans-serif;
             }
             .kop-text p {
@@ -1171,11 +1171,8 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
           <!-- PENGESAHAN ELEKTRONIK DENGAN TANDA TANGAN QR CODE NOC -->
           <div style="margin-top: 24px; display: flex; justify-content: flex-end; text-align: center; page-break-inside: avoid;">
             <div style="width: 250px; padding: 12px; border: 1px dashed #94a3b8; border-radius: 8px; background: #f8fafc;">
-              <p style="font-family: sans-serif; font-weight: bold; margin: 0 0 2px 0; color: #1e293b; font-size: 11px; text-transform: uppercase;">
+              <p style="font-family: sans-serif; font-weight: bold; margin: 0 0 8px 0; color: #1e293b; font-size: 11px; text-transform: uppercase;">
                 Pengesahan Elektronik NOC
-              </p>
-              <p style="font-family: sans-serif; margin: 0 0 8px 0; font-size: 10px; color: #64748b;">
-                Direktorat TIK - Divisi Jaringan
               </p>
               <div style="display: flex; justify-content: center; margin: 6px 0;">
                 ${currentQrUrl ? `
@@ -1350,8 +1347,8 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
         total_tiket: total,
         tiket_selesai: resolvedCount,
         sla_rate: `${slaRate}%`,
-        petugas_pencetak: currentUser.name || 'Koordinator DTIK',
-        institusi: 'DTIK - Universitas 17 Agustus 1945 Banyuwangi',
+        petugas_pencetak: currentUser.name || 'Koordinator NOC',
+        institusi: 'Universitas 17 Agustus 1945 Banyuwangi',
         sistem: 'NEMESYS'
       }, null, 2);
       reportQrUrl = await QRCode.toDataURL(reportPayload, { width: 120, margin: 1 });
@@ -1390,14 +1387,14 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
               justify-content: space-between;
               text-align: center;
               padding-bottom: 6px;
-              border-bottom: 3px double #000000;
+              border-bottom: 3px double #e22329;
               margin-bottom: 10px;
             }
             .kop-seal-untag {
               width: 52px;
               height: 52px;
               border-radius: 50%;
-              background: #1e3a8a;
+              background: #8c151b;
               color: #ffffff;
               display: flex;
               align-items: center;
@@ -1405,7 +1402,7 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
               font-weight: bold;
               font-size: 11px;
               font-family: sans-serif;
-              border: 2px solid #fbbf24;
+              border: 2px solid #e22329;
             }
             .kop-seal-nemesys {
               width: 52px;
@@ -1419,13 +1416,13 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
               font-weight: bold;
               font-size: 10px;
               font-family: sans-serif;
-              border: 2px solid #0284c7;
+              border: 2px solid #e22329;
             }
             .kop-text h3 {
               margin: 0;
               font-size: 13px;
               font-weight: bold;
-              color: #1e3a8a;
+              color: #8c151b;
               font-family: sans-serif;
             }
             .kop-text h4 {
@@ -1439,7 +1436,7 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
               margin: 2px 0;
               font-size: 10.5px;
               font-weight: bold;
-              color: #0284c7;
+              color: #e22329;
               font-family: sans-serif;
             }
             .kop-text p {
@@ -1678,11 +1675,8 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
 
           <div style="margin-top: 16px; display: flex; justify-content: flex-end; text-align: center; page-break-inside: avoid;">
             <div style="width: 240px; padding: 10px; border: 1px dashed #94a3b8; border-radius: 6px; background: #f8fafc;">
-              <p style="font-family: sans-serif; font-weight: bold; margin: 0 0 2px 0; color: #1e293b; font-size: 10.5px; text-transform: uppercase;">
+              <p style="font-family: sans-serif; font-weight: bold; margin: 0 0 6px 0; color: #1e293b; font-size: 10.5px; text-transform: uppercase;">
                 Pengesahan Rekapitulasi NOC
-              </p>
-              <p style="font-family: sans-serif; margin: 0 0 6px 0; font-size: 9.5px; color: #64748b;">
-                Direktorat TIK - UNTAG Banyuwangi
               </p>
               ${reportQrUrl ? `
                 <div style="display: flex; justify-content: center; margin: 4px 0;">
@@ -1690,7 +1684,7 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
                 </div>
               ` : ''}
               <p style="font-family: sans-serif; font-weight: bold; text-decoration: underline; margin: 4px 0 1px 0; color: #0f172a; font-size: 11px;">
-                ${currentUser.name || 'Koordinator DTIK / NOC'}
+                ${currentUser.name || 'Koordinator NOC'}
               </p>
               <p style="font-family: sans-serif; font-size: 9px; color: #059669; font-weight: bold; margin: 0;">
                 ✓ Dokumen Laporan Sah NEMESYS
@@ -1720,12 +1714,12 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ffffff', margin: 0 }}>
+              <h1 className="sla-header-title" style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>
                 SERVICE DESK &amp; SLA TICKETING CENTER
               </h1>
               <span className="sla-official-tag">SLA COMPLIANCE MATRIX</span>
             </div>
-            <p style={{ fontSize: '0.78rem', color: '#94a3b8', margin: '4px 0 0 0' }}>
+            <p className="sla-header-subtitle" style={{ fontSize: '0.78rem', margin: '4px 0 0 0' }}>
               Konsolidasi Layanan Civitas, NOC Dispatcher, Manajemen Lapangan &amp; Penilaian CSAT
             </p>
           </div>
@@ -1863,21 +1857,21 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
 
         {/* Card 3: MTTR Resolusi */}
         <div className="sla-kpi-card hero-kpi">
-          <div className="kpi-icon-wrap" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>
+          <div className="kpi-icon-wrap" style={{ background: 'rgba(226, 35, 41, 0.15)', color: '#f87171' }}>
             <Clock size={22} />
           </div>
           <div className="kpi-info">
             <span className="kpi-label">MTTR RESOLUSI</span>
             <div className="kpi-value-row">
-              <span className="kpi-value" style={{ color: '#818cf8' }}>{kpi?.avgMttrMinutes ?? 38}</span>
-              <span className="kpi-target-tag" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>
+              <span className="kpi-value" style={{ color: '#f87171' }}>{kpi?.avgMttrMinutes ?? 38}</span>
+              <span className="kpi-target-tag" style={{ background: 'rgba(226, 35, 41, 0.15)', color: '#f87171' }}>
                 Menit / Tiket
               </span>
             </div>
             <div className="kpi-progress-bar">
               <div
                 className="kpi-progress-fill"
-                style={{ width: '70%', background: '#6366f1' }}
+                style={{ width: '70%', background: 'linear-gradient(90deg, #e22329, #8c151b)' }}
               />
             </div>
             <span className="kpi-subtext">
@@ -2080,16 +2074,16 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
                       >
                         {/* 1. Ticket Number & Requester */}
                         <td>
-                          <div style={{ fontFamily: 'monospace', fontWeight: 800, color: '#38bdf8' }}>
+                          <div className="ticket-number-text">
                             {ticket.ticket_number}
                           </div>
-                          <div style={{ fontWeight: 700, color: '#ffffff', marginTop: '2px' }}>
+                          <div className="ticket-requester-name" style={{ color: 'var(--text-primary, #0f172a)', fontWeight: 700, fontSize: '0.88rem', marginTop: '2px' }}>
                             {ticket.full_name}
                           </div>
-                          <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                          <div className="ticket-category-text">
                             {ticket.category} ({ticket.id_number || '-'})
                           </div>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', color: '#38bdf8', marginTop: '4px', background: 'rgba(56, 189, 248, 0.1)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(56, 189, 248, 0.25)' }}>
+                          <div className="ticket-date-chip">
                             <Calendar size={11} />
                             <span>Masuk: {sla.createdFormatted}</span>
                           </div>
@@ -2097,44 +2091,69 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
 
                         {/* 2. Building / Unit */}
                         <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#e2e8f0', fontWeight: 600 }}>
-                            <Building2 size={13} className="text-slate-400" />
-                            <span style={{ maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ticket.unit_specification}>
-                              {ticket.unit_specification || 'Kampus Utama'}
-                            </span>
-                          </div>
-                          <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
-                            {ticket.whatsapp_number}
+                          <div className="ticket-location-box">
+                            <div
+                              className="ticket-location-badge"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                background: '#f1f5f9',
+                                border: '1px solid #cbd5e1',
+                                maxWidth: '210px'
+                              }}
+                            >
+                              <Building2 size={13} className="ticket-location-icon" style={{ color: '#e22329', flexShrink: 0 }} />
+                              <span
+                                className="ticket-location-name"
+                                title={ticket.unit_specification}
+                                style={{
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 700,
+                                  color: '#0f172a'
+                                }}
+                              >
+                                {ticket.unit_specification || 'Kampus Utama'}
+                              </span>
+                            </div>
+                            {ticket.whatsapp_number && (
+                              <div
+                                className="ticket-phone-text"
+                                style={{
+                                  fontSize: '0.72rem',
+                                  color: '#334155',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  marginTop: '3px',
+                                  fontWeight: 600
+                                }}
+                              >
+                                <Phone size={11} className="ticket-phone-icon" style={{ color: '#64748b', flexShrink: 0 }} />
+                                <span>{ticket.whatsapp_number}</span>
+                              </div>
+                            )}
                           </div>
                         </td>
 
                         {/* 3. Service Type & Description */}
                         <td>
-                          <div style={{ fontWeight: 600, color: '#f1f5f9' }}>{ticket.service_type}</div>
-                          <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: '2px 0 0 0', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ticket.description}>
+                          <div className="ticket-service-title">{ticket.service_type}</div>
+                          <p className="ticket-description-text" title={ticket.description}>
                             {ticket.description}
                           </p>
                           {ticket.resolution_notes ? (
                             <div
                               onClick={() => handleOpenEditAnswer(ticket)}
-                              style={{
-                                marginTop: '5px',
-                                padding: '3px 8px',
-                                borderRadius: '5px',
-                                background: 'rgba(16, 185, 129, 0.12)',
-                                border: '1px solid rgba(16, 185, 129, 0.3)',
-                                fontSize: '0.71rem',
-                                color: '#6ee7b7',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                maxWidth: '240px',
-                                transition: 'all 0.15s ease'
-                              }}
+                              className="ticket-resolution-chip"
                               title={`Jawaban / Solusi: "${ticket.resolution_notes}"\nKlik untuk mengedit jawaban`}
                             >
-                              <CheckCircle2 size={11} className="text-emerald-400" style={{ flexShrink: 0 }} />
+                              <CheckCircle2 size={11} className="text-emerald-500" style={{ flexShrink: 0 }} />
                               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                                 <strong>Solusi:</strong> {ticket.resolution_notes}
                               </span>
@@ -2143,19 +2162,7 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
                           ) : (ticket.status === 'In Progress' || ticket.status === 'Resolved' || ticket.status === 'Closed') ? (
                             <div
                               onClick={() => handleOpenEditAnswer(ticket)}
-                              style={{
-                                marginTop: '4px',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '3px',
-                                fontSize: '0.68rem',
-                                color: '#94a3b8',
-                                background: 'rgba(30, 41, 59, 0.6)',
-                                border: '1px dashed rgba(71, 85, 105, 0.6)',
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                                cursor: 'pointer'
-                              }}
+                              className="ticket-add-resolution-btn"
                               title="Tulis jawaban / solusi penyelesaian"
                             >
                               <Edit3 size={10} />
@@ -2200,7 +2207,7 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
                                 `Sisa: ${sla.remainingMins} mnt`
                               )}
                             </span>
-                            <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Target: {sla.limitMins} mnt</span>
+                            <span className="ticket-target-text">Target: {sla.limitMins} mnt</span>
                           </div>
                           <div className="kpi-progress-bar" style={{ height: '6px', margin: '0 0 5px 0' }}>
                             <div
@@ -2210,19 +2217,19 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
                           </div>
                           {sla.isCompleted ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.7rem' }}>
-                              <div style={{ color: '#34d399', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                              <div style={{ color: '#16a34a', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
                                 <CheckCircle2 size={11} />
                                 <span>Selesai: {sla.resolvedFormatted}</span>
                               </div>
-                              <div style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <Timer size={11} className="text-cyan-400" />
-                                <span>Total Waktu: <strong style={{ color: '#e2e8f0' }}>{sla.durationText}</strong></span>
+                              <div className="ticket-duration-text" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <Timer size={11} className="text-cyan-500" />
+                                <span>Total Waktu: <strong className="ticket-duration-strong">{sla.durationText}</strong></span>
                               </div>
                             </div>
                           ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', color: '#fbbf24' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', color: '#d97706' }}>
                               <Timer size={11} />
-                              <span>Berjalan: <strong style={{ color: '#f8fafc' }}>{sla.durationText}</strong></span>
+                              <span>Berjalan: <strong className="ticket-duration-strong">{sla.durationText}</strong></span>
                             </div>
                           )}
                         </td>
@@ -2231,13 +2238,13 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
                         <td>
                           <span className={`status-pill ${sla.isCompleted ? 'pill-met' : 'pill-breached'}`} style={{
                             background: ticket.status === 'Open' ? 'rgba(245,158,11,0.2)' : ticket.status === 'In Progress' ? 'rgba(56,189,248,0.2)' : 'rgba(16,185,129,0.2)',
-                            color: ticket.status === 'Open' ? '#fbbf24' : ticket.status === 'In Progress' ? '#38bdf8' : '#34d399',
+                            color: ticket.status === 'Open' ? '#b45309' : ticket.status === 'In Progress' ? '#0369a1' : '#15803d',
                             borderColor: ticket.status === 'Open' ? '#f59e0b' : ticket.status === 'In Progress' ? '#0284c7' : '#10b981'
                           }}>
                             {ticket.status}
                           </span>
-                          <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <User size={11} />
+                          <div className="ticket-assigned-user" style={{ fontSize: '0.74rem', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <User size={12} />
                             <span>{ticket.assigned_user_name || 'Belum ditugaskan'}</span>
                           </div>
                         </td>
@@ -2481,7 +2488,7 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
                       </div>
 
                       <div className="kanban-card-actions">
-                        <span style={{ color: '#94a3b8' }}>{ticket.unit_specification || 'Kampus'}</span>
+                        <span style={{ color: 'var(--text-primary, #1e293b)', fontWeight: 600, fontSize: '0.74rem' }}>{ticket.unit_specification || 'Kampus'}</span>
                         <button
                           onClick={() => handleQuickStatusChange(ticket.id, 'In Progress')}
                           className="sla-action-btn btn-edit"
@@ -3373,11 +3380,8 @@ export const ServiceDeskManager: React.FC<ServiceDeskProps> = ({
               {/* Pengesahan Elektronik Single QR Code NOC */}
               <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end', textAlign: 'center' }}>
                 <div style={{ width: '250px', padding: '12px', border: '1px dashed #cbd5e1', borderRadius: '8px', background: '#f8fafc' }}>
-                  <p style={{ fontWeight: 800, margin: '0 0 2px 0', color: '#1e293b', fontSize: '0.8rem', textTransform: 'uppercase' }}>
+                  <p style={{ fontWeight: 800, margin: '0 0 8px 0', color: '#1e293b', fontSize: '0.8rem', textTransform: 'uppercase' }}>
                     Pengesahan Elektronik NOC
-                  </p>
-                  <p style={{ margin: '0 0 8px 0', fontSize: '0.72rem', color: '#64748b' }}>
-                    Direktorat TIK - Divisi Jaringan
                   </p>
                   <div style={{ display: 'flex', justifyContent: 'center', margin: '6px 0' }}>
                     {bastQrCodeUrl ? (

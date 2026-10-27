@@ -14,7 +14,8 @@ import {
   Network,
   BellRing,
   Terminal,
-  Award
+  Award,
+  Radio
 } from 'lucide-react';
 import { NocOverview } from './NocOverview';
 import { NocTopology } from './NocTopology';
@@ -23,6 +24,7 @@ import { NocProblems } from './NocProblems';
 import { NocDeviceMatrix } from './NocDeviceMatrix';
 import { NocDeviceDetailModal } from './NocDeviceDetailModal';
 import { NocDiagnostics } from './NocDiagnostics';
+import { NocCdataOlt } from './NocCdataOlt';
 import { SlaReportManager } from '../SlaReportManager';
 import type { NocSummaryKPI, NocProblem, NocBandwidthData, NocDevice } from '../../types/noc';
 import { BACKEND_URL } from '../../App';
@@ -31,14 +33,16 @@ interface Props {
   token?: string;
   currentUserRole?: string;
   currentUserName?: string;
+  socket?: any;
 }
 
 export const NocDashboard: React.FC<Props> = ({
   token,
   currentUserRole = 'Teknisi',
   currentUserName = 'Teknisi NOC',
+  socket,
 }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'topology' | 'bandwidth' | 'problems' | 'matrix' | 'diagnostics' | 'sla'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'topology' | 'bandwidth' | 'problems' | 'matrix' | 'diagnostics' | 'sla' | 'olt'>('overview');
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [autoRefreshInterval, setAutoRefreshInterval] = useState<number>(10000); // 10s default
@@ -339,6 +343,15 @@ export const NocDashboard: React.FC<Props> = ({
         </button>
 
         <button
+          className={`noc-tab-btn ${activeTab === 'olt' ? 'active' : ''}`}
+          onClick={() => setActiveTab('olt')}
+        >
+          <Radio size={17} className={activeTab === 'olt' ? 'text-white' : 'text-indigo-400'} />
+          <span>C-DATA GPON OLT</span>
+          <span className="tab-pill-metric font-mono">192.168.2.100</span>
+        </button>
+
+        <button
           className={`noc-tab-btn ${activeTab === 'diagnostics' ? 'active' : ''}`}
           onClick={() => setActiveTab('diagnostics')}
         >
@@ -350,14 +363,10 @@ export const NocDashboard: React.FC<Props> = ({
         <button
           className={`noc-tab-btn ${activeTab === 'sla' ? 'active' : ''}`}
           onClick={() => setActiveTab('sla')}
-          style={{
-            borderColor: activeTab === 'sla' ? '#38bdf8' : 'rgba(56,189,248,0.3)',
-            background: activeTab === 'sla' ? 'rgba(56,189,248,0.15)' : 'rgba(56,189,248,0.05)'
-          }}
         >
-          <Award size={17} className="text-cyan-400" />
-          <span className="font-semibold text-cyan-300">SLA &amp; Downtime Report</span>
-          <span className="tab-pill-metric bg-cyan-500/20 text-cyan-300">PDF/Excel</span>
+          <Award size={17} className={activeTab === 'sla' ? 'text-white' : 'text-cyan-500'} />
+          <span>SLA &amp; Downtime Report</span>
+          <span className="tab-pill-metric">PDF/Excel</span>
         </button>
       </div>
 
@@ -411,6 +420,10 @@ export const NocDashboard: React.FC<Props> = ({
                 devices={devices}
                 onSelectDevice={(dev) => setSelectedDeviceForDetail(dev)}
               />
+            )}
+
+            {activeTab === 'olt' && (
+              <NocCdataOlt token={token} socket={socket} />
             )}
 
             {activeTab === 'diagnostics' && (

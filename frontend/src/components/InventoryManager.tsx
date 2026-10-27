@@ -1220,18 +1220,18 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
   };
 
   return (
-    <div style={{ padding: '24px', color: '#e0e0e0', maxWidth: '1440px', margin: '0 auto' }}>
+    <div className="inventory-manager-root" style={{ padding: '24px', maxWidth: '1440px', margin: '0 auto' }}>
       
       {/* 1. Header Section */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '12px', color: '#fff' }}>
-            <div style={{ padding: '8px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)' }}>
+          <h1 className="inv-page-title" style={{ margin: 0, fontSize: '26px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ padding: '8px', background: 'linear-gradient(135deg, #e22329, #8c151b)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', boxShadow: '0 4px 12px rgba(226, 35, 41, 0.3)' }}>
               <Boxes size={26} />
             </div>
             Inventaris Perangkat IT & Komponen
           </h1>
-          <p style={{ margin: '6px 0 0 0', color: 'rgba(255, 255, 255, 0.6)', fontSize: '14px' }}>
+          <p className="inv-page-subtitle" style={{ margin: '6px 0 0 0', fontSize: '14px' }}>
             Manajemen master aset hardware kampus, stok suku cadang, pelacakan komponen terpasang, dan log mutasi.
           </p>
         </div>
@@ -1316,55 +1316,55 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '24px' }}>
         
         {/* KPI 1: Total Aset IT */}
-        <div style={{ background: 'rgba(30, 41, 59, 0.6)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ padding: '12px', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)', borderRadius: '12px', color: '#818cf8' }}>
+        <div className="inv-kpi-card" style={{ background: 'rgba(30, 41, 59, 0.6)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ padding: '12px', background: 'rgba(226, 35, 41, 0.12)', border: '1px solid rgba(226, 35, 41, 0.25)', borderRadius: '12px', color: '#e22329' }}>
             <Monitor size={24} />
           </div>
           <div>
-            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>Total Perangkat IT</div>
-            <div style={{ fontSize: '22px', fontWeight: 800, color: '#fff', marginTop: '2px' }}>
-              {stats?.summary.totalAssets || assets.length} <span style={{ fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.6)' }}>Unit</span>
+            <div className="kpi-subtext" style={{ fontSize: '12px', fontWeight: 500 }}>Total Perangkat IT</div>
+            <div style={{ fontSize: '22px', fontWeight: 800, marginTop: '2px' }}>
+              {stats?.summary.totalAssets || assets.length} <span className="kpi-subtext" style={{ fontSize: '13px', fontWeight: 500 }}>Unit</span>
             </div>
-            <div style={{ fontSize: '11.5px', color: '#818cf8', marginTop: '2px' }}>
+            <div style={{ fontSize: '11.5px', color: '#e22329', fontWeight: 600, marginTop: '2px' }}>
               Nilai: Rp {(stats?.summary.totalAssetCost || 0).toLocaleString('id-ID')}
             </div>
           </div>
         </div>
 
         {/* KPI 2: Kondisi Perangkat */}
-        <div style={{ background: 'rgba(30, 41, 59, 0.6)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ padding: '12px', background: 'rgba(34, 197, 94, 0.15)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '12px', color: '#4ade80' }}>
+        <div className="inv-kpi-card" style={{ background: 'rgba(30, 41, 59, 0.6)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ padding: '12px', background: 'rgba(34, 197, 94, 0.15)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '12px', color: '#16a34a' }}>
             <ShieldCheck size={24} />
           </div>
           <div>
-            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>Kondisi Operasional</div>
-            <div style={{ fontSize: '20px', fontWeight: 800, color: '#4ade80', marginTop: '2px' }}>
-              {stats?.summary.goodAssets || 0} <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>Baik / Aktif</span>
+            <div className="kpi-subtext" style={{ fontSize: '12px', fontWeight: 500 }}>Kondisi Operasional</div>
+            <div style={{ fontSize: '20px', fontWeight: 800, color: '#16a34a', marginTop: '2px' }}>
+              {stats?.summary.goodAssets || 0} <span className="kpi-subtext" style={{ fontSize: '12px', fontWeight: 500 }}>Baik / Aktif</span>
             </div>
-            <div style={{ fontSize: '11.5px', color: (stats?.summary.brokenAssets || 0) > 0 ? '#f87171' : 'rgba(255,255,255,0.5)', marginTop: '2px' }}>
+            <div style={{ fontSize: '11.5px', color: (stats?.summary.brokenAssets || 0) > 0 ? '#dc2626' : '#16a34a', marginTop: '2px' }}>
               {stats?.summary.brokenAssets || 0} Butuh Servis / Rusak
             </div>
           </div>
         </div>
 
         {/* KPI 3: Master Komponen & Stok */}
-        <div style={{ background: 'rgba(30, 41, 59, 0.6)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ padding: '12px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '12px', color: '#38bdf8' }}>
+        <div className="inv-kpi-card" style={{ background: 'rgba(30, 41, 59, 0.6)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ padding: '12px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '12px', color: '#0284c7' }}>
             <Cpu size={24} />
           </div>
           <div>
-            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>Stok Suku Cadang & Komponen</div>
-            <div style={{ fontSize: '22px', fontWeight: 800, color: '#fff', marginTop: '2px' }}>
-              {stats?.summary.totalStockItems || 0} <span style={{ fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.6)' }}>Item ({components.length} Jenis)</span>
+            <div className="kpi-subtext" style={{ fontSize: '12px', fontWeight: 500 }}>Stok Suku Cadang & Komponen</div>
+            <div style={{ fontSize: '22px', fontWeight: 800, marginTop: '2px' }}>
+              {stats?.summary.totalStockItems || 0} <span className="kpi-subtext" style={{ fontSize: '13px', fontWeight: 500 }}>Item ({components.length} Jenis)</span>
             </div>
-            <div style={{ fontSize: '11.5px', color: '#38bdf8', marginTop: '2px' }}>
+            <div style={{ fontSize: '11.5px', color: '#0284c7', fontWeight: 600, marginTop: '2px' }}>
               Nilai Cadangan: Rp {(stats?.summary.totalComponentValue || 0).toLocaleString('id-ID')}
             </div>
           </div>
         </div>
 
         {/* KPI 4: Low Stock Alert Warning */}
-        <div style={{ 
+        <div className="inv-kpi-card" style={{ 
           background: lowStockComponents.length > 0 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(30, 41, 59, 0.6)', 
           border: lowStockComponents.length > 0 ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)', 
           borderRadius: '16px', 
@@ -1373,15 +1373,15 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
           alignItems: 'center', 
           gap: '16px' 
         }}>
-          <div style={{ padding: '12px', background: lowStockComponents.length > 0 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(148, 163, 184, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '12px', color: lowStockComponents.length > 0 ? '#f87171' : '#94a3b8' }}>
+          <div style={{ padding: '12px', background: lowStockComponents.length > 0 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(148, 163, 184, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '12px', color: lowStockComponents.length > 0 ? '#dc2626' : '#94a3b8' }}>
             <AlertTriangle size={24} />
           </div>
           <div>
-            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>Peringatan Stok Menipis</div>
-            <div style={{ fontSize: '22px', fontWeight: 800, color: lowStockComponents.length > 0 ? '#f87171' : '#4ade80', marginTop: '2px' }}>
-              {lowStockComponents.length} <span style={{ fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.6)' }}>Jenis Komponen</span>
+            <div className="kpi-subtext" style={{ fontSize: '12px', fontWeight: 500 }}>Peringatan Stok Menipis</div>
+            <div style={{ fontSize: '22px', fontWeight: 800, color: lowStockComponents.length > 0 ? '#dc2626' : '#16a34a', marginTop: '2px' }}>
+              {lowStockComponents.length} <span className="kpi-subtext" style={{ fontSize: '13px', fontWeight: 500 }}>Jenis Komponen</span>
             </div>
-            <div style={{ fontSize: '11.5px', color: lowStockComponents.length > 0 ? '#f87171' : '#4ade80', marginTop: '2px' }}>
+            <div style={{ fontSize: '11.5px', color: lowStockComponents.length > 0 ? '#dc2626' : '#16a34a', fontWeight: 600, marginTop: '2px' }}>
               {lowStockComponents.length > 0 ? 'Perlu Restock Segera!' : 'Seluruh Stok Aman'}
             </div>
           </div>
@@ -1413,16 +1413,15 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
       )}
 
       {/* 4. Tab Navigation Header */}
-      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid rgba(255, 255, 255, 0.15)', marginBottom: '20px', overflowX: 'auto', paddingBottom: '2px' }}>
+      <div className="inv-tabs-nav" style={{ display: 'flex', gap: '8px', borderBottom: '1px solid rgba(255, 255, 255, 0.15)', marginBottom: '20px', overflowX: 'auto', paddingBottom: '2px' }}>
         <button
           onClick={() => { setActiveTab('assets'); setSelectedCategory('ALL'); }}
+          className={`inv-tab-btn ${activeTab === 'assets' ? 'active' : ''}`}
           style={{
             padding: '10px 20px',
             borderRadius: '10px 10px 0 0',
             border: 'none',
             cursor: 'pointer',
-            background: activeTab === 'assets' ? '#6366f1' : 'transparent',
-            color: activeTab === 'assets' ? '#fff' : 'rgba(255, 255, 255, 0.6)',
             fontWeight: 600,
             fontSize: '14px',
             display: 'flex',
@@ -1436,13 +1435,12 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
 
         <button
           onClick={() => { setActiveTab('components'); setSelectedCategory('ALL'); }}
+          className={`inv-tab-btn ${activeTab === 'components' ? 'active' : ''}`}
           style={{
             padding: '10px 20px',
             borderRadius: '10px 10px 0 0',
             border: 'none',
             cursor: 'pointer',
-            background: activeTab === 'components' ? '#6366f1' : 'transparent',
-            color: activeTab === 'components' ? '#fff' : 'rgba(255, 255, 255, 0.6)',
             fontWeight: 600,
             fontSize: '14px',
             display: 'flex',
@@ -1456,13 +1454,12 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
 
         <button
           onClick={() => setActiveTab('mutations')}
+          className={`inv-tab-btn ${activeTab === 'mutations' ? 'active' : ''}`}
           style={{
             padding: '10px 20px',
             borderRadius: '10px 10px 0 0',
             border: 'none',
             cursor: 'pointer',
-            background: activeTab === 'mutations' ? '#6366f1' : 'transparent',
-            color: activeTab === 'mutations' ? '#fff' : 'rgba(255, 255, 255, 0.6)',
             fontWeight: 600,
             fontSize: '14px',
             display: 'flex',
@@ -1476,13 +1473,12 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
 
         <button
           onClick={() => setActiveTab('analytics')}
+          className={`inv-tab-btn ${activeTab === 'analytics' ? 'active' : ''}`}
           style={{
             padding: '10px 20px',
             borderRadius: '10px 10px 0 0',
             border: 'none',
             cursor: 'pointer',
-            background: activeTab === 'analytics' ? '#6366f1' : 'transparent',
-            color: activeTab === 'analytics' ? '#fff' : 'rgba(255, 255, 255, 0.6)',
             fontWeight: 600,
             fontSize: '14px',
             display: 'flex',
@@ -1499,22 +1495,24 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
       {activeTab === 'assets' && (
         <div>
           {/* Filters Bar */}
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '18px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="inv-filter-bar" style={{ display: 'flex', gap: '12px', marginBottom: '18px', flexWrap: 'wrap', alignItems: 'center' }}>
             <div style={{ position: 'relative', flex: '1 1 280px', minWidth: '240px' }}>
-              <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'rgba(255,255,255,0.4)' }} />
+              <Search size={16} className="inv-search-icon" style={{ position: 'absolute', left: '12px', top: '12px' }} />
               <input
                 type="text"
                 placeholder="Cari nama perangkat, kode aset, brand, serial number, atau PIC..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ width: '100%', padding: '10px 12px 10px 38px', borderRadius: '8px', background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255, 255, 255, 0.15)', color: '#fff', fontSize: '13.5px' }}
+                className="inv-search-input"
+                style={{ width: '100%', padding: '10px 12px 10px 38px', borderRadius: '8px', fontSize: '13.5px' }}
               />
             </div>
 
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255, 255, 255, 0.15)', color: '#fff', fontSize: '13.5px', minWidth: '150px' }}
+              className="inv-select"
+              style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '13.5px', minWidth: '150px' }}
             >
               <option value="ALL">Semua Kategori</option>
               {assetCategories.map(c => <option key={c} value={c}>{c}</option>)}
@@ -1523,7 +1521,8 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255, 255, 255, 0.15)', color: '#fff', fontSize: '13.5px', minWidth: '150px' }}
+              className="inv-select"
+              style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '13.5px', minWidth: '150px' }}
             >
               <option value="ALL">Semua Status</option>
               <option value="Baik / Aktif">Baik / Aktif</option>
@@ -1537,7 +1536,8 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
             <select
               value={selectedLocation}
               onChange={(e) => setSelectedLocation(e.target.value)}
-              style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255, 255, 255, 0.15)', color: '#fff', fontSize: '13.5px', minWidth: '160px' }}
+              className="inv-select"
+              style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '13.5px', minWidth: '160px' }}
             >
               <option value="ALL">Semua Lokasi</option>
               {assetLocations.map(l => <option key={l} value={l}>{l}</option>)}
@@ -1545,11 +1545,11 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
           </div>
 
           {/* Asset Cards / Table */}
-          <div style={{ background: 'rgba(30, 41, 59, 0.6)', border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: '16px', overflow: 'hidden' }}>
+          <div className="inv-table-card" style={{ borderRadius: '16px', overflow: 'hidden' }}>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13.5px' }}>
+              <table className="inv-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13.5px' }}>
                 <thead>
-                  <tr style={{ background: 'rgba(15, 23, 42, 0.9)', borderBottom: '1px solid rgba(255, 255, 255, 0.12)', color: 'rgba(255, 255, 255, 0.7)' }}>
+                  <tr>
                     <th style={{ padding: '14px 16px' }}>Kode Aset & Perangkat</th>
                     <th style={{ padding: '14px 16px' }}>Kategori & Merk</th>
                     <th style={{ padding: '14px 16px' }}>Lokasi & PIC</th>

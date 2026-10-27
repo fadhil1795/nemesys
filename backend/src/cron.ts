@@ -124,12 +124,22 @@ async function checkAndAlertNocProblems() {
   }
 }
 
-export function startCronJobs() {
-  console.log('⏳ Initializing Cron Jobs...');
+export function startCronJobs(ioInstance?: any) {
+  console.log('⏳ Initializing Cron Jobs with Real-time WebSocket broadcasting...');
   
   // Every 30 minutes — check report schedules from DB
   cron.schedule('*/30 * * * *', () => {
     startScheduledReports();
+  });
+
+  // Every 10 minutes — Automated Database Housekeeping
+  cron.schedule('*/10 * * * *', async () => {
+    try {
+      const { HousekeepingService } = await import('./services/housekeepingService');
+      await HousekeepingService.checkAndRunCron();
+    } catch (err: any) {
+      console.warn('[CRON] Housekeeping check note:', err.message);
+    }
   });
 
   // Every 1 minute — Realtime NOC Zabbix Problem Monitor
@@ -148,9 +158,55 @@ export function startCronJobs() {
     }
   });
   
+  // Real-time Engine: Poll C-DATA GPON OLT Telemetry every 30 seconds & emit to WebSockets
+  setInterval(async () => {
+    try {
+      const { CdataOltService } = await import('./services/cdataOltService');
+      const result = await CdataOltService.pollOltSNMP(ioInstance);
+      if (ioInstance && result?.success) {
+        ioInstance.emit('olt_telemetry_updated', {
+          is_live: result.is_live,
+          timestamp: new Date().toISOString()
+        });
+      }
+    } catch (err: any) {
+      // Non-blocking catch
+    }
+  }, 30000);
+
+  // Real-time Engine: Sync MAC Address Table & DHCP Leases every 45 seconds & emit to WebSockets
+  setInterval(async () => {
+    try {
+      const { CdataOltService } = await import('./services/cdataOltService');
+      const leaseResult = await CdataOltService.syncMacTableAndLeases();
+      if (ioInstance && leaseResult?.success) {
+        ioInstance.emit('olt_leases_updated', {
+          total: leaseResult.total,
+          timestamp: new Date().toISOString()
+        });
+      }
+    } catch (err: any) {
+      // Non-blocking catch
+    }
+  }, 45000);
+
   // Trigger initial checks on startup (with slight delay)
-  setTimeout(() => {
+  setTimeout(async () => {
     checkAndAlertNocProblems();
-  }, 10000);
+    try {
+      const { CdataOltService } = await import('./services/cdataOltService');
+      const pollRes = await CdataOltService.pollOltSNMP(ioInstance);
+      const leaseRes = await CdataOltService.syncMacTableAndLeases();
+      if (ioInstance) {
+        if (pollRes?.success) {
+          ioInstance.emit('olt_telemetry_updated', { is_live: pollRes.is_live, timestamp: new Date().toISOString() });
+        }
+        if (leaseRes?.success) {
+          ioInstance.emit('olt_leases_updated', { total: leaseRes.total, timestamp: new Date().toISOString() });
+        }
+      }
+    } catch {}
+  }, 6000);
 }
+
 

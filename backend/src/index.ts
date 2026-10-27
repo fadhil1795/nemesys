@@ -56,6 +56,7 @@ import { mikrotikDashboardRouter } from './routes/mikrotikDashboard';
 import uploadRouter from './routes/upload';
 import { uploadBase64Image } from './services/storageService';
 import { gedungRuanganRouter } from './routes/gedungRuangan';
+import { cdataOltRouter } from './routes/cdataOlt';
 
 // Static file serving for physical uploads (with CORS)
 const uploadsDirectory = path.join(__dirname, '../uploads');
@@ -71,6 +72,7 @@ app.use('/api/operational', operationalRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/qr', qrRouter);
 app.use('/api/inventory', inventoryRouter);
+app.use('/api/monitoring/cdata-olt', cdataOltRouter);
 app.use('/api/monitoring', nocMonitoringRouter);
 app.use('/api/notifications', requireAuth, notificationRouter);
 app.use('/api/mikrotik-dashboard', mikrotikDashboardRouter);
@@ -99,7 +101,7 @@ if (IS_VERCEL) {
     try {
       await ensureDbInitialized();
       next();
-    } catch (error) {
+        } catch (error) {
       console.error('DB initialization error:', error);
       res.status(500).json({ error: 'Database initialization failed' });
     }
@@ -770,7 +772,7 @@ app.get('/api/custom-missions/:id/bast-verify', async (req, res) => {
 
     // Dedicated resolution for Pihak I (Administrator) & Pihak II (Teknisi)
     const adminParticipant = participants.find((p: any) => p.role === 'Administrator' || p.role === 'Manager');
-    const designatedAdmin = mission.bast_admin_approved_by || mission.created_by || adminParticipant?.name || 'Administrator Biro TI';
+    const designatedAdmin = mission.bast_admin_approved_by || mission.created_by || adminParticipant?.name || 'Administrator TI';
 
     const techParticipants = participants.filter((p: any) => p.role === 'Teknisi');
     const nonAdminParticipants = participants.filter((p: any) => p.role !== 'Administrator' && p.role !== 'Manager');
@@ -1056,7 +1058,7 @@ app.get('/api/custom-missions/:id/bast-verify', async (req, res) => {
     <div class="header-institution">
       ${logoImgTag}
       <h2>PERKUMPULAN GEMA PENDIDIKAN NASIONAL</h2>
-      <p>BIRO TEKNOLOGI INFORMASI (BTI) • NEMESYS MANAGEMENT SYSTEM</p>
+      <p>TEKNOLOGI INFORMASI (TI) • NEMESYS MANAGEMENT SYSTEM</p>
     </div>
 
     <div class="status-banner" style="${isVerified ? '' : 'background:linear-gradient(135deg,rgba(245,158,11,0.2),rgba(234,179,8,0.08));border-color:#f59e0b;'}">
@@ -1099,7 +1101,7 @@ app.get('/api/custom-missions/:id/bast-verify', async (req, res) => {
 
     <div class="approval-grid">
       <div class="approval-card" style="${adminApproved ? '' : 'border-color:rgba(245,158,11,0.4);'}">
-        <div class="approval-role">👑 PIHAK I: ADMINISTRATOR BIRO TI</div>
+        <div class="approval-role">👑 PIHAK I: ADMINISTRATOR TI</div>
         <div class="approval-name">${adminApprovedBy || designatedAdmin}</div>
         <div class="approval-status" style="${adminApproved ? '' : 'color:#fbbf24;'}">
           ${adminApproved ? '✅ Approved & Validated' : '⏳ Menunggu Persetujuan Administrator'}
@@ -1521,6 +1523,36 @@ app.post('/api/config/telegram-bot/test', requireAuth, async (req, res) => {
     await pool.query('UPDATE telegram_bot_config SET is_connected=?, last_test=? LIMIT 1', [ok ? 1 : 0, now]);
     res.json({ success: ok, message: ok ? 'Pesan test terkirim' : data.description || 'Gagal' });
   } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ---- Housekeeping Config & Trigger ----
+import { HousekeepingService } from './services/housekeepingService';
+
+app.get('/api/config/housekeeping', requireAuth, async (req, res) => {
+  try {
+    const config = await HousekeepingService.getConfig();
+    res.json({ success: true, config });
+  } catch (e: any) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+app.post('/api/config/housekeeping', requireAuth, async (req, res) => {
+  try {
+    const updated = await HousekeepingService.updateConfig(req.body);
+    res.json({ success: true, message: 'Pengaturan housekeeping berhasil disimpan', config: updated });
+  } catch (e: any) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+app.post('/api/config/housekeeping/run-now', requireAuth, async (req, res) => {
+  try {
+    const result = await HousekeepingService.runHousekeeping(true);
+    res.json(result);
+  } catch (e: any) {
+    res.status(500).json({ success: false, error: e.message });
+  }
 });
 
 // ---- GenieACS Stats (Dashboard) ----
@@ -2260,7 +2292,7 @@ if (!IS_VERCEL) {
   async function start() {
     await initializeDatabase();
     initTelegramBot(handleTelegramBotAction);
-    startCronJobs();
+    startCronJobs(io);
 
     // Sync Zabbix hosts on startup and then every 30 seconds
     await syncZabbixHosts();

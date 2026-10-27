@@ -1313,6 +1313,203 @@ export async function initializeDatabase() {
       console.error('Error creating gedungs/ruangans tables:', gErr);
     }
 
+    // 21. C-DATA GPON OLT Telemetry & Management Tables
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS olt_devices (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          name VARCHAR(100) NOT NULL,
+          ip_address VARCHAR(45) NOT NULL UNIQUE,
+          snmp_port INT DEFAULT 161,
+          snmp_community VARCHAR(50) DEFAULT 'monitor1745',
+          snmp_version VARCHAR(10) DEFAULT 'v2c',
+          model VARCHAR(100) DEFAULT 'C-DATA FD1208S-R2 GPON OLT',
+          sys_descr TEXT NULL,
+          sys_name VARCHAR(100) NULL,
+          sys_uptime VARCHAR(100) NULL,
+          total_pon_ports INT DEFAULT 8,
+          status ENUM('Online', 'Warning', 'Offline') DEFAULT 'Offline',
+          is_simulated TINYINT(1) DEFAULT 1,
+          last_sync DATETIME NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB;
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS olt_pon_ports (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          olt_id INT NOT NULL,
+          slot_id INT DEFAULT 1,
+          port_id INT NOT NULL,
+          port_name VARCHAR(50) NOT NULL,
+          status ENUM('Up', 'Down') DEFAULT 'Up',
+          temperature_c DECIMAL(6,2) DEFAULT 38.5,
+          voltage_v DECIMAL(6,2) DEFAULT 3.30,
+          tx_power_dbm DECIMAL(6,2) DEFAULT 4.80,
+          rx_power_dbm DECIMAL(6,2) DEFAULT -21.40,
+          total_onus INT DEFAULT 0,
+          online_onus INT DEFAULT 0,
+          offline_onus INT DEFAULT 0,
+          updated_at DATETIME NULL,
+          INDEX idx_olt_id (olt_id),
+          UNIQUE KEY uq_olt_port (olt_id, slot_id, port_id)
+        ) ENGINE=InnoDB;
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS olt_onus (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          olt_id INT NOT NULL,
+          slot_id INT DEFAULT 1,
+          port_id INT NOT NULL,
+          onu_id INT NOT NULL,
+          serial_number VARCHAR(64) NOT NULL,
+          name VARCHAR(150) NULL,
+          description VARCHAR(255) NULL,
+          location VARCHAR(150) NULL,
+          building_id VARCHAR(50) NULL,
+          run_state TINYINT DEFAULT 1,
+          config_state TINYINT DEFAULT 2,
+          rx_optical_power DECIMAL(6,2) DEFAULT -20.50,
+          tx_optical_power DECIMAL(6,2) DEFAULT 2.10,
+          optical_temperature DECIMAL(6,2) DEFAULT 41.20,
+          optical_voltage DECIMAL(6,2) DEFAULT 3.28,
+          distance_meters INT DEFAULT 450,
+          active_mac_clients INT DEFAULT 0,
+          last_up_time VARCHAR(100) NULL,
+          last_down_time VARCHAR(100) NULL,
+          last_down_cause VARCHAR(100) DEFAULT 'Normal',
+          wan_ip VARCHAR(50) NULL,
+          firmware_version VARCHAR(100) NULL,
+          updated_at DATETIME NULL,
+          INDEX idx_onu_olt (olt_id),
+          INDEX idx_onu_port (port_id),
+          UNIQUE KEY uq_olt_onu (olt_id, slot_id, port_id, onu_id)
+        ) ENGINE=InnoDB;
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS olt_optical_history (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          onu_id INT NOT NULL,
+          rx_power DECIMAL(6,2) NOT NULL,
+          tx_power DECIMAL(6,2) NULL,
+          temperature DECIMAL(6,2) NULL,
+          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_onu_time (onu_id, timestamp)
+        ) ENGINE=InnoDB;
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS olt_autofind_queue (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          olt_id INT NOT NULL,
+          slot_id INT DEFAULT 1,
+          port_id INT NOT NULL,
+          serial_number VARCHAR(64) NOT NULL,
+          vendor_id VARCHAR(32) NULL,
+          version VARCHAR(64) NULL,
+          equipment_id VARCHAR(64) NULL,
+          discovered_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          status ENUM('Pending', 'Registered', 'Ignored') DEFAULT 'Pending',
+          INDEX idx_autofind_olt (olt_id),
+          UNIQUE KEY uq_autofind_sn (olt_id, serial_number)
+        ) ENGINE=InnoDB;
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS olt_mac_entries (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          onu_id INT NOT NULL,
+          eth_port_id INT DEFAULT 1,
+          mac_address VARCHAR(20) NOT NULL,
+          vlan_id INT DEFAULT 100,
+          last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_mac_onu (onu_id),
+          UNIQUE KEY uq_mac_entry (onu_id, eth_port_id, mac_address)
+        ) ENGINE=InnoDB;
+      `);
+
+      // Seed default C-DATA OLT if not exists with user's exact IP: 192.168.2.100 and community: monitor1745
+      const [oltCheck]: any = await pool.query('SELECT COUNT(*) as cnt FROM olt_devices');
+      if (oltCheck[0].cnt === 0) {
+        const [oltRes]: any = await pool.query(`
+          INSERT INTO olt_devices 
+          (name, ip_address, snmp_port, snmp_community, snmp_version, model, sys_descr, sys_name, total_pon_ports, status, is_simulated, last_sync)
+          VALUES 
+          ('OLT-CDATA-CORE-01', '192.168.2.100', 161, 'monitor1745', 'v2c', 'C-DATA FD1208S-R2 GPON OLT', 'C-Data GPON OLT Optical Line Terminal System Software V2.3.4', 'OLT-GPON-DTIK-CAMPUS', 8, 'Online', 1, NOW())
+        `);
+        const oltId = oltRes.insertId;
+
+        // Seed 8 PON Ports
+        for (let p = 1; p <= 8; p++) {
+          await pool.query(`
+            INSERT INTO olt_pon_ports 
+            (olt_id, slot_id, port_id, port_name, status, temperature_c, voltage_v, tx_power_dbm, rx_power_dbm, total_onus, online_onus, offline_onus, updated_at)
+            VALUES (?, 1, ?, ?, 'Up', ?, 3.31, ?, -21.80, ?, ?, ?, NOW())
+          `, [oltId, p, 'EPON0/' + p, 36.5 + (p * 0.8), 4.70 + (p * 0.05), p === 1 ? 12 : (p === 2 ? 8 : (p === 3 ? 6 : 4)), p === 1 ? 11 : (p === 2 ? 8 : (p === 3 ? 5 : 4)), p === 1 ? 1 : (p === 3 ? 1 : 0)]);
+        }
+
+        // Seed Sample ONUs on PON 1, 2, 3
+        const sampleOnus = [
+          { port: 1, onu: 1, sn: 'CDAT102849A1', name: 'ONU-REKTORAT-AP01', desc: 'Aruba AP - Lobby Gedung Rektorat Lt.1', loc: 'Gedung Rektorat Lt 1', bId: '1', rx: -19.45, tx: 2.15, dist: 380, clients: 24, state: 1 },
+          { port: 1, onu: 2, sn: 'CDAT102849A2', name: 'ONU-REKTORAT-AP02', desc: 'Ruang BAAK & Kemahasiswaan', loc: 'Gedung Rektorat Lt 1', bId: '1', rx: -21.20, tx: 2.10, dist: 420, clients: 18, state: 1 },
+          { port: 1, onu: 3, sn: 'CDAT102849A3', name: 'ONU-REKTORAT-AP03', desc: 'Ruang Rapat Senat Lt.2', loc: 'Gedung Rektorat Lt 2', bId: '1', rx: -22.50, tx: 2.05, dist: 480, clients: 12, state: 1 },
+          { port: 1, onu: 4, sn: 'CDAT102849A4', name: 'ONU-REKTORAT-LAB', desc: 'Laboratorium CBT Mandiri', loc: 'Gedung Rektorat Lt 2', bId: '1', rx: -25.80, tx: 1.95, dist: 510, clients: 35, state: 1 },
+          { port: 1, onu: 5, sn: 'CDAT102849A5', name: 'ONU-REKTORAT-OFFICE', desc: 'Staff Kepegawaian & TU', loc: 'Gedung Rektorat Lt 1', bId: '1', rx: -28.10, tx: 0.80, dist: 550, clients: 0, state: 2 },
+          { port: 2, onu: 1, sn: 'CDAT203911B1', name: 'ONU-TEKNIK-LABNET', desc: 'Lab Networking & Optical FTTH Lt.1', loc: 'Gedung Fakultas Teknik Lt 1', bId: '2', rx: -18.90, tx: 2.30, dist: 620, clients: 42, state: 1 },
+          { port: 2, onu: 2, sn: 'CDAT203911B2', name: 'ONU-TEKNIK-DOSEN', desc: 'Ruang Dosen & Administrasi FT', loc: 'Gedung Fakultas Teknik Lt 1', bId: '2', rx: -20.80, tx: 2.12, dist: 650, clients: 16, state: 1 },
+          { port: 2, onu: 3, sn: 'CDAT203911B3', name: 'ONU-TEKNIK-AP-OUTDOOR', desc: 'AP Outdoor Selasar Barat Teknik', loc: 'Gedung Fakultas Teknik Outdoor', bId: '2', rx: -23.10, tx: 2.08, dist: 710, clients: 29, state: 1 },
+          { port: 3, onu: 1, sn: 'CDAT304822C1', name: 'ONU-FE-DEKANAT', desc: 'Dekanat & Ruang Rapat FE Lt.1', loc: 'Gedung Fakultas Ekonomi Lt 1', bId: '3', rx: -20.15, tx: 2.18, dist: 530, clients: 15, state: 1 },
+          { port: 3, onu: 2, sn: 'CDAT304822C2', name: 'ONU-FE-PERPUS', desc: 'Ruang Baca & Referensi FE', loc: 'Gedung Fakultas Ekonomi Lt 2', bId: '3', rx: -24.90, tx: 2.01, dist: 580, clients: 31, state: 1 },
+        ];
+
+        for (const o of sampleOnus) {
+          const [insOnu]: any = await pool.query(`
+            INSERT INTO olt_onus 
+            (olt_id, slot_id, port_id, onu_id, serial_number, name, description, location, building_id, run_state, config_state, rx_optical_power, tx_optical_power, optical_temperature, optical_voltage, distance_meters, active_mac_clients, updated_at)
+            VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, 2, ?, ?, 40.5, 3.29, ?, ?, NOW())
+          `, [oltId, o.port, o.onu, o.sn, o.name, o.desc, o.loc, o.bId, o.state, o.rx, o.tx, o.dist, o.clients]);
+
+          const onuDbId = insOnu.insertId;
+
+          // Seed optical history for chart
+          const nowMs = Date.now();
+          for (let h = 12; h >= 0; h--) {
+            const histTime = new Date(nowMs - h * 3600 * 1000);
+            const jitter = (Math.random() * 0.4) - 0.2;
+            await pool.query(`
+              INSERT INTO olt_optical_history (onu_id, rx_power, tx_power, temperature, timestamp)
+              VALUES (?, ?, ?, ?, ?)
+            `, [onuDbId, (o.rx + jitter).toFixed(2), o.tx, (40 + jitter).toFixed(1), histTime]);
+          }
+
+          // Seed MAC address entries if active
+          if (o.clients > 0) {
+            for (let m = 1; m <= Math.min(o.clients, 5); m++) {
+              const fakeMac = ('70:D8:23:' + (10 + o.port).toString(16) + ':' + (20 + o.onu).toString(16) + ':' + (30 + m).toString(16)).toUpperCase();
+              await pool.query(`
+                INSERT INTO olt_mac_entries (onu_id, eth_port_id, mac_address, vlan_id, last_seen)
+                VALUES (?, 1, ?, 100, NOW())
+              `, [onuDbId, fakeMac]);
+            }
+          }
+        }
+
+        // Seed 2 auto-found ONUs awaiting activation
+        await pool.query(`
+          INSERT INTO olt_autofind_queue (olt_id, slot_id, port_id, serial_number, vendor_id, version, equipment_id, discovered_at, status)
+          VALUES 
+          (?, 1, 1, 'CDAT991032F1', 'CDAT', 'V2.0.1', 'FD511G-X', NOW() - INTERVAL 15 MINUTE, 'Pending'),
+          (?, 1, 2, 'ZTEG004819B5', 'ZTEG', 'V1.1.0', 'F609', NOW() - INTERVAL 45 MINUTE, 'Pending')
+        `, [oltId, oltId]);
+
+        console.log('Seeded C-DATA GPON OLT default master data (192.168.2.100, community monitor1745).');
+      }
+    } catch (oltErr) {
+      console.error('Error creating C-DATA OLT tables:', oltErr);
+    }
+
     console.log('Database tables verified/created successfully');
 
   } catch (error) {

@@ -24,7 +24,8 @@ import {
   Globe,
   MapPin,
   Building2,
-  User as UserIcon
+  User as UserIcon,
+  Radio
 } from 'lucide-react';
 import { io } from 'socket.io-client';
 import type { Device, DailyTask, User, Mission, DailyTodo, CustomMission, DeviceCategory } from './types';
@@ -54,6 +55,7 @@ import { GacsConfig } from './components/GacsConfig';
 import { SystemLogs } from './components/SystemLogs';
 import { Activity } from 'lucide-react';
 import { NocDashboard } from './components/NocMonitoring/NocDashboard';
+import { NocCdataOlt } from './components/NocMonitoring/NocCdataOlt';
 import { SlaReportManager } from './components/SlaReportManager';
 import { MikrotikDashboard } from './components/MikrotikDashboard';
 import { UserProfile } from './components/UserProfile';
@@ -118,7 +120,10 @@ export default function App() {
   );
 
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    return (localStorage.getItem('nemesys_theme') as 'dark' | 'light') || 'dark';
+    const saved = localStorage.getItem('nemesys_theme_selected');
+    if (saved === 'dark' || saved === 'light') return saved;
+    // Default base view is now light
+    return 'light';
   });
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
@@ -426,7 +431,13 @@ export default function App() {
       case 'qr-manager':
         return <QRCodeManager devices={devices} />;
       case 'noc-monitoring':
-        return <NocDashboard token={token || ''} currentUserRole={currentUser?.role} currentUserName={currentUser?.name} />;
+        return <NocDashboard token={token || ''} currentUserRole={currentUser?.role} currentUserName={currentUser?.name} socket={socket} />;
+      case 'cdata-olt':
+        return (
+          <div className="p-6 max-w-7xl mx-auto">
+            <NocCdataOlt token={token || ''} socket={socket} />
+          </div>
+        );
       case 'mikrotik-noc':
         return <MikrotikDashboard token={token || ''} socket={socket} />;
       case 'sla-report':
@@ -461,7 +472,7 @@ export default function App() {
       <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-brand">
           <div className="brand-icon-box">
-            <ShieldAlert size={20} />
+            <img src="/logo_perpenas.png" alt="Perpenas Logo" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />
           </div>
           <div className="brand-text-container">
             <span className="brand-logo">NEMESYS</span>
@@ -499,6 +510,10 @@ export default function App() {
           <a className={`menu-item ${currentMenu === 'noc-monitoring' ? 'active' : ''}`} onClick={() => setCurrentMenu('noc-monitoring')} title="NOC Monitoring">
             <Activity size={17} /> <span className="menu-item-text">NOC Monitoring</span>
             <span className="menu-item-badge badge-cyan">ZABBIX</span>
+          </a>
+          <a className={`menu-item ${currentMenu === 'cdata-olt' ? 'active' : ''}`} onClick={() => setCurrentMenu('cdata-olt')} title="C-DATA GPON OLT">
+            <Radio size={17} className="text-indigo-400" /> <span className="menu-item-text font-semibold">C-DATA GPON OLT</span>
+            <span className="menu-item-badge badge-indigo">SNMP</span>
           </a>
           <a className={`menu-item ${currentMenu === 'mikrotik-noc' ? 'active' : ''}`} onClick={() => setCurrentMenu('mikrotik-noc')} title="MikroTik RouterOS">
             <RouterIcon size={17} /> <span className="menu-item-text">MikroTik RouterOS</span>
@@ -614,11 +629,15 @@ export default function App() {
 
             {/* Theme Toggle */}
             <button 
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              onClick={() => {
+                const next = theme === 'dark' ? 'light' : 'dark';
+                setTheme(next);
+                localStorage.setItem('nemesys_theme_selected', next);
+              }}
               className="btn-primary"
               style={{
                 padding: '6px',
-                background: 'rgba(255, 255, 255, 0.05)',
+                background: theme === 'light' ? '#f1f5f9' : 'rgba(255, 255, 255, 0.05)',
                 border: '1px solid var(--border-color)',
                 color: 'var(--text-primary)',
                 borderRadius: '50%',
@@ -631,7 +650,7 @@ export default function App() {
               }}
               title={theme === 'dark' ? 'Ganti ke Tampilan Light' : 'Ganti ke Tampilan Dark'}
             >
-              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} style={{ color: '#6366f1' }} />}
+              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} style={{ color: '#e22329' }} />}
             </button>
 
             {/* Profile */}

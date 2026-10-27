@@ -936,7 +936,7 @@ export const MikrotikDashboard: React.FC<MikrotikDashboardProps> = ({ token, soc
   }
 
   return (
-    <div className="mt-dashboard-wrapper" style={{ background: '#0b0f19', color: '#f3f4f6', minHeight: '100vh', padding: '1.25rem', fontFamily: "'Outfit', system-ui, sans-serif" }}>
+    <div className="mt-dashboard-wrapper" style={{ minHeight: '100vh', padding: '1.25rem', fontFamily: "'Outfit', system-ui, sans-serif" }}>
       {/* =========================================================================
           1. GRAFANA HEADER BREADCRUMB & CONTROL BAR
           ========================================================================= */}

@@ -1,0 +1,6102 @@
+# WARNING: This file was auto-generated using snmp_exporter generator, manual changes will be lost.
+auths:
+  public_v2:
+    community: public
+    security_level: noAuthNoPriv
+    auth_protocol: MD5
+    priv_protocol: DES
+    version: 2
+modules:
+  cdata_gpon:
+    walk:
+    - 1.3.6.1.4.1.34592.1.5.1.1.1.4.4
+    - 1.3.6.1.4.1.34592.1.5.1.1.2.17.1
+    - 1.3.6.1.4.1.34592.1.5.1.1.2.17.2
+    - 1.3.6.1.4.1.34592.1.5.1.1.2.17.3
+    - 1.3.6.1.4.1.34592.1.5.1.1.2.18.2
+    - 1.3.6.1.4.1.34592.1.5.1.1.2.18.3
+    - 1.3.6.1.4.1.34592.1.5.1.1.2.18.4
+    - 1.3.6.1.4.1.34592.1.5.1.1.2.18.5
+    - 1.3.6.1.4.1.34592.1.5.1.1.2.18.6
+    - 1.3.6.1.4.1.34592.1.5.1.1.2.18.7
+    - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1
+    - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3
+    - 1.3.6.1.4.1.34592.1.5.1.1.2.19.2
+    - 1.3.6.1.4.1.34592.1.5.1.1.2.19.3
+    - 1.3.6.1.4.1.34592.1.5.1.1.2.20.2
+    get:
+    - 1.3.6.1.2.1.1.1.0
+    - 1.3.6.1.2.1.1.3.0
+    - 1.3.6.1.2.1.1.5.0
+    metrics:
+    - name: sysDescr
+      oid: 1.3.6.1.2.1.1.1
+      type: DisplayString
+      help: A textual description of the entity - 1.3.6.1.2.1.1.1
+    - name: sysUpTime
+      oid: 1.3.6.1.2.1.1.3
+      type: gauge
+      help: The time (in hundredths of a second) since the network management portion
+        of the system was last re-initialized. - 1.3.6.1.2.1.1.3
+    - name: sysName
+      oid: 1.3.6.1.2.1.1.5
+      type: DisplayString
+      help: An administratively-assigned name for this managed node - 1.3.6.1.2.1.1.5
+    - name: gponSrvProfilePortType
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.1
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+      - labelname: gponSrvProfilePortType
+        type: EnumAsInfo
+        enum_values:
+          1: eth
+      - labelname: gponSrvProfilePortId
+        type: gauge
+      - labelname: gponSrvProfilePortVlanEntryId
+        type: gauge
+      enum_values:
+        1: eth
+    - name: gponSrvProfilePortId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.2
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+      - labelname: gponSrvProfilePortType
+        type: EnumAsInfo
+        enum_values:
+          1: eth
+      - labelname: gponSrvProfilePortId
+        type: gauge
+      - labelname: gponSrvProfilePortVlanEntryId
+        type: gauge
+    - name: gponSrvProfilePortVlanEntryId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.3
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+      - labelname: gponSrvProfilePortType
+        type: EnumAsInfo
+        enum_values:
+          1: eth
+      - labelname: gponSrvProfilePortId
+        type: gauge
+      - labelname: gponSrvProfilePortVlanEntryId
+        type: gauge
+    - name: gponSrvProfilePortVlanRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.4
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+      - labelname: gponSrvProfilePortType
+        type: EnumAsInfo
+        enum_values:
+          1: eth
+      - labelname: gponSrvProfilePortId
+        type: gauge
+      - labelname: gponSrvProfilePortVlanEntryId
+        type: gauge
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponSrvProfilePortVlanMode
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.5
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.5
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+      - labelname: gponSrvProfilePortType
+        type: EnumAsInfo
+        enum_values:
+          1: eth
+      - labelname: gponSrvProfilePortId
+        type: gauge
+      - labelname: gponSrvProfilePortVlanEntryId
+        type: gauge
+      enum_values:
+        1: transparent
+        2: qinq
+        3: translation
+    - name: gponSrvProfilePortVlanSvlan
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.6
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.6
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+      - labelname: gponSrvProfilePortType
+        type: EnumAsInfo
+        enum_values:
+          1: eth
+      - labelname: gponSrvProfilePortId
+        type: gauge
+      - labelname: gponSrvProfilePortVlanEntryId
+        type: gauge
+    - name: gponSrvProfilePortVlanSpri
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.7
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.7
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+      - labelname: gponSrvProfilePortType
+        type: EnumAsInfo
+        enum_values:
+          1: eth
+      - labelname: gponSrvProfilePortId
+        type: gauge
+      - labelname: gponSrvProfilePortVlanEntryId
+        type: gauge
+    - name: gponSrvProfilePortCvlan
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.8
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.8
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+      - labelname: gponSrvProfilePortType
+        type: EnumAsInfo
+        enum_values:
+          1: eth
+      - labelname: gponSrvProfilePortId
+        type: gauge
+      - labelname: gponSrvProfilePortVlanEntryId
+        type: gauge
+    - name: gponSrvProfilePortVlanCpri
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.9
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.9
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+      - labelname: gponSrvProfilePortType
+        type: EnumAsInfo
+        enum_values:
+          1: eth
+      - labelname: gponSrvProfilePortId
+        type: gauge
+      - labelname: gponSrvProfilePortVlanEntryId
+        type: gauge
+    - name: gponOltDeviceId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+    - name: gponOltCardId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+    - name: gponOltPortId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+    - name: gponOltPortAutoFindSwitch
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.4
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      enum_values:
+        1: enable
+        2: disable
+    - name: gponOltPortSwitch
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.5
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.5
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      enum_values:
+        1: enable
+        2: disable
+    - name: gponOltPortStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.6
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.6
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      enum_values:
+        1: up
+        2: down
+    - name: gponOltPortDdmTemperature
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.2.1.1
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.2.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      regex_extracts:
+        "":
+        - value: $1
+          regex: ^(?:(-?[0-9]+\.?[0-9]*))$
+    - name: gponOltPortDdmVoltage
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.2.1.2
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.2.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      regex_extracts:
+        "":
+        - value: $1
+          regex: ^(?:(-?[0-9]+\.?[0-9]*))$
+    - name: gponOltPortDdmTxBiasCurrent
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.2.1.3
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.2.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      regex_extracts:
+        "":
+        - value: $1
+          regex: ^(?:(-?[0-9]+\.?[0-9]*))$
+    - name: gponOltPortDdmTxPower
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.2.1.4
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.2.1.4
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      regex_extracts:
+        "":
+        - value: $1
+          regex: ^(?:(-?[0-9]+\.?[0-9]*))$
+    - name: gponOltPortDdmRxPower
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.2.1.5
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.2.1.5
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      regex_extracts:
+        "":
+        - value: $1
+          regex: ^(?:(-?[0-9]+\.?[0-9]*))$
+    - name: gponOltTransceiverVendor
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.3.1.1
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.3.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+    - name: gponOltTransceiverProductName
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.3.1.2
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.3.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+    - name: gponOltTransceiverVersion
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.3.1.3
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.3.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+    - name: gponOltTransceiverSerialNumber
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.3.1.4
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.3.1.4
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+    - name: gponOnuRunState
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: online
+        2: offline
+    - name: gponOnuConfigState
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: initial
+        2: success
+        3: failed
+        4: configing
+    - name: gponOnuMatchState
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: initial
+        2: match
+        3: mismatch
+    - name: gponOnuDistance
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.4
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuInfoDescription
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuInfoLastUpTime
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.6
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.6
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuInfoLastDownTime
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.7
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.7
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuType
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: sfu
+        2: mdu
+        3: hgu
+        4: sfu-hgu
+        5: mdu-hgu
+    - name: gponOnuPonPortNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuEthPortNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuVeipPortNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.4
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuPotsPortNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.5
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.5
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuCatvPortNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.6
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.6
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuGemPortNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.7
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.7
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuTcontNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.8
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.8
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuFlowControlType
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.9
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.9
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        0: pq
+        1: car
+        2: pqAndCar
+    - name: gponOnuReset
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.4.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.4.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        0: none
+        1: reset
+    - name: gponOnuDeactive
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.4.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.4.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        0: active
+        1: deactive
+    - name: gponOnuAutofindId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuAutofindId
+        type: gauge
+    - name: gponOnuAutofindRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuAutofindId
+        type: gauge
+      enum_values:
+        1: active
+        6: destory
+    - name: gponOnuAutofindSn
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.3
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuAutofindId
+        type: gauge
+    - name: gponOnuAutofindVendorId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.5
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.5
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuAutofindId
+        type: gauge
+    - name: gponOnuAutofindVersion
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.6
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.6
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuAutofindId
+        type: gauge
+    - name: gponOnuAutofindEquipmentID
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.7
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.7
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuAutofindId
+        type: gauge
+    - name: gponOnuAutofindSoftwareVersion
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.8
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.8
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuAutofindId
+        type: gauge
+    - name: gponOnuAutofindTime
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.9
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.9
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuAutofindId
+        type: gauge
+    - name: gponOnuOpticalVoltage
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.1
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      regex_extracts:
+        "":
+        - value: $1
+          regex: ^(?:(-?[0-9]+\.?[0-9]*))$
+    - name: gponOnuOpticalTxPower
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.2
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      regex_extracts:
+        "":
+        - value: $1
+          regex: ^(?:(-?[0-9]+\.?[0-9]*))$
+    - name: gponOnuOpticalRxPower
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.4
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.4
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      regex_extracts:
+        "":
+        - value: $1
+          regex: ^(?:(-?[0-9]+\.?[0-9]*))$
+    - name: gponOnuOpticalLaserBiasCurrent
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.5
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.5
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      regex_extracts:
+        "":
+        - value: $1
+          regex: ^(?:(-?[0-9]+\.?[0-9]*))$
+    - name: gponOnuOpticalTemperature
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.6
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.6
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      regex_extracts:
+        "":
+        - value: $1
+          regex: ^(?:(-?[0-9]+\.?[0-9]*))$
+    - name: gponOnuMainSoftwareVersion
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.7.1.1
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.7.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuStandbySoftwareVersion
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.7.1.2
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.7.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuWanInfoWanId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuWanConfigConnectionName
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.2
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuWanConfigConnectionStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        0: down
+        1: up
+    - name: gponOnuWanConfigConnectionAdmin
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.4
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        0: disable
+        1: enable
+    - name: gponOnuWanConfigConnectType
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.5
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.5
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        1: bridge
+        2: route
+    - name: gponOnuWanConfigConnectMode
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.6
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.6
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        1: dhcp
+        2: static
+        3: pppoe
+        4: pppoebridge
+        5: pppoemix
+    - name: gponOnuWanConfigIpVersion
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.7
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.7
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        1: ipv4
+        2: ipv6
+        3: ipv4-ipv6
+    - name: gponOnuWanConfigVlanAdmin
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.8
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.8
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        0: disable
+        1: enable
+    - name: gponOnuWanConfigVlan
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.9
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.9
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuWanConfigVlanPriority
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.10
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.10
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuWanConfigServiceType
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.11
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.11
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        1: internet
+        2: voip
+        3: internet-voip
+        4: tr069
+        5: internet-tr069
+        6: voip-tr069
+        7: internet-voip-tr069
+        8: other
+    - name: gponOnuWanConfigMtu
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.12
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.12
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuWanConfigNatAdmin
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.13
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.13
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        0: disable
+        1: enable
+    - name: gponOnuWanConfigLanDhcpAdmin
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.14
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.14
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        0: disable
+        1: enable
+    - name: gponOnuWanConfigBinding
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.15
+      type: Bits
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.15
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        0: port1
+        1: port2
+        2: port3
+        3: port4
+        8: ssid1
+        9: ssid2
+        10: ssid3
+        11: ssid4
+    - name: gponOnuWanConfigPppoeServiceName
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.18
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.18
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuWanConfigPppoeDialOnDemandAdmin
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.19
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.19
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        0: disable
+        1: enable
+    - name: gponOnuWanConfigPppoeDialOnDemandInActiveTime
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.20
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.20
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuWanConfigRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.21
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.21
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponOnuWanConfigIpAddress
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.1
+      type: InetAddressIPv4
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuWanConfigMask
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.2
+      type: InetAddressIPv4
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuWanConfigGateWay
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.3
+      type: InetAddressIPv4
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuWanConfigDhcpDnsMode
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.4
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        0: manual
+        1: autoget
+    - name: gponOnuWanConfigPrimaryDns
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.5
+      type: InetAddressIPv4
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.5
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuWanConfigSecondaryDns
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.6
+      type: InetAddressIPv4
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.6
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuEthPortSpeedAndDuplexInfo
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.19.2.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.19.2.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuEthPortId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: full10
+        2: full100
+        3: full1000
+        17: half10
+        18: half100
+        19: half1000
+    - name: gponOnuEthPortState
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.19.2.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.19.2.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuEthPortId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: up
+        2: down
+    - name: gponOnuEthPortMacAddressId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.19.3.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.19.3.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuEthPortId
+        type: gauge
+      - labelname: gponOnuEthPortMacAddressId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuEthPortMacAddress
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.19.3.1.2
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.19.3.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuEthPortId
+        type: gauge
+      - labelname: gponOnuEthPortMacAddressId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuIpHostId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuIpHostId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuIpCfgRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuIpHostId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponOnuIpCfgMode
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuIpHostId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: dhcp
+        2: static
+    - name: gponOnuIpCfgVlanId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.4
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuIpHostId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuIpCfgVlanPri
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.5
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.5
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuIpHostId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuIpCfgIp
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.6
+      type: InetAddressIPv4
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.6
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuIpHostId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuIpCfgMask
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.7
+      type: InetAddressIPv4
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.7
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuIpHostId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuIpCfgGateway
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.8
+      type: InetAddressIPv4
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.8
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuIpHostId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuIpCfgPriDns
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.9
+      type: InetAddressIPv4
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.9
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuIpHostId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuIpCfgSlaveDns
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.10
+      type: InetAddressIPv4
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.10
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuIpHostId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuIpCfgMacAddress
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.11
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.11
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuIpHostId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    max_repetitions: 10
+    retries: 3
+    timeout: 1m0s
+  cdata_gpon_all:
+    walk:
+    - 1.3.6.1.4.1.34592.1.5.1
+    metrics:
+    - name: gponDbaProfileId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.2.1.1.1
+      type: gauge
+      help: Dba profile index, 1-128:user dba profile 65535:default dba profile, profile
+        id is 0 - 1.3.6.1.4.1.34592.1.5.1.1.1.2.1.1.1
+      indexes:
+      - labelname: gponDbaProfileId
+        type: gauge
+    - name: gponDbaProfileRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.2.1.1.2
+      type: gauge
+      help: Row status - 1.3.6.1.4.1.34592.1.5.1.1.1.2.1.1.2
+      indexes:
+      - labelname: gponDbaProfileId
+        type: gauge
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponDbaProfileName
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.2.1.1.3
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.2.1.1.3
+      indexes:
+      - labelname: gponDbaProfileId
+        type: gauge
+    - name: gponDbaProfileBindNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.2.1.1.4
+      type: gauge
+      help: Number of bound DBA profiles. - 1.3.6.1.4.1.34592.1.5.1.1.1.2.1.1.4
+      indexes:
+      - labelname: gponDbaProfileId
+        type: gauge
+    - name: gponDbaProfileType
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.2.2.1.1
+      type: gauge
+      help: The DBA type index. - 1.3.6.1.4.1.34592.1.5.1.1.1.2.2.1.1
+      indexes:
+      - labelname: gponDbaProfileId
+        type: gauge
+      enum_values:
+        1: fix
+        2: assure
+        3: assureAndMax
+        4: max
+        5: fixAndAssureAndMax
+    - name: gponDbaProfileFixRate
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.2.2.1.2
+      type: gauge
+      help: Fixed bandwidth of the profile. - 1.3.6.1.4.1.34592.1.5.1.1.1.2.2.1.2
+      indexes:
+      - labelname: gponDbaProfileId
+        type: gauge
+    - name: gponDbaProfileAssureRate
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.2.2.1.3
+      type: gauge
+      help: Assured bandwidth of the profile. - 1.3.6.1.4.1.34592.1.5.1.1.1.2.2.1.3
+      indexes:
+      - labelname: gponDbaProfileId
+        type: gauge
+    - name: gponDbaProfileMaxRate
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.2.2.1.4
+      type: gauge
+      help: Max bandwidth of the profile. - 1.3.6.1.4.1.34592.1.5.1.1.1.2.2.1.4
+      indexes:
+      - labelname: gponDbaProfileId
+        type: gauge
+    - name: gponDbaProfileBindLineProfileTcontList
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.2.3.1.2
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.2.3.1.2
+      indexes:
+      - labelname: gponDbaProfileId
+        type: gauge
+      - labelname: gponLineProfileId
+        type: gauge
+    - name: gponLineProfileId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.3.1.1.1
+      type: gauge
+      help: Line profile index, 1-512:user line profile 65535:default line profile,
+        it is reserve. - 1.3.6.1.4.1.34592.1.5.1.1.1.3.1.1.1
+      indexes:
+      - labelname: gponLineProfileId
+        type: gauge
+    - name: gponLineProfileRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.3.1.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.3.1.1.2
+      indexes:
+      - labelname: gponLineProfileId
+        type: gauge
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponLineProfileName
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.3.1.1.3
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.3.1.1.3
+      indexes:
+      - labelname: gponLineProfileId
+        type: gauge
+    - name: gponLineProfileMappingMode
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.3.1.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.3.1.1.4
+      indexes:
+      - labelname: gponLineProfileId
+        type: gauge
+      enum_values:
+        1: vlan
+        2: priority
+        3: vlanAndPriority
+    - name: gponLineProfileTcontNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.3.1.1.5
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.3.1.1.5
+      indexes:
+      - labelname: gponLineProfileId
+        type: gauge
+    - name: gponLineProfileGemNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.3.1.1.6
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.3.1.1.6
+      indexes:
+      - labelname: gponLineProfileId
+        type: gauge
+    - name: gponLineProfileBindNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.3.1.1.7
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.3.1.1.7
+      indexes:
+      - labelname: gponLineProfileId
+        type: gauge
+    - name: gponLineProfileTcontId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.3.2.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.3.2.1.1
+      indexes:
+      - labelname: gponLineProfileId
+        type: gauge
+      - labelname: gponLineProfileTcontId
+        type: gauge
+    - name: gponLineProfileTcontRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.3.2.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.3.2.1.2
+      indexes:
+      - labelname: gponLineProfileId
+        type: gauge
+      - labelname: gponLineProfileTcontId
+        type: gauge
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponLineProfileTcontDbaProfileId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.3.2.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.3.2.1.3
+      indexes:
+      - labelname: gponLineProfileId
+        type: gauge
+      - labelname: gponLineProfileTcontId
+        type: gauge
+    - name: gponLineProfileGemId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.3.3.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.3.3.1.1
+      indexes:
+      - labelname: gponLineProfileId
+        type: gauge
+      - labelname: gponLineProfileGemId
+        type: gauge
+    - name: gponLineProfileGemRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.3.3.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.3.3.1.2
+      indexes:
+      - labelname: gponLineProfileId
+        type: gauge
+      - labelname: gponLineProfileGemId
+        type: gauge
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponLineProfileGemTcontId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.3.3.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.3.3.1.3
+      indexes:
+      - labelname: gponLineProfileId
+        type: gauge
+      - labelname: gponLineProfileGemId
+        type: gauge
+    - name: gponLineProfileGemUpCar
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.3.3.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.3.3.1.4
+      indexes:
+      - labelname: gponLineProfileId
+        type: gauge
+      - labelname: gponLineProfileGemId
+        type: gauge
+    - name: gponLineProfileGemDownCar
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.3.3.1.5
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.3.3.1.5
+      indexes:
+      - labelname: gponLineProfileId
+        type: gauge
+      - labelname: gponLineProfileGemId
+        type: gauge
+    - name: gponLineProfileGemMapNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.3.3.1.6
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.3.3.1.6
+      indexes:
+      - labelname: gponLineProfileId
+        type: gauge
+      - labelname: gponLineProfileGemId
+        type: gauge
+    - name: gponLineProfileGemMapId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.3.4.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.3.4.1.1
+      indexes:
+      - labelname: gponLineProfileId
+        type: gauge
+      - labelname: gponLineProfileGemId
+        type: gauge
+      - labelname: gponLineProfileGemMapId
+        type: gauge
+    - name: gponLineProfileGemMapRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.3.4.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.3.4.1.2
+      indexes:
+      - labelname: gponLineProfileId
+        type: gauge
+      - labelname: gponLineProfileGemId
+        type: gauge
+      - labelname: gponLineProfileGemMapId
+        type: gauge
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponLineProfileGemMapVlan
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.3.4.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.3.4.1.3
+      indexes:
+      - labelname: gponLineProfileId
+        type: gauge
+      - labelname: gponLineProfileGemId
+        type: gauge
+      - labelname: gponLineProfileGemMapId
+        type: gauge
+    - name: gponLineProfileGemMapPriority
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.3.4.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.3.4.1.4
+      indexes:
+      - labelname: gponLineProfileId
+        type: gauge
+      - labelname: gponLineProfileGemId
+        type: gauge
+      - labelname: gponLineProfileGemMapId
+        type: gauge
+    - name: gponLineProfileBindOnuList
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.3.5.1.2
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.3.5.1.2
+      indexes:
+      - labelname: gponLineProfileId
+        type: gauge
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+    - name: gponSrvProfileId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.1.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.1.1.1
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+    - name: gponSrvProfileRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.1.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.1.1.2
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponSrvProfileName
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.1.1.3
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.1.1.3
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+    - name: gponSrvProfileBindNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.1.1.8
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.1.1.8
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+    - name: gponSrvProfileMcMode
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.2.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.2.1.1
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+      enum_values:
+        0: igmp-snooping
+        1: igmp-snooping-proxy
+        2: igmp-proxy
+    - name: gponSrvProfileUpIgmpFwdMode
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.2.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.2.1.2
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+      enum_values:
+        0: transparent
+        1: default
+        2: translation
+    - name: gponSrvProfileUpIgmpTCI
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.2.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.2.1.3
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+    - name: gponSrvProfileDnMcMode
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.2.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.2.1.4
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+      enum_values:
+        0: transparent
+        1: untag
+        2: translation
+    - name: gponSrvProfileDnMcTCI
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.2.1.5
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.2.1.5
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+    - name: gponSrvProfileEthNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.3.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.3.1.1
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+    - name: gponSrvProfilePotsNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.3.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.3.1.2
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+    - name: gponSrvProfileCatvNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.3.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.3.1.3
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+    - name: gponSrvProfilePortType
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.1
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+      - labelname: gponSrvProfilePortType
+        type: EnumAsInfo
+        enum_values:
+          1: eth
+      - labelname: gponSrvProfilePortId
+        type: gauge
+      - labelname: gponSrvProfilePortVlanEntryId
+        type: gauge
+      enum_values:
+        1: eth
+    - name: gponSrvProfilePortId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.2
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+      - labelname: gponSrvProfilePortType
+        type: EnumAsInfo
+        enum_values:
+          1: eth
+      - labelname: gponSrvProfilePortId
+        type: gauge
+      - labelname: gponSrvProfilePortVlanEntryId
+        type: gauge
+    - name: gponSrvProfilePortVlanEntryId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.3
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+      - labelname: gponSrvProfilePortType
+        type: EnumAsInfo
+        enum_values:
+          1: eth
+      - labelname: gponSrvProfilePortId
+        type: gauge
+      - labelname: gponSrvProfilePortVlanEntryId
+        type: gauge
+    - name: gponSrvProfilePortVlanRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.4
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+      - labelname: gponSrvProfilePortType
+        type: EnumAsInfo
+        enum_values:
+          1: eth
+      - labelname: gponSrvProfilePortId
+        type: gauge
+      - labelname: gponSrvProfilePortVlanEntryId
+        type: gauge
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponSrvProfilePortVlanMode
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.5
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.5
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+      - labelname: gponSrvProfilePortType
+        type: EnumAsInfo
+        enum_values:
+          1: eth
+      - labelname: gponSrvProfilePortId
+        type: gauge
+      - labelname: gponSrvProfilePortVlanEntryId
+        type: gauge
+      enum_values:
+        1: transparent
+        2: qinq
+        3: translation
+    - name: gponSrvProfilePortVlanSvlan
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.6
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.6
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+      - labelname: gponSrvProfilePortType
+        type: EnumAsInfo
+        enum_values:
+          1: eth
+      - labelname: gponSrvProfilePortId
+        type: gauge
+      - labelname: gponSrvProfilePortVlanEntryId
+        type: gauge
+    - name: gponSrvProfilePortVlanSpri
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.7
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.7
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+      - labelname: gponSrvProfilePortType
+        type: EnumAsInfo
+        enum_values:
+          1: eth
+      - labelname: gponSrvProfilePortId
+        type: gauge
+      - labelname: gponSrvProfilePortVlanEntryId
+        type: gauge
+    - name: gponSrvProfilePortCvlan
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.8
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.8
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+      - labelname: gponSrvProfilePortType
+        type: EnumAsInfo
+        enum_values:
+          1: eth
+      - labelname: gponSrvProfilePortId
+        type: gauge
+      - labelname: gponSrvProfilePortVlanEntryId
+        type: gauge
+    - name: gponSrvProfilePortVlanCpri
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.9
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.4.1.9
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+      - labelname: gponSrvProfilePortType
+        type: EnumAsInfo
+        enum_values:
+          1: eth
+      - labelname: gponSrvProfilePortId
+        type: gauge
+      - labelname: gponSrvProfilePortVlanEntryId
+        type: gauge
+    - name: gponSrvProfileBindOnuList
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.4.5.1.2
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.4.5.1.2
+      indexes:
+      - labelname: gponSrvProfileId
+        type: gauge
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+    - name: gponTrafficProfileId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.6.1.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.6.1.1.1
+      indexes:
+      - labelname: gponTrafficProfileId
+        type: gauge
+    - name: gponTrafficProfileRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.6.1.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.6.1.1.2
+      indexes:
+      - labelname: gponTrafficProfileId
+        type: gauge
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponTrafficProfileName
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.6.1.1.3
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.6.1.1.3
+      indexes:
+      - labelname: gponTrafficProfileId
+        type: gauge
+    - name: gponTrafficProfileBindNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.6.1.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.6.1.1.4
+      indexes:
+      - labelname: gponTrafficProfileId
+        type: gauge
+    - name: gponTrafficProfileCfgCir
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.6.3.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.6.3.1.1
+      indexes:
+      - labelname: gponTrafficProfileId
+        type: gauge
+    - name: gponTrafficProfileCfgPir
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.6.3.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.6.3.1.2
+      indexes:
+      - labelname: gponTrafficProfileId
+        type: gauge
+    - name: gponTrafficProfileCfgCbs
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.6.3.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.6.3.1.3
+      indexes:
+      - labelname: gponTrafficProfileId
+        type: gauge
+    - name: gponTrafficProfileCfgPbs
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.6.3.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.6.3.1.4
+      indexes:
+      - labelname: gponTrafficProfileId
+        type: gauge
+    - name: gponTrafficProfileCfgPriority
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.6.3.1.5
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.6.3.1.5
+      indexes:
+      - labelname: gponTrafficProfileId
+        type: gauge
+    - name: gponSipAgentProfileId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.8.1.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.8.1.1.1
+      indexes:
+      - labelname: gponSipAgentProfileId
+        type: gauge
+    - name: gponSipAgentProfileRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.8.1.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.8.1.1.2
+      indexes:
+      - labelname: gponSipAgentProfileId
+        type: gauge
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponSipAgentProfileName
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.8.1.1.3
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.8.1.1.3
+      indexes:
+      - labelname: gponSipAgentProfileId
+        type: gauge
+    - name: gponSipAgentProfileBindNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.8.1.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.8.1.1.4
+      indexes:
+      - labelname: gponSipAgentProfileId
+        type: gauge
+    - name: gponSipAgentProfileProxyServerUri
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.1
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.1
+      indexes:
+      - labelname: gponSipAgentProfileId
+        type: gauge
+    - name: gponSipAgentProfileRtpDscp
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.2
+      indexes:
+      - labelname: gponSipAgentProfileId
+        type: gauge
+    - name: gponSipAgentProfileRtpMinPort
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.3
+      indexes:
+      - labelname: gponSipAgentProfileId
+        type: gauge
+    - name: gponSipAgentProfileRtpMaxPort
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.4
+      indexes:
+      - labelname: gponSipAgentProfileId
+        type: gauge
+    - name: gponSipAgentProfileSignalDscp
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.5
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.5
+      indexes:
+      - labelname: gponSipAgentProfileId
+        type: gauge
+    - name: gponSipAgentProfileSignalPort
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.6
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.6
+      indexes:
+      - labelname: gponSipAgentProfileId
+        type: gauge
+    - name: gponSipAgentProfileSignalTransferMode
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.7
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.7
+      indexes:
+      - labelname: gponSipAgentProfileId
+        type: gauge
+      enum_values:
+        0: udp
+        1: tcp
+    - name: gponSipAgentProfileRegistrationExpiration
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.8
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.8
+      indexes:
+      - labelname: gponSipAgentProfileId
+        type: gauge
+    - name: gponSipAgentProfileRegistrationReregHeadStartTime
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.9
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.9
+      indexes:
+      - labelname: gponSipAgentProfileId
+        type: gauge
+    - name: gponSipAgentProfileRegistrationServerUri
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.10
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.10
+      indexes:
+      - labelname: gponSipAgentProfileId
+        type: gauge
+    - name: gponSipAgentProfileVoiceMailServerUri
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.11
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.11
+      indexes:
+      - labelname: gponSipAgentProfileId
+        type: gauge
+    - name: gponSipAgentProfileVoiceMailSubscriptionExpiration
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.12
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.12
+      indexes:
+      - labelname: gponSipAgentProfileId
+        type: gauge
+    - name: gponSipAgentProfileConfFactory
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.13
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.13
+      indexes:
+      - labelname: gponSipAgentProfileId
+        type: gauge
+    - name: gponSipAgentProfileBridgedLineAgent
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.14
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.14
+      indexes:
+      - labelname: gponSipAgentProfileId
+        type: gauge
+    - name: gponSipAgentProfileAuthRealm
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.15
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.15
+      indexes:
+      - labelname: gponSipAgentProfileId
+        type: gauge
+    - name: gponSipAgentProfileProxyServerPort
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.16
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.16
+      indexes:
+      - labelname: gponSipAgentProfileId
+        type: gauge
+    - name: gponSipAgentProfileRegistrationServerPort
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.17
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.8.2.1.17
+      indexes:
+      - labelname: gponSipAgentProfileId
+        type: gauge
+    - name: gponSipAgentProfileBindInfoOnuId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.8.3.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.8.3.1.1
+      indexes:
+      - labelname: gponSipAgentProfileId
+        type: gauge
+      - labelname: gponSipAgentProfileBindInfoOnuId
+        type: gauge
+    - name: gponSipAgentProfileBindPotsList
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.8.3.1.2
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.8.3.1.2
+      indexes:
+      - labelname: gponSipAgentProfileId
+        type: gauge
+      - labelname: gponSipAgentProfileBindInfoOnuId
+        type: gauge
+    - name: gponSipRightFlagProfileId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.9.1.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.9.1.1.1
+      indexes:
+      - labelname: gponSipRightFlagProfileId
+        type: gauge
+    - name: gponSipRightFlagProfileRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.9.1.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.9.1.1.2
+      indexes:
+      - labelname: gponSipRightFlagProfileId
+        type: gauge
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponSipRightFlagProfileName
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.9.1.1.3
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.9.1.1.3
+      indexes:
+      - labelname: gponSipRightFlagProfileId
+        type: gauge
+    - name: gponSipRightFlagProfileBindNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.9.1.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.9.1.1.4
+      indexes:
+      - labelname: gponSipRightFlagProfileId
+        type: gauge
+    - name: gponSipRightFlagProfileCallWaiting
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.9.2.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.9.2.1.1
+      indexes:
+      - labelname: gponSipRightFlagProfileId
+        type: gauge
+      enum_values:
+        1: enable
+        2: disable
+    - name: gponSipRightFlagProfileCallProcess
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.9.2.1.2
+      type: Bits
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.9.2.1.2
+      indexes:
+      - labelname: gponSipRightFlagProfileId
+        type: gauge
+      enum_values:
+        0: threeParty
+        1: callTransfer
+        2: callHold
+        3: callPark
+        4: doNotDisturb
+        5: conference
+    - name: gponSipRightFlagProfileCallPresentation
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.9.2.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.9.2.1.3
+      indexes:
+      - labelname: gponSipRightFlagProfileId
+        type: gauge
+      enum_values:
+        1: enable
+        2: disable
+    - name: gponSipRightFlagProfileHotline
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.9.2.1.4
+      type: Bits
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.9.2.1.4
+      indexes:
+      - labelname: gponSipRightFlagProfileId
+        type: gauge
+      enum_values:
+        0: hotline
+        1: hotlineDelay
+    - name: gponSipRightFlagProfileHotlineNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.9.2.1.5
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.9.2.1.5
+      indexes:
+      - labelname: gponSipRightFlagProfileId
+        type: gauge
+    - name: gponSipRightFlagProfileBindInfoOnuId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.9.4.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.9.4.1.1
+      indexes:
+      - labelname: gponSipRightFlagProfileId
+        type: gauge
+      - labelname: gponSipRightFlagProfileBindInfoOnuId
+        type: gauge
+    - name: gponSipRightFlagProfileBindPotsList
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.9.4.1.2
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.9.4.1.2
+      indexes:
+      - labelname: gponSipRightFlagProfileId
+        type: gauge
+      - labelname: gponSipRightFlagProfileBindInfoOnuId
+        type: gauge
+    - name: gponDigitMapProfileId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.10.1.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.10.1.1.1
+      indexes:
+      - labelname: gponDigitMapProfileId
+        type: gauge
+    - name: gponDigitMapProfileRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.10.1.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.10.1.1.2
+      indexes:
+      - labelname: gponDigitMapProfileId
+        type: gauge
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponDigitMapProfileName
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.10.1.1.3
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.10.1.1.3
+      indexes:
+      - labelname: gponDigitMapProfileId
+        type: gauge
+    - name: gponDigitMapProfileBindNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.10.1.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.10.1.1.4
+      indexes:
+      - labelname: gponDigitMapProfileId
+        type: gauge
+    - name: gponDigitMapProfileCriticalDialTime
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.10.2.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.10.2.1.1
+      indexes:
+      - labelname: gponDigitMapProfileId
+        type: gauge
+    - name: gponDigitMapProfileCfgPartialDialTime
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.10.2.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.10.2.1.2
+      indexes:
+      - labelname: gponDigitMapProfileId
+        type: gauge
+    - name: gponDigitMapProfileCfgDigitmapFormat
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.10.2.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.10.2.1.3
+      indexes:
+      - labelname: gponDigitMapProfileId
+        type: gauge
+      enum_values:
+        0: notDefined
+        1: h248
+        2: ncs
+        3: vendorSpecific
+    - name: gponDigitMapProfileDialPlanId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.10.3.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.10.3.1.1
+      indexes:
+      - labelname: gponDigitMapProfileId
+        type: gauge
+      - labelname: gponDigitMapProfileDialPlanId
+        type: gauge
+    - name: gponDigitMapProfileDialPlanRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.10.3.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.10.3.1.2
+      indexes:
+      - labelname: gponDigitMapProfileId
+        type: gauge
+      - labelname: gponDigitMapProfileDialPlanId
+        type: gauge
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponDigitMapProfileDialPlanToken
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.10.3.1.3
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.10.3.1.3
+      indexes:
+      - labelname: gponDigitMapProfileId
+        type: gauge
+      - labelname: gponDigitMapProfileDialPlanId
+        type: gauge
+    - name: gponDigitMapProfileBindInfoOnuId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.10.4.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.10.4.1.1
+      indexes:
+      - labelname: gponDigitMapProfileId
+        type: gauge
+      - labelname: gponDigitMapProfileBindInfoOnuId
+        type: gauge
+    - name: gponDigitMapProfileBindPotsList
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.10.4.1.2
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.10.4.1.2
+      indexes:
+      - labelname: gponDigitMapProfileId
+        type: gauge
+      - labelname: gponDigitMapProfileBindInfoOnuId
+        type: gauge
+    - name: gponPotsProfileId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.11.1.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.11.1.1.1
+      indexes:
+      - labelname: gponPotsProfileId
+        type: gauge
+    - name: gponPotsProfileRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.11.1.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.11.1.1.2
+      indexes:
+      - labelname: gponPotsProfileId
+        type: gauge
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponPotsProfileName
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.11.1.1.3
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.11.1.1.3
+      indexes:
+      - labelname: gponPotsProfileId
+        type: gauge
+    - name: gponPotsProfileBindNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.11.1.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.11.1.1.4
+      indexes:
+      - labelname: gponPotsProfileId
+        type: gauge
+    - name: gponPotsProfileImpedance
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.11.2.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.11.2.1.1
+      indexes:
+      - labelname: gponPotsProfileId
+        type: gauge
+      enum_values:
+        0: imp600Ohms
+        1: imp900Ohms
+        2: imp150nf750Ohm270Ohm
+        3: imp115nf820Ohm220Ohm
+        4: imp230nf1050Ohm320Ohm
+    - name: gponPotsProfileSignallingCode
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.11.2.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.11.2.1.2
+      indexes:
+      - labelname: gponPotsProfileId
+        type: gauge
+      enum_values:
+        0: none
+        1: loopStart
+        2: groundStart
+        3: loopReverseBattery
+        4: coinFirst
+        5: dialToneFirst
+        6: multiParty
+    - name: gponPotsProfileRxGain
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.11.2.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.11.2.1.3
+      indexes:
+      - labelname: gponPotsProfileId
+        type: gauge
+      enum_values:
+        0: gainN12d0dB
+        1: gainN11d5dB
+        2: gainN11d0dB
+        3: gainN10d5dB
+        4: gainN10d0dB
+        5: gainN9d5dB
+        6: gainN9d0dB
+        7: gainN8d5dB
+        8: gainN8d0dB
+        9: gainN7d5dB
+        10: gainN7d0dB
+        11: gainN6d5dB
+        12: gainN6d0dB
+        13: gainN5d5dB
+        14: gainN5d0dB
+        15: gainN4d5dB
+        16: gainN4d0dB
+        17: gainN3d5dB
+        18: gainN3d0dB
+        19: gainN2d5dB
+        20: gainN2d0dB
+        21: gainN1d5dB
+        22: gainN1d0dB
+        23: gainN0d5dB
+        24: gain0dB
+        25: gainP0d5dB
+        26: gainP1d0dB
+        27: gainP1d5dB
+        28: gainP2d0dB
+        29: gainP2d5dB
+        30: gainP3d0dB
+        31: gainP3d5dB
+        32: gainP4d0dB
+        33: gainP4d5dB
+        34: gainP5d0dB
+        35: gainP5d5dB
+        36: gainP6d0dB
+    - name: gponPotsProfileTxGain
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.11.2.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.11.2.1.4
+      indexes:
+      - labelname: gponPotsProfileId
+        type: gauge
+      enum_values:
+        0: gainN12d0dB
+        1: gainN11d5dB
+        2: gainN11d0dB
+        3: gainN10d5dB
+        4: gainN10d0dB
+        5: gainN9d5dB
+        6: gainN9d0dB
+        7: gainN8d5dB
+        8: gainN8d0dB
+        9: gainN7d5dB
+        10: gainN7d0dB
+        11: gainN6d5dB
+        12: gainN6d0dB
+        13: gainN5d5dB
+        14: gainN5d0dB
+        15: gainN4d5dB
+        16: gainN4d0dB
+        17: gainN3d5dB
+        18: gainN3d0dB
+        19: gainN2d5dB
+        20: gainN2d0dB
+        21: gainN1d5dB
+        22: gainN1d0dB
+        23: gainN0d5dB
+        24: gain0dB
+        25: gainP0d5dB
+        26: gainP1d0dB
+        27: gainP1d5dB
+        28: gainP2d0dB
+        29: gainP2d5dB
+        30: gainP3d0dB
+        31: gainP3d5dB
+        32: gainP4d0dB
+        33: gainP4d5dB
+        34: gainP5d0dB
+        35: gainP5d5dB
+        36: gainP6d0dB
+    - name: gponPotsProfileBindInfoOnuId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.11.3.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.11.3.1.1
+      indexes:
+      - labelname: gponPotsProfileId
+        type: gauge
+      - labelname: gponPotsProfileBindInfoOnuId
+        type: gauge
+    - name: gponPotsProfileBindPotsList
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.1.11.3.1.2
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.1.11.3.1.2
+      indexes:
+      - labelname: gponPotsProfileId
+        type: gauge
+      - labelname: gponPotsProfileBindInfoOnuId
+        type: gauge
+    - name: gponOltDeviceId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+    - name: gponOltCardId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+    - name: gponOltPortId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+    - name: gponOltPortAutoFindSwitch
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.4
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      enum_values:
+        1: enable
+        2: disable
+    - name: gponOltPortSwitch
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.5
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.5
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      enum_values:
+        1: enable
+        2: disable
+    - name: gponOltPortStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.6
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.1.1.6
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      enum_values:
+        1: up
+        2: down
+    - name: gponOltPortDdmTemperature
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.2.1.1
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.2.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      regex_extracts:
+        "":
+        - value: $1
+          regex: ^(?:(-?[0-9]+\.?[0-9]*))$
+    - name: gponOltPortDdmVoltage
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.2.1.2
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.2.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      regex_extracts:
+        "":
+        - value: $1
+          regex: ^(?:(-?[0-9]+\.?[0-9]*))$
+    - name: gponOltPortDdmTxBiasCurrent
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.2.1.3
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.2.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      regex_extracts:
+        "":
+        - value: $1
+          regex: ^(?:(-?[0-9]+\.?[0-9]*))$
+    - name: gponOltPortDdmTxPower
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.2.1.4
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.2.1.4
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      regex_extracts:
+        "":
+        - value: $1
+          regex: ^(?:(-?[0-9]+\.?[0-9]*))$
+    - name: gponOltPortDdmRxPower
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.2.1.5
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.2.1.5
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      regex_extracts:
+        "":
+        - value: $1
+          regex: ^(?:(-?[0-9]+\.?[0-9]*))$
+    - name: gponOltTransceiverVendor
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.3.1.1
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.3.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+    - name: gponOltTransceiverProductName
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.3.1.2
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.3.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+    - name: gponOltTransceiverVersion
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.3.1.3
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.3.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+    - name: gponOltTransceiverSerialNumber
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.3.1.4
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.3.1.4
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+    - name: gponOltAutoAuthMode
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.1.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.1.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      enum_values:
+        1: all
+        2: equid-auth
+        3: vendor-auth
+        4: equid-swver-auth
+    - name: gponOltAutoAuthSwitch
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.1.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.1.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      enum_values:
+        1: enable
+        2: disable
+    - name: gponOltPortAutoAuthSwitchBitMap
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.1.1.3
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.1.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+    - name: gponOltAutoAuthRuleNumber
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.1.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.1.1.4
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+    - name: gponOltAutoAuthRuleId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.2.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.2.1.2
+      indexes:
+      - labelname: gponOltAutoAuthRuleId
+        type: gauge
+    - name: gponOltAutoAuthRuleRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.2.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.2.1.3
+      indexes:
+      - labelname: gponOltAutoAuthRuleId
+        type: gauge
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponOltAutoAuthVendorId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.2.1.4
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.2.1.4
+      indexes:
+      - labelname: gponOltAutoAuthRuleId
+        type: gauge
+    - name: gponOltAutoAuthEquipmentID
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.2.1.5
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.2.1.5
+      indexes:
+      - labelname: gponOltAutoAuthRuleId
+        type: gauge
+    - name: gponOltAutoAuthSoftwareVersion
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.2.1.6
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.2.1.6
+      indexes:
+      - labelname: gponOltAutoAuthRuleId
+        type: gauge
+    - name: gponOltAutoAuthLineProfileId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.2.1.7
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.2.1.7
+      indexes:
+      - labelname: gponOltAutoAuthRuleId
+        type: gauge
+    - name: gponOltAutoAuthSrvProfileId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.2.1.8
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.2.1.8
+      indexes:
+      - labelname: gponOltAutoAuthRuleId
+        type: gauge
+    - name: gponOltAutoAuthOnuNumber
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.2.1.9
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.17.4.2.1.9
+      indexes:
+      - labelname: gponOltAutoAuthRuleId
+        type: gauge
+    - name: gponOnuId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponOnuAuthMode
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: sn
+        2: password
+        3: sn-and-password
+    - name: gponOnuSn
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.4
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.4
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuPassword
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.5
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.5
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuLineProfileId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.6
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.6
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuServiceProfileId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.7
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.7
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuDescription
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.8
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.8
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuRunState
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: online
+        2: offline
+    - name: gponOnuConfigState
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: initial
+        2: success
+        3: failed
+        4: configing
+    - name: gponOnuMatchState
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: initial
+        2: match
+        3: mismatch
+    - name: gponOnuDistance
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.4
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuInfoDescription
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuInfoLastUpTime
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.6
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.6
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuInfoLastDownTime
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.7
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.7
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuType
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: sfu
+        2: mdu
+        3: hgu
+        4: sfu-hgu
+        5: mdu-hgu
+    - name: gponOnuPonPortNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuEthPortNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuVeipPortNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.4
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuPotsPortNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.5
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.5
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuCatvPortNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.6
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.6
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuGemPortNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.7
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.7
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuTcontNum
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.8
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.8
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuFlowControlType
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.9
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.3.1.9
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        0: pq
+        1: car
+        2: pqAndCar
+    - name: gponOnuReset
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.4.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.4.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        0: none
+        1: reset
+    - name: gponOnuDeactive
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.4.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.4.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        0: active
+        1: deactive
+    - name: gponOnuAutofindId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuAutofindId
+        type: gauge
+    - name: gponOnuAutofindRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuAutofindId
+        type: gauge
+      enum_values:
+        1: active
+        6: destory
+    - name: gponOnuAutofindSn
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.3
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuAutofindId
+        type: gauge
+    - name: gponOnuAutofindVendorId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.5
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.5
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuAutofindId
+        type: gauge
+    - name: gponOnuAutofindVersion
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.6
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.6
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuAutofindId
+        type: gauge
+    - name: gponOnuAutofindEquipmentID
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.7
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.7
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuAutofindId
+        type: gauge
+    - name: gponOnuAutofindSoftwareVersion
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.8
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.8
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuAutofindId
+        type: gauge
+    - name: gponOnuAutofindTime
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.9
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.5.1.9
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuAutofindId
+        type: gauge
+    - name: gponOnuOpticalVoltage
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.1
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      regex_extracts:
+        "":
+        - value: $1
+          regex: ^(?:(-?[0-9]+\.?[0-9]*))$
+    - name: gponOnuOpticalTxPower
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.2
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      regex_extracts:
+        "":
+        - value: $1
+          regex: ^(?:(-?[0-9]+\.?[0-9]*))$
+    - name: gponOnuOpticalRxPower
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.4
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.4
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      regex_extracts:
+        "":
+        - value: $1
+          regex: ^(?:(-?[0-9]+\.?[0-9]*))$
+    - name: gponOnuOpticalLaserBiasCurrent
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.5
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.5
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      regex_extracts:
+        "":
+        - value: $1
+          regex: ^(?:(-?[0-9]+\.?[0-9]*))$
+    - name: gponOnuOpticalTemperature
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.6
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.6
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      regex_extracts:
+        "":
+        - value: $1
+          regex: ^(?:(-?[0-9]+\.?[0-9]*))$
+    - name: gponOnuMainSoftwareVersion
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.7.1.1
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.7.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuStandbySoftwareVersion
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.7.1.2
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.7.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuAuthenticationConfirmDeviceId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.1
+      indexes:
+      - labelname: gponOnuAuthenticationConfirmDeviceId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmCardId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmPortId
+        type: gauge
+    - name: gponOnuAuthenticationConfirmCardId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.2
+      indexes:
+      - labelname: gponOnuAuthenticationConfirmDeviceId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmCardId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmPortId
+        type: gauge
+    - name: gponOnuAuthenticationConfirmPortId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.3
+      indexes:
+      - labelname: gponOnuAuthenticationConfirmDeviceId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmCardId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmPortId
+        type: gauge
+    - name: gponOnuAuthenConfirmType
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.4
+      indexes:
+      - labelname: gponOnuAuthenticationConfirmDeviceId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmCardId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmPortId
+        type: gauge
+      enum_values:
+        1: snAuth
+        2: snPwdAuth
+        3: pwdAuth
+        4: loidAuth
+        5: loidPwdAuth
+        6: snAuthAll
+        7: snPwdAuthAll
+        8: pwdAuthAll
+        9: loidAuthAll
+        10: loidPwdAuthAll
+    - name: gponOnuAuthenConfirmSn
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.5
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.5
+      indexes:
+      - labelname: gponOnuAuthenticationConfirmDeviceId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmCardId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmPortId
+        type: gauge
+    - name: gponOnuAuthenConfirmPassword
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.6
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.6
+      indexes:
+      - labelname: gponOnuAuthenticationConfirmDeviceId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmCardId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmPortId
+        type: gauge
+    - name: gponOnuAuthenConfirmLoid
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.7
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.7
+      indexes:
+      - labelname: gponOnuAuthenticationConfirmDeviceId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmCardId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmPortId
+        type: gauge
+    - name: gponOnuAuthenConfirmLoidPassword
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.8
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.8
+      indexes:
+      - labelname: gponOnuAuthenticationConfirmDeviceId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmCardId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmPortId
+        type: gauge
+    - name: gponOnuAuthenConfirmLineProfileId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.9
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.9
+      indexes:
+      - labelname: gponOnuAuthenticationConfirmDeviceId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmCardId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmPortId
+        type: gauge
+    - name: gponOnuAuthenConfirmServiceProfileId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.10
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.10
+      indexes:
+      - labelname: gponOnuAuthenticationConfirmDeviceId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmCardId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmPortId
+        type: gauge
+    - name: gponOnuAuthenConfirmTimeMode
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.11
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.11
+      indexes:
+      - labelname: gponOnuAuthenticationConfirmDeviceId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmCardId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmPortId
+        type: gauge
+      enum_values:
+        0: always
+        1: onceAging
+        2: onceNoAging
+    - name: gponOnuAuthenConfirmAgingDuration
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.12
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.12
+      indexes:
+      - labelname: gponOnuAuthenticationConfirmDeviceId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmCardId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmPortId
+        type: gauge
+    - name: gponOnuAuthenticationConfirmRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.13
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.2.1.13
+      indexes:
+      - labelname: gponOnuAuthenticationConfirmDeviceId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmCardId
+        type: gauge
+      - labelname: gponOnuAuthenticationConfirmPortId
+        type: gauge
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponOnuPolicyAuthControlDeviceIndex
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.1.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.1.1.1
+      indexes:
+      - labelname: gponOnuPolicyAuthControlDeviceIndex
+        type: gauge
+    - name: gponOnuPolicyAuthSwitch
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.1.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.1.1.2
+      indexes:
+      - labelname: gponOnuPolicyAuthControlDeviceIndex
+        type: gauge
+      enum_values:
+        1: enable
+        2: disable
+    - name: gponOnuPolicyAuthPortSwtichBitMap
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.1.1.3
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.1.1.3
+      indexes:
+      - labelname: gponOnuPolicyAuthControlDeviceIndex
+        type: gauge
+    - name: gponOnuPolicyAuthMode
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.1.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.1.1.4
+      indexes:
+      - labelname: gponOnuPolicyAuthControlDeviceIndex
+        type: gauge
+      enum_values:
+        0: all
+        1: equid
+        2: vendor
+        3: equidAndSwver
+    - name: gponOnuPolicyAuthTargetMode
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.1.1.5
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.1.1.5
+      indexes:
+      - labelname: gponOnuPolicyAuthControlDeviceIndex
+        type: gauge
+      enum_values:
+        0: snAuth
+        1: snPasswordAuth
+        2: passwordAuth
+        3: loidAuth
+        4: loidPasswordAuth
+    - name: gponOnuPolicyAuthTimeMode
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.1.1.6
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.1.1.6
+      indexes:
+      - labelname: gponOnuPolicyAuthControlDeviceIndex
+        type: gauge
+      enum_values:
+        0: always
+        1: onceNoAging
+    - name: gponOnuPolicyAuthDeviceIndex
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.2.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.2.1.1
+      indexes:
+      - labelname: gponOnuPolicyAuthDeviceIndex
+        type: gauge
+      - labelname: gponOnuPolicyAuthRuleIndex
+        type: gauge
+    - name: gponOnuPolicyAuthRuleIndex
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.2.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.2.1.2
+      indexes:
+      - labelname: gponOnuPolicyAuthDeviceIndex
+        type: gauge
+      - labelname: gponOnuPolicyAuthRuleIndex
+        type: gauge
+    - name: gponOnuPolicyAuthRuleMatchMode
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.2.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.2.1.3
+      indexes:
+      - labelname: gponOnuPolicyAuthDeviceIndex
+        type: gauge
+      - labelname: gponOnuPolicyAuthRuleIndex
+        type: gauge
+      enum_values:
+        0: all
+        1: equid
+        2: vendor
+        3: equidAndSwver
+    - name: gponOnuPolicyAuthRuleEquid
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.2.1.4
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.2.1.4
+      indexes:
+      - labelname: gponOnuPolicyAuthDeviceIndex
+        type: gauge
+      - labelname: gponOnuPolicyAuthRuleIndex
+        type: gauge
+    - name: gponOnuPolicyAuthRuleVendorid
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.2.1.5
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.2.1.5
+      indexes:
+      - labelname: gponOnuPolicyAuthDeviceIndex
+        type: gauge
+      - labelname: gponOnuPolicyAuthRuleIndex
+        type: gauge
+    - name: gponOnuPolicyAuthRuleSoftwareVersion
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.2.1.6
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.2.1.6
+      indexes:
+      - labelname: gponOnuPolicyAuthDeviceIndex
+        type: gauge
+      - labelname: gponOnuPolicyAuthRuleIndex
+        type: gauge
+    - name: gponOnuPolicyAuthRuleLineProfileId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.2.1.7
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.2.1.7
+      indexes:
+      - labelname: gponOnuPolicyAuthDeviceIndex
+        type: gauge
+      - labelname: gponOnuPolicyAuthRuleIndex
+        type: gauge
+    - name: gponOnuPolicyAuthRuleSrvProfileId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.2.1.8
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.2.1.8
+      indexes:
+      - labelname: gponOnuPolicyAuthDeviceIndex
+        type: gauge
+      - labelname: gponOnuPolicyAuthRuleIndex
+        type: gauge
+    - name: gponOnuPolicyAuthRuleRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.2.1.9
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.8.3.2.1.9
+      indexes:
+      - labelname: gponOnuPolicyAuthDeviceIndex
+        type: gauge
+      - labelname: gponOnuPolicyAuthRuleIndex
+        type: gauge
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponOnuWanInfoWanId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuWanConfigConnectionName
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.2
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuWanConfigConnectionStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        0: down
+        1: up
+    - name: gponOnuWanConfigConnectionAdmin
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.4
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        0: disable
+        1: enable
+    - name: gponOnuWanConfigConnectType
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.5
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.5
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        1: bridge
+        2: route
+    - name: gponOnuWanConfigConnectMode
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.6
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.6
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        1: dhcp
+        2: static
+        3: pppoe
+        4: pppoebridge
+        5: pppoemix
+    - name: gponOnuWanConfigIpVersion
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.7
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.7
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        1: ipv4
+        2: ipv6
+        3: ipv4-ipv6
+    - name: gponOnuWanConfigVlanAdmin
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.8
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.8
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        0: disable
+        1: enable
+    - name: gponOnuWanConfigVlan
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.9
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.9
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuWanConfigVlanPriority
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.10
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.10
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuWanConfigServiceType
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.11
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.11
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        1: internet
+        2: voip
+        3: internet-voip
+        4: tr069
+        5: internet-tr069
+        6: voip-tr069
+        7: internet-voip-tr069
+        8: other
+    - name: gponOnuWanConfigMtu
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.12
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.12
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuWanConfigNatAdmin
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.13
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.13
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        0: disable
+        1: enable
+    - name: gponOnuWanConfigLanDhcpAdmin
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.14
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.14
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        0: disable
+        1: enable
+    - name: gponOnuWanConfigBinding
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.15
+      type: Bits
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.15
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        0: port1
+        1: port2
+        2: port3
+        3: port4
+        8: ssid1
+        9: ssid2
+        10: ssid3
+        11: ssid4
+    - name: gponOnuWanConfigPppoeServiceName
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.18
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.18
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuWanConfigPppoeDialOnDemandAdmin
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.19
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.19
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        0: disable
+        1: enable
+    - name: gponOnuWanConfigPppoeDialOnDemandInActiveTime
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.20
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.20
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuWanConfigRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.21
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.1.1.21
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponOnuWanConfigIpAddress
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.1
+      type: InetAddressIPv4
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuWanConfigMask
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.2
+      type: InetAddressIPv4
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuWanConfigGateWay
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.3
+      type: InetAddressIPv4
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuWanConfigDhcpDnsMode
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.4
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+      enum_values:
+        0: manual
+        1: autoget
+    - name: gponOnuWanConfigPrimaryDns
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.5
+      type: InetAddressIPv4
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.5
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuWanConfigSecondaryDns
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.6
+      type: InetAddressIPv4
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.18.9.3.1.6
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuWanInfoWanId
+        type: gauge
+    - name: gponOnuEthPortId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuEthPortId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuEthPortNativeVlanId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuEthPortId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuEthPortNativeVlanPriority
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuEthPortId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuEthPortInboundCarId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.4
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuEthPortId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuEthPortOutboundCarId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.5
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.5
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuEthPortId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuEthPortSpeedAndDuplex
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.6
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.6
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuEthPortId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        0: autoNeg
+        1: full10
+        2: full100
+        3: full1000
+        17: half10
+        18: half100
+        19: half1000
+    - name: gponOnuEthPortFlowCtrl
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.8
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.8
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuEthPortId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: enable
+        2: disable
+    - name: gponOnuEthPortOperationalState
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.9
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.9
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuEthPortId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: enable
+        2: disable
+    - name: gponOnuEthPortSpeedAndDuplexInfo
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.19.2.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.19.2.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuEthPortId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: full10
+        2: full100
+        3: full1000
+        17: half10
+        18: half100
+        19: half1000
+    - name: gponOnuEthPortState
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.19.2.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.19.2.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuEthPortId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: up
+        2: down
+    - name: gponOnuEthPortMacAddressId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.19.3.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.19.3.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuEthPortId
+        type: gauge
+      - labelname: gponOnuEthPortMacAddressId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuEthPortMacAddress
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.19.3.1.2
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.19.3.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuEthPortId
+        type: gauge
+      - labelname: gponOnuEthPortMacAddressId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuEthPortStatusInfo
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.19.5.1.1
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.19.5.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuEthPortId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuPotsPortId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.1.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.1.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuPotsPortId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuPotsPortOperationalState
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.1.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.1.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuPotsPortId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: enable
+        2: disable
+    - name: gponOnuPotsPortCfgPotsProfileId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.1.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.1.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuPotsPortId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuIpHostId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuIpHostId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuIpCfgRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuIpHostId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponOnuIpCfgMode
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuIpHostId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: dhcp
+        2: static
+    - name: gponOnuIpCfgVlanId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.4
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuIpHostId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuIpCfgVlanPri
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.5
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.5
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuIpHostId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuIpCfgIp
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.6
+      type: InetAddressIPv4
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.6
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuIpHostId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuIpCfgMask
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.7
+      type: InetAddressIPv4
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.7
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuIpHostId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuIpCfgGateway
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.8
+      type: InetAddressIPv4
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.8
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuIpHostId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuIpCfgPriDns
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.9
+      type: InetAddressIPv4
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.9
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuIpHostId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuIpCfgSlaveDns
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.10
+      type: InetAddressIPv4
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.10
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuIpHostId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuIpCfgMacAddress
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.11
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.2.1.11
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuIpHostId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuSipPstnUserId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.3.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.3.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuSipPstnUserId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuSipPstnUserRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.3.1.3
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.3.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuSipPstnUserId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponOnuSipPstnUserName
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.3.1.4
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.3.1.4
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuSipPstnUserId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuSipPstnUserPassword
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.3.1.5
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.3.1.5
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuSipPstnUserId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuSipPstnUserTelephoneNumber
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.3.1.6
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.3.1.6
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuSipPstnUserId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuSipPstnUserAgentProfileId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.3.1.7
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.3.1.7
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuSipPstnUserId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuSipPstnUserDigitMapProfileId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.3.1.8
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.3.1.8
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuSipPstnUserId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuSipPstnUserSipRightFlagProfileId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.3.1.9
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.3.1.9
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuSipPstnUserId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuSipPstnUserState
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.4.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.4.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuSipPstnUserId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: lock
+        2: unlock
+    - name: gponOnuSipPstnUserHookState
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.4.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.4.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuSipPstnUserId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: onhook
+        2: offhook
+    - name: gponOnuSipPstnUserCodec
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.4.1.3
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.4.1.3
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuSipPstnUserId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuSipPstnUserServerStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.4.1.4
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.4.1.4
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuSipPstnUserId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuSipPstnUserSessionType
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.20.4.1.5
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.20.4.1.5
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuSipPstnUserId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuCatvPortId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.21.1.1.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.21.1.1.1
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuCatvPortId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+    - name: gponOnuCatvPortOperationalState
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.2.21.1.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.2.21.1.1.2
+      indexes:
+      - labelname: gponOltDeviceId
+        type: gauge
+      - labelname: gponOltCardId
+        type: gauge
+      - labelname: gponOltPortId
+        type: gauge
+      - labelname: gponOnuId
+        type: gauge
+      - labelname: gponOnuCatvPortId
+        type: gauge
+      lookups:
+      - labels:
+        - gponOltDeviceId
+        - gponOltCardId
+        - gponOltPortId
+        - gponOnuId
+        labelname: gponOnuInfoDescription
+        oid: 1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.5
+        type: DisplayString
+      enum_values:
+        1: enable
+        2: disable
+    - name: gponTrapId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.4.6.1
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.4.6.1
+    - name: gponTrapState
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.4.6.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.4.6.2
+      enum_values:
+        0: none
+        1: report
+        2: clear
+    - name: gponTrapParameters
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.4.6.3
+      type: Bits
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.4.6.3
+      enum_values:
+        0: none
+        1: oltPortId
+        2: onuId
+        3: onuSn
+        4: password
+        5: rogueOnuSn
+    - name: gponTrapOltPortId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.4.6.4
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.4.6.4
+    - name: gponTrapOnuId
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.4.6.5
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.4.6.5
+    - name: gponTrapOnuSn
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.4.6.6
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.4.6.6
+    - name: gponTrapOnuPassword
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.4.6.7
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.4.6.7
+    - name: gponTrapRogueOnuSn
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.4.6.8
+      type: DisplayString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.4.6.8
+    - name: gponManagementAddrName
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.4.8.1.1.1
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.4.8.1.1.1
+      indexes:
+      - labelname: gponManagementAddrName
+        type: OctetString
+    - name: gponManagementAddrRowStatus
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.4.8.1.1.2
+      type: gauge
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.4.8.1.1.2
+      indexes:
+      - labelname: gponManagementAddrName
+        type: OctetString
+      enum_values:
+        1: active
+        2: notInService
+        3: notReady
+        4: createAndGo
+        5: createAndWait
+        6: destroy
+    - name: gponManagementAddrTAddress
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.4.8.1.1.3
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.4.8.1.1.3
+      indexes:
+      - labelname: gponManagementAddrName
+        type: OctetString
+    - name: gponManagementAddrCommunity
+      oid: 1.3.6.1.4.1.34592.1.5.1.1.4.8.1.1.4
+      type: OctetString
+      help: Description. - 1.3.6.1.4.1.34592.1.5.1.1.4.8.1.1.4
+      indexes:
+      - labelname: gponManagementAddrName
+        type: OctetString
+    max_repetitions: 10
+    retries: 3
+    timeout: 2m0s

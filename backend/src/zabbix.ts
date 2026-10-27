@@ -8,11 +8,18 @@ const zabbixUser = process.env.ZABBIX_USER || 'Admin';
 const zabbixPassword = process.env.ZABBIX_PASSWORD || 'zabbix';
 
 let zabbixAuthToken: string | null = null;
+let zabbixOfflineUntil = 0;
+let lastOfflineLogTime = 0;
 
 // Helper to communicate with Zabbix API
 async function callZabbixAPI(method: string, params: any, auth: string | null = null) {
   const url = process.env.ZABBIX_API_URL;
   if (!url) return null;
+
+  // Circuit breaker: skip network calls if server is currently in timeout/down cooldown
+  if (Date.now() < zabbixOfflineUntil) {
+    return null;
+  }
 
   try {
     const payload: any = {
@@ -35,17 +42,28 @@ async function callZabbixAPI(method: string, params: any, auth: string | null = 
       method: 'POST',
       headers,
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(5000),
     });
 
     const result: any = await response.json();
     if (result.error) {
-      console.error(`Zabbix API Error [${method}]:`, result.error);
+      console.warn(`[Zabbix API] RPC Error [${method}]:`, result.error.message || result.error);
       return null;
     }
+    // Success: reset offline state if recovering
+    if (zabbixOfflineUntil > 0) {
+      console.log(`[Zabbix API] Koneksi ke ${url} berhasil pulih.`);
+      zabbixOfflineUntil = 0;
+    }
     return result.result;
-  } catch (error) {
-    console.error(`Network error calling Zabbix API [${method}]:`, error);
+  } catch (error: any) {
+    zabbixOfflineUntil = Date.now() + 60000; // Cooldown 60 seconds
+    const now = Date.now();
+    if (now - lastOfflineLogTime > 60000) {
+      lastOfflineLogTime = now;
+      const errMsg = error?.cause?.code || error?.code || error?.message || 'Connection timeout';
+      console.warn(`[Zabbix API] Server ${url} sedang offline/unreachable (${errMsg}). Mengaktifkan cooldown 60 detik.`);
+    }
     return null;
   }
 }

@@ -92,13 +92,13 @@ export interface BastPartyInfo {
 
 export const getBastAdministrator = (mission: CustomMission | null | undefined): BastPartyInfo => {
   if (!mission) {
-    return { name: 'Administrator Biro TI', role: 'Administrator Biro TI', isApproved: false, approvedAt: null };
+    return { name: 'Administrator TI', role: 'Administrator TI', isApproved: false, approvedAt: null };
   }
   // 1. If explicitly approved by admin
   if (mission.bast_admin_approved_by) {
     return {
       name: mission.bast_admin_approved_by,
-      role: 'Administrator Biro TI',
+      role: 'Administrator TI',
       isApproved: true,
       approvedAt: mission.bast_admin_approved_at || null
     };
@@ -107,7 +107,7 @@ export const getBastAdministrator = (mission: CustomMission | null | undefined):
   if (mission.created_by && mission.created_by.trim() !== '') {
     return {
       name: mission.created_by.trim(),
-      role: 'Administrator Biro TI',
+      role: 'Administrator TI',
       isApproved: false,
       approvedAt: null
     };
@@ -117,15 +117,15 @@ export const getBastAdministrator = (mission: CustomMission | null | undefined):
   if (adminPersonnel) {
     return {
       name: adminPersonnel.name,
-      role: 'Administrator Biro TI',
+      role: 'Administrator TI',
       isApproved: false,
       approvedAt: null
     };
   }
   // 4. Fallback default
   return {
-    name: 'Administrator Biro TI',
-    role: 'Administrator Biro TI',
+    name: 'Administrator TI',
+    role: 'Administrator TI',
     isApproved: false,
     approvedAt: null
   };
@@ -133,7 +133,7 @@ export const getBastAdministrator = (mission: CustomMission | null | undefined):
 
 export const getBastTechnician = (mission: CustomMission | null | undefined): BastPartyInfo => {
   if (!mission) {
-    return { name: 'Teknisi Pelaksana', role: 'Teknisi Lapangan Biro TI', isApproved: false, approvedAt: null, allTechNames: [] };
+    return { name: 'Teknisi Pelaksana', role: 'Teknisi Lapangan TI', isApproved: false, approvedAt: null, allTechNames: [] };
   }
   // All technicians in personnels
   const techPersonnels = mission.personnels?.filter(p => p.role === 'Teknisi') || [];
@@ -145,7 +145,7 @@ export const getBastTechnician = (mission: CustomMission | null | undefined): Ba
   if (mission.bast_tech_approved_by) {
     return {
       name: mission.bast_tech_approved_by,
-      role: 'Teknisi Lapangan Biro TI',
+      role: 'Teknisi Lapangan TI',
       isApproved: true,
       approvedAt: mission.bast_tech_approved_at || null,
       allTechNames
@@ -155,7 +155,7 @@ export const getBastTechnician = (mission: CustomMission | null | undefined): Ba
   if (allTechNames.length > 0) {
     return {
       name: allTechNames.join(', '),
-      role: allTechNames.length > 1 ? 'Tim Teknisi Lapangan Biro TI' : 'Teknisi Lapangan Biro TI',
+      role: allTechNames.length > 1 ? 'Tim Teknisi Lapangan TI' : 'Teknisi Lapangan TI',
       isApproved: false,
       approvedAt: null,
       allTechNames
@@ -163,8 +163,8 @@ export const getBastTechnician = (mission: CustomMission | null | undefined): Ba
   }
   // 3. Fallback
   return {
-    name: 'Teknisi Lapangan BTI',
-    role: 'Teknisi Lapangan Biro TI',
+    name: 'Teknisi Lapangan TI',
+    role: 'Teknisi Lapangan TI',
     isApproved: false,
     approvedAt: null,
     allTechNames: []
@@ -1636,7 +1636,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
                     style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '6px 10px', fontSize: '12.5px', color: '#fff' }}
                   />
                   <input
-                    type="text" placeholder="Sub-Judul Unit (default: BIRO TEKNOLOGI...)"
+                    type="text" placeholder="Sub-Judul Unit (default: TEKNOLOGI INFORMASI...)"
                     value={customSubtitle} onChange={(e) => setCustomSubtitle(e.target.value)}
                     style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '6px 10px', fontSize: '12.5px', color: '#fff' }}
                   />
@@ -1979,13 +1979,13 @@ export const MissionPage: React.FC<MissionPageProps> = ({
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                       <div>
                         <div style={{ fontSize: '11px', fontWeight: 800, color: '#1e40af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                          👑 Pihak I: Administrator Biro TI
+                          👑 Pihak I: Administrator TI
                         </div>
                         <div style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
                           {bastAdmin.name}
                         </div>
                         <div style={{ fontSize: '11px', color: '#64748b' }}>
-                          Pemberi Tugas / Administrator Biro TI
+                          Pemberi Tugas / Administrator TI
                         </div>
                       </div>
                       {bastMission.bast_admin_approved_by ? (
@@ -2068,7 +2068,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
                 {/* Informative Note: Ketetapan Pihak BAST */}
                 <div style={{ marginTop: '10px', fontSize: '11.5px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#f1f5f9', padding: '8px 12px', borderRadius: '6px' }}>
                   <span>ℹ️</span>
-                  <span><strong>Ketetapan Pihak BAST:</strong> Pihak Pertama adalah Administrator Biro TI dan Pihak Kedua adalah Teknisi Pelaksana penugasan. Identitas ini terikat permanen pada data penugasan misi ini dan tidak dapat diganti bebas.</span>
+                  <span><strong>Ketetapan Pihak BAST:</strong> Pihak Pertama adalah Administrator TI dan Pihak Kedua adalah Teknisi Pelaksana penugasan. Identitas ini terikat permanen pada data penugasan misi ini dan tidak dapat diganti bebas.</span>
                 </div>
               </div>
 
@@ -2091,7 +2091,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
                       {bastMission.custom_header_title || 'UNIVERSITAS 17 AGUSTUS 1945 BANYUWANGI'}
                     </h3>
                     <h4 style={{ margin: '2px 0 0 0', fontSize: '14px', fontWeight: 700, color: '#2563eb' }}>
-                      {bastMission.custom_header_subtitle || 'BIRO TEKNOLOGI INFORMASI (BTI)'}
+                      {(bastMission.custom_header_subtitle ? bastMission.custom_header_subtitle.replace(/\s*/gi, '') : 'TEKNOLOGI INFORMASI (TI)')}
                     </h4>
                     <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
                       Jl. Adi Sucipto No.26, Taman Baru, Kec. Banyuwangi, Kabupaten Banyuwangi, Jawa Timur 68416 | Telp: (0333) 423235 | Email: ti@untag-banyuwangi.ac.id
@@ -2158,7 +2158,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
                           {bastAdmin.name}
                         </div>
                         <div style={{ fontSize: '11px', color: '#64748b' }}>
-                          Administrator Biro Teknologi Informasi (BTI) {bastMission.bast_admin_approved_at ? ` • Disahkan: ${bastMission.bast_admin_approved_at}` : ' • (Menunggu Pengesahan Digital)'}
+                          Administrator Teknologi Informasi (TI) {bastMission.bast_admin_approved_at ? ` • Disahkan: ${bastMission.bast_admin_approved_at}` : ' • (Menunggu Pengesahan Digital)'}
                         </div>
                       </td>
                     </tr>
@@ -2171,7 +2171,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
                           {bastTech.name}
                         </div>
                         <div style={{ fontSize: '11px', color: '#64748b' }}>
-                          Teknisi Lapangan Biro Teknologi Informasi (BTI) {bastMission.bast_tech_approved_at ? ` • Disahkan: ${bastMission.bast_tech_approved_at}` : ' • (Menunggu Pengesahan Digital)'}
+                          Teknisi Lapangan Teknologi Informasi (TI) {bastMission.bast_tech_approved_at ? ` • Disahkan: ${bastMission.bast_tech_approved_at}` : ' • (Menunggu Pengesahan Digital)'}
                         </div>
                       </td>
                     </tr>
@@ -2205,7 +2205,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
                             bastMission.status === 'Completed' ||
                             (bastMission.progress_percent !== undefined && bastMission.progress_percent >= 100)
                           );
-                          const executorName = c.completed_by || bastTech.name || 'Teknisi Lapangan BTI';
+                          const executorName = c.completed_by || bastTech.name || 'Teknisi Lapangan TI';
 
                           return (
                             <tr key={c.id || i} style={{ backgroundColor: i % 2 === 1 ? '#f8fafc' : '#ffffff' }}>
@@ -2305,7 +2305,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
                       PIHAK PERTAMA (ADMINISTRATOR)
                     </div>
                     <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
-                      Biro Teknologi Informasi (BTI)
+                      Teknologi Informasi (TI)
                     </div>
                     <div style={{ minHeight: '64px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '8px 0' }}>
                       {bastMission.bast_admin_approved_by ? (
@@ -2322,7 +2322,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
                       {bastAdmin.name}
                     </div>
                     <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
-                      Administrator Biro TI {bastMission.bast_admin_approved_at ? `(${bastMission.bast_admin_approved_at})` : ''}
+                      Administrator TI {bastMission.bast_admin_approved_at ? `(${bastMission.bast_admin_approved_at})` : ''}
                     </div>
                   </div>
 
@@ -2332,7 +2332,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
                       PIHAK KEDUA (TEKNISI PELAKSANA)
                     </div>
                     <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
-                      Tim Pelaksana Lapangan BTI
+                      Tim Pelaksana Lapangan TI
                     </div>
                     <div style={{ minHeight: '64px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '8px 0' }}>
                       {bastMission.bast_tech_approved_by ? (
@@ -2349,7 +2349,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
                       {bastTech.name}
                     </div>
                     <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
-                      Teknisi Lapangan BTI {bastMission.bast_tech_approved_at ? `(${bastMission.bast_tech_approved_at})` : ''}
+                      Teknisi Lapangan TI {bastMission.bast_tech_approved_at ? `(${bastMission.bast_tech_approved_at})` : ''}
                     </div>
                   </div>
                 </div>
@@ -2362,7 +2362,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
                         <ShieldCheck size={16} color="#16a34a" /> VERIFIKASI DIGITAL DOKUMEN BAST RESMI
                       </div>
                       <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '3px', maxWidth: '420px' }}>
-                        Dokumen ini telah disahkan secara digital oleh Tim Teknisi & Administrator Biro TI. Pindai QR Code untuk menguji keaslian dokumen dan audit trail pengesahan.
+                        Dokumen ini telah disahkan secara digital oleh Tim Teknisi & Administrator TI. Pindai QR Code untuk menguji keaslian dokumen dan audit trail pengesahan.
                       </div>
                       <div style={{ fontSize: '10px', color: '#64748b', fontFamily: 'monospace', marginTop: '4px' }}>
                         HASH: {bastMission.bast_hash || `SHA256-NEMESYS-${bastMission.id}`}
@@ -2392,7 +2392,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
                       ⏳ QR Code Verifikasi belum tersedia
                     </div>
                     <div style={{ fontSize: '11px', color: '#b45309', marginTop: '4px' }}>
-                      QR Code & Hash Digital akan muncul setelah <strong>kedua pihak</strong> (Administrator BTI & Teknisi Pelaksana) menyelesaikan pengesahan digital.
+                      QR Code & Hash Digital akan muncul setelah <strong>kedua pihak</strong> (Administrator TI & Teknisi Pelaksana) menyelesaikan pengesahan digital.
                     </div>
                   </div>
                 )}
@@ -2476,8 +2476,7 @@ export const MissionPage: React.FC<MissionPageProps> = ({
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     {/* Admin / Manager Approval */}
                     <div style={{ backgroundColor: 'rgba(30, 58, 138, 0.3)', border: '1px solid rgba(59, 130, 246, 0.4)', borderRadius: '8px', padding: '12px' }}>
-                      <div style={{ fontSize: '11px', color: '#93c5fd', fontWeight: 700, marginBottom: '4px' }}>👑 PIHAK I: ADMINISTRATOR BIRO TI</div>
-                      <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>{verifyData.approvals?.admin?.approved_by}</div>
+                      <div style={{ fontSize: '11px', color: '#93c5fd', fontWeight: 700, marginBottom: '4px' }}> PIHAK I: ADMINISTRATOR TI</div>                      <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>{verifyData.approvals?.admin?.approved_by}</div>
                       <div style={{ fontSize: '11px', color: '#4ade80', marginTop: '4px', fontWeight: 600 }}>
                         ✅ {verifyData.approvals?.admin?.status}
                       </div>

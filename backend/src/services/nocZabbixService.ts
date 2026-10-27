@@ -9,6 +9,8 @@ const zabbixPassword = process.env.ZABBIX_PASSWORD || 'zabbix';
 const zabbixApiToken = process.env.ZABBIX_API_TOKEN;
 
 let cachedAuthToken: string | null = null;
+let zabbixRpcOfflineUntil = 0;
+let lastRpcOfflineLogTime = 0;
 
 // Generic Zabbix JSON-RPC 2.0 caller
 export async function callZabbixRPC<T = any>(method: string, params: any): Promise<T | null> {
@@ -16,6 +18,11 @@ export async function callZabbixRPC<T = any>(method: string, params: any): Promi
   const apiToken = process.env.ZABBIX_API_TOKEN;
 
   if (!url) return null;
+
+  // Circuit breaker: skip network calls if server is currently in timeout/down cooldown
+  if (Date.now() < zabbixRpcOfflineUntil) {
+    return null;
+  }
 
   try {
     const payload: any = {
@@ -42,17 +49,28 @@ export async function callZabbixRPC<T = any>(method: string, params: any): Promi
       method: 'POST',
       headers,
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(5000),
     });
 
     const data: any = await response.json();
     if (data.error) {
-      console.error(`Zabbix RPC Error [${method}]:`, data.error);
+      console.warn(`[Zabbix RPC] Error [${method}]:`, data.error.message || data.error);
       return null;
     }
+    // Success: reset offline state if recovering
+    if (zabbixRpcOfflineUntil > 0) {
+      console.log(`[Zabbix RPC] Koneksi ke ${url} berhasil pulih.`);
+      zabbixRpcOfflineUntil = 0;
+    }
     return data.result as T;
-  } catch (err) {
-    console.error(`Network Error in Zabbix RPC [${method}]:`, err);
+  } catch (err: any) {
+    zabbixRpcOfflineUntil = Date.now() + 60000; // Cooldown 60 seconds
+    const now = Date.now();
+    if (now - lastRpcOfflineLogTime > 60000) {
+      lastRpcOfflineLogTime = now;
+      const errMsg = err?.cause?.code || err?.code || err?.message || 'Connection timeout';
+      console.warn(`[Zabbix RPC] Server ${url} sedang offline/unreachable (${errMsg}). Mengaktifkan cooldown 60 detik.`);
+    }
     return null;
   }
 }

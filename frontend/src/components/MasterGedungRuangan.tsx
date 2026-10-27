@@ -422,10 +422,8 @@ export const MasterGedungRuangan: React.FC<MasterGedungRuanganProps> = ({
   };
 
   return (
-    <div style={{
+    <div className="master-gedung-root" style={{
       minHeight: '100vh',
-      backgroundColor: 'var(--bg-main, #0b0f19)',
-      color: 'var(--text-main, #f3f4f6)',
       padding: '24px',
       fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     }}>
@@ -487,7 +485,7 @@ export const MasterGedungRuangan: React.FC<MasterGedungRuanganProps> = ({
       {/* =========================================================================
           HEADER BAR
           ========================================================================= */}
-      <div style={{
+      <div className="mg-header" style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -521,19 +519,19 @@ export const MasterGedungRuangan: React.FC<MasterGedungRuanganProps> = ({
               </button>
             )}
 
-            <h1 style={{ fontSize: '22px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Building2 size={26} style={{ color: '#3b82f6' }} />
+            <h1 className="mg-title" style={{ fontSize: '22px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Building2 size={26} style={{ color: '#e22329' }} />
               {viewMode === 'gedung' ? (
-                <>Master Data <span style={{ color: '#94a3b8' }}>/ Gedung</span></>
+                <>Master Data <span className="mg-subtitle" style={{ color: '#94a3b8' }}>/ Gedung</span></>
               ) : (
                 <>
-                  <span style={{ color: '#94a3b8', cursor: 'pointer' }} onClick={handleBackToGedungs}>Gedung /</span>
+                  <span className="mg-subtitle" style={{ color: '#94a3b8', cursor: 'pointer' }} onClick={handleBackToGedungs}>Gedung /</span>
                   <span>{selectedGedung?.nama}</span>
                 </>
               )}
             </h1>
           </div>
-          <p style={{ margin: '4px 0 0 0', fontSize: '13.5px', color: '#94a3b8' }}>
+          <p className="mg-desc" style={{ margin: '4px 0 0 0', fontSize: '13.5px', color: '#94a3b8' }}>
             {viewMode === 'gedung'
               ? 'Kelola master data gedung & infrastruktur fisik lokasi kampus.'
               : `Kelola daftar ruangan pada ${selectedGedung?.nama} (${selectedGedung?.kode}).`}
@@ -549,7 +547,7 @@ export const MasterGedungRuangan: React.FC<MasterGedungRuanganProps> = ({
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '8px',
-                  backgroundColor: '#2563eb',
+                  backgroundColor: '#e22329',
                   color: '#ffffff',
                   border: 'none',
                   padding: '10px 18px',
@@ -557,7 +555,7 @@ export const MasterGedungRuangan: React.FC<MasterGedungRuanganProps> = ({
                   fontWeight: 700,
                   fontSize: '13.5px',
                   cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+                  boxShadow: '0 4px 12px rgba(226, 35, 41, 0.3)',
                   transition: 'all 0.2s ease'
                 }}
               >
@@ -594,10 +592,7 @@ export const MasterGedungRuangan: React.FC<MasterGedungRuanganProps> = ({
       {/* =========================================================================
           FILTER BAR & SEARCH
           ========================================================================= */}
-      <div style={{
-        backgroundColor: 'rgba(30, 41, 59, 0.7)',
-        backdropFilter: 'blur(8px)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
+      <div className="mg-filter-bar" style={{
         borderRadius: '12px',
         padding: '16px',
         marginBottom: '20px',
@@ -616,13 +611,11 @@ export const MasterGedungRuangan: React.FC<MasterGedungRuanganProps> = ({
               placeholder={viewMode === 'gedung' ? 'Cari kode, nama, atau keterangan gedung...' : 'Cari kode, nama ruangan, atau lantai...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              className="mg-search-input"
               style={{
                 width: '100%',
-                backgroundColor: 'rgba(15, 23, 42, 0.6)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
                 borderRadius: '8px',
                 padding: '9px 12px 9px 36px',
-                color: '#f8fafc',
                 fontSize: '13px',
                 outline: 'none'
               }}
@@ -637,15 +630,13 @@ export const MasterGedungRuangan: React.FC<MasterGedungRuanganProps> = ({
             <button
               key={st}
               onClick={() => setStatusFilter(st)}
+              className={`mg-status-btn ${statusFilter === st ? 'active' : ''}`}
               style={{
                 padding: '6px 12px',
                 borderRadius: '6px',
                 fontSize: '12.5px',
                 fontWeight: 600,
                 cursor: 'pointer',
-                border: '1px solid ' + (statusFilter === st ? '#3b82f6' : 'rgba(255, 255, 255, 0.1)'),
-                backgroundColor: statusFilter === st ? 'rgba(59, 130, 246, 0.2)' : 'rgba(15, 23, 42, 0.4)',
-                color: statusFilter === st ? '#60a5fa' : '#94a3b8',
                 transition: 'all 0.15s ease'
               }}
             >
@@ -655,15 +646,13 @@ export const MasterGedungRuangan: React.FC<MasterGedungRuanganProps> = ({
 
           <button
             onClick={() => viewMode === 'gedung' ? fetchGedungs() : fetchRuangans(selectedGedung?.id)}
+            className="mg-refresh-btn"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
               padding: '7px 10px',
               borderRadius: '6px',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              color: '#cbd5e1',
               cursor: 'pointer',
               marginLeft: '6px'
             }}
@@ -678,25 +667,14 @@ export const MasterGedungRuangan: React.FC<MasterGedungRuanganProps> = ({
           VIEW MODE 1: MASTER GEDUNG TABLE
           ========================================================================= */}
       {viewMode === 'gedung' && (
-        <div style={{
-          backgroundColor: 'rgba(30, 41, 59, 0.7)',
-          backdropFilter: 'blur(8px)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
+        <div className="mg-table-card" style={{
           borderRadius: '12px',
-          overflow: 'hidden',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)'
+          overflow: 'hidden'
         }}>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13.5px' }}>
+            <table className="mg-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13.5px' }}>
               <thead>
-                <tr style={{
-                  backgroundColor: 'rgba(15, 23, 42, 0.8)',
-                  color: '#94a3b8',
-                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                  textTransform: 'uppercase',
-                  fontSize: '11.5px',
-                  letterSpacing: '0.5px'
-                }}>
+                <tr>
                   <th style={{ padding: '14px 16px', width: '50px', textAlign: 'center' }}>No</th>
                   <th style={{ padding: '14px 16px' }}>Kode Gedung</th>
                   <th style={{ padding: '14px 16px' }}>Nama Gedung</th>
@@ -846,18 +824,13 @@ export const MasterGedungRuangan: React.FC<MasterGedungRuanganProps> = ({
           VIEW MODE 2: DAFTAR RUANGAN TIAP GEDUNG
           ========================================================================= */}
       {viewMode === 'ruangan' && selectedGedung && (
-        <div style={{
-          backgroundColor: 'rgba(30, 41, 59, 0.7)',
-          backdropFilter: 'blur(8px)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
+        <div className="mg-table-card" style={{
           borderRadius: '12px',
-          overflow: 'hidden',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)'
+          overflow: 'hidden'
         }}>
           {/* Info Banner Gedung Terpilih */}
-          <div style={{
+          <div className="mg-info-banner" style={{
             padding: '16px 20px',
-            backgroundColor: 'rgba(15, 23, 42, 0.8)',
             borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
             display: 'flex',
             justifyContent: 'space-between',
@@ -866,8 +839,8 @@ export const MasterGedungRuangan: React.FC<MasterGedungRuanganProps> = ({
             gap: '10px'
           }}>
             <div>
-              <div style={{ fontSize: '15px', fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Building size={18} style={{ color: '#38bdf8' }} />
+              <div style={{ fontSize: '15px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Building size={18} style={{ color: '#e22329' }} />
                 <span>{selectedGedung.nama}</span>
                 <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 500 }}>({selectedGedung.kode})</span>
               </div>
@@ -877,21 +850,14 @@ export const MasterGedungRuangan: React.FC<MasterGedungRuanganProps> = ({
             </div>
 
             <div style={{ fontSize: '13px', color: '#cbd5e1', fontWeight: 600 }}>
-              Total: <span style={{ color: '#38bdf8', fontWeight: 700 }}>{filteredRuangans.length}</span> Ruangan
+              Total: <span style={{ color: '#e22329', fontWeight: 700 }}>{filteredRuangans.length}</span> Ruangan
             </div>
           </div>
 
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13.5px' }}>
+            <table className="mg-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13.5px' }}>
               <thead>
-                <tr style={{
-                  backgroundColor: 'rgba(15, 23, 42, 0.6)',
-                  color: '#94a3b8',
-                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                  textTransform: 'uppercase',
-                  fontSize: '11.5px',
-                  letterSpacing: '0.5px'
-                }}>
+                <tr>
                   <th style={{ padding: '14px 16px', width: '50px', textAlign: 'center' }}>No</th>
                   <th style={{ padding: '14px 16px' }}>Kode Ruangan</th>
                   <th style={{ padding: '14px 16px' }}>Nama Ruangan</th>

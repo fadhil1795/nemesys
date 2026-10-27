@@ -195,3 +195,88 @@ export interface NocPortCheckResult {
   ports: NocPortCheckItem[];
 }
 
+export interface CdataOltDevice {
+  id: number;
+  name: string;
+  ip_address: string;
+  snmp_port: number;
+  snmp_community: string;
+  snmp_version: string;
+  model: string;
+  sys_descr?: string;
+  sys_name?: string;
+  sys_uptime?: string;
+  total_pon_ports: number;
+  status: 'Online' | 'Warning' | 'Offline';
+  is_simulated: number;
+  last_sync?: string;
+}
+
+export interface CdataOltPon {
+  id: number;
+  olt_id: number;
+  slot_id: number;
+  port_id: number;
+  port_name: string;
+  status: 'Up' | 'Down';
+  temperature_c: number;
+  voltage_v: number;
+  tx_power_dbm: number;
+  rx_power_dbm: number;
+  total_onus: number;
+  online_onus: number;
+  offline_onus: number;
+  updated_at?: string;
+}
+
+export interface CdataOltOnu {
+  id: number;
+  olt_id: number;
+  slot_id: number;
+  port_id: number;
+  onu_id: number;
+  serial_number: string;
+  name?: string;
+  description?: string;
+  location?: string;
+  building_id?: string;
+  run_state: number; // 1: Online, 2: Offline
+  config_state: number;
+  rx_optical_power: number;
+  tx_optical_power: number;
+  optical_temperature: number;
+  optical_voltage: number;
+  distance_meters: number;
+  active_mac_clients: number;
+  last_up_time?: string;
+  last_down_time?: string;
+  last_down_cause?: string;
+  wan_ip?: string;
+  firmware_version?: string;
+  updated_at?: string;
+}
+
+export interface CdataOltSummary {
+  device: CdataOltDevice;
+  onus: {
+    total: number;
+    online: number;
+    offline: number;
+    optimal: number;
+    warning: number;
+    critical: number;
+    total_active_macs: number;
+    avg_rx_power: string;
+  };
+  pons: {
+    total: number;
+    up: number;
+    avg_sfp_temp: string;
+    avg_sfp_tx_power: string;
+  };
+  autofind: {
+    pending_count: number;
+  };
+}
+
+
