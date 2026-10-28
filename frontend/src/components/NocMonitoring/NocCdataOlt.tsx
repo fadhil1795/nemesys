@@ -164,7 +164,7 @@ export const NocCdataOlt: React.FC<Props> = ({ token, socket }) => {
       if (res.ok) {
         const data = await res.json();
         setMacLeases(data);
-        if (live) showToast('success', `Berhasil sinkronisasi ${data.length} klien aktif dari OLT & MikroTik!`);
+        if (live) showToast('success', `Berhasil sinkronisasi ${data.length} klien aktif dari C-DATA OLT!`);
       }
     } catch (err: any) {
       if (live) showToast('error', 'Gagal sinkronisasi data MAC leases: ' + err.message);
@@ -873,7 +873,7 @@ export const NocCdataOlt: React.FC<Props> = ({ token, socket }) => {
             className={`olt-stage-btn ${activeStage === 'onu' ? 'active' : ''}`}
           >
             <Wifi size={16} />
-            <span>2. Monitoring Sisi ONU (38 Modem &amp; Redaman)</span>
+            <span>2. Monitoring Sisi ONU ({onus.length || 39} Modem &amp; Redaman)</span>
             <span className="olt-stage-pill">{onus.length} ONUs</span>
           </button>
 
@@ -885,7 +885,7 @@ export const NocCdataOlt: React.FC<Props> = ({ token, socket }) => {
             className={`olt-stage-btn ${activeStage === 'clients' ? 'active' : ''}`}
           >
             <Users size={16} />
-            <span>3. Daftar Klien MAC &amp; DHCP Leases (MikroTik Sync)</span>
+            <span>3. Daftar DHCP Leases &amp; Klien Terhubung ({macLeases.length || 0} Leases)</span>
             <span
               className="olt-stage-pill"
               style={{
@@ -893,7 +893,7 @@ export const NocCdataOlt: React.FC<Props> = ({ token, socket }) => {
                 color: activeStage === 'clients' ? '#0f172a' : '#38bdf8'
               }}
             >
-              {macLeases.length || 64} Leases
+              {macLeases.length || 0} Leases
             </span>
           </button>
         </div>
@@ -1829,10 +1829,10 @@ export const NocCdataOlt: React.FC<Props> = ({ token, socket }) => {
                 </div>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                    Tabel Klien Terhubung, Alamat MAC, IP &amp; VLAN (MikroTik DHCP Leases)
+                    Tabel DHCP Leases, Alamat IP &amp; MAC Klien Terhubung
                   </h3>
                   <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>
-                    Mapping otomatis antara tabel MAC OLT C-DATA dengan server DHCP / ARP Router MikroTik
+                    Daftar sewa IP DHCP aktif dan alamat MAC fisik yang terpetakan ke masing-masing modem ONU
                   </p>
                 </div>
               </div>
@@ -1845,7 +1845,7 @@ export const NocCdataOlt: React.FC<Props> = ({ token, socket }) => {
                   style={{ fontSize: '0.75rem' }}
                 >
                   <RefreshCw size={14} className={syncingLeases ? 'olt-spin' : ''} />
-                  <span>{syncingLeases ? 'Menyinkronkan...' : 'Sync Live dari OLT &amp; MikroTik'}</span>
+                  <span>{syncingLeases ? 'Menyinkronkan...' : 'Sinkronkan Live'}</span>
                 </button>
                 <button
                   onClick={() => setActiveStage('onu')}
@@ -1867,9 +1867,9 @@ export const NocCdataOlt: React.FC<Props> = ({ token, socket }) => {
               </div>
             </div>
             <div className="olt-kpi-card">
-              <span className="olt-kpi-label">Status Sewa DHCP</span>
+              <span className="olt-kpi-label">Status Koneksi L2</span>
               <div className="olt-kpi-value" style={{ marginTop: '0.5rem', color: '#34d399' }}>
-                {filteredLeases.filter((l: any) => (l.lease_status || 'Bound').toLowerCase() === 'bound').length} Bound
+                {filteredLeases.filter((l: any) => (l.lease_status || '').toLowerCase().includes('aktif') || (l.lease_status || '').toLowerCase().includes('bound')).length} Aktif
               </div>
             </div>
             <div className="olt-kpi-card">
@@ -1897,7 +1897,7 @@ export const NocCdataOlt: React.FC<Props> = ({ token, socket }) => {
             <div className="olt-table-header-row">
               <h3 className="olt-table-title">
                 <Activity size={18} style={{ color: '#818cf8' }} />
-                <span>Daftar User Klien Aktif (DHCP Leases Table)</span>
+                <span>Daftar User Klien Aktif (DHCP Leases &amp; IP Address)</span>
               </h3>
 
               {/* Search Box */}
@@ -1905,7 +1905,7 @@ export const NocCdataOlt: React.FC<Props> = ({ token, socket }) => {
                 <Search className="olt-search-icon" size={15} />
                 <input
                   type="text"
-                  placeholder="Cari IP, MAC, Hostname, Nama Modem, Ruangan..."
+                  placeholder="Cari IP Address, MAC Address, Vendor / Hostname, Nama Modem..."
                   value={leasesSearch}
                   onChange={(e) => setLeasesSearch(e.target.value)}
                   className="olt-search-input"
@@ -2038,7 +2038,7 @@ export const NocCdataOlt: React.FC<Props> = ({ token, socket }) => {
                     <th>Status</th>
                     <th>IP Address (DHCP)</th>
                     <th>MAC Address</th>
-                    <th>Perangkat / Host Name</th>
+                    <th>Vendor / Hostname</th>
                     <th>VLAN ID</th>
                     <th>Modem ONU Terhubung</th>
                     <th>Tipe MAC</th>
@@ -2050,13 +2050,13 @@ export const NocCdataOlt: React.FC<Props> = ({ token, socket }) => {
                     <tr>
                       <td colSpan={9} style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
                         <RefreshCw size={24} className="olt-spin" style={{ color: '#818cf8', margin: '0 auto 0.5rem' }} />
-                        <div>Memuat data tabel MAC dan DHCP Leases...</div>
+                        <div>Memuat data tabel DHCP Leases...</div>
                       </td>
                     </tr>
                   ) : filteredLeases.length === 0 ? (
                     <tr>
                       <td colSpan={9} style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-                        Tidak ada perangkat klien yang sesuai kriteria filter.
+                        Belum ada alamat IP &amp; MAC perangkat klien yang terdeteksi di tabel DHCP Leases.
                       </td>
                     </tr>
                   ) : (
@@ -2066,13 +2066,13 @@ export const NocCdataOlt: React.FC<Props> = ({ token, socket }) => {
                           {idx + 1}
                         </td>
                         <td>
-                          <span className={`olt-badge ${lease.lease_status === 'Bound' ? 'optimal' : 'warning'}`} style={{ gap: '0.35rem', padding: '0.2rem 0.5rem' }}>
-                            <span className={`olt-led-dot ${lease.lease_status === 'Bound' ? 'green' : 'amber'}`} />
+                          <span className="olt-badge optimal" style={{ gap: '0.35rem', padding: '0.2rem 0.5rem' }}>
+                            <span className="olt-led-dot green" />
                             {lease.lease_status || 'Bound'}
                           </span>
                         </td>
                         {/* IP Address */}
-                        <td style={{ fontFamily: 'monospace', fontWeight: 700 }}>
+                        <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                             <span style={{ color: lease.ip_address && lease.ip_address !== '-' ? '#38bdf8' : '#64748b' }}>
                               {lease.ip_address && lease.ip_address !== '-' ? lease.ip_address : '—'}
@@ -2282,11 +2282,11 @@ export const NocCdataOlt: React.FC<Props> = ({ token, socket }) => {
                   <thead>
                     <tr>
                       <th>Status</th>
-                      <th>IP Address (DHCP)</th>
+                      <th>IP Address</th>
                       <th>MAC Address</th>
-                      <th>Perangkat / Host Name</th>
+                      <th>Vendor / Hostname</th>
                       <th>VLAN</th>
-                      <th>Tipe MAC</th>
+                      <th>Tipe</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2300,24 +2300,8 @@ export const NocCdataOlt: React.FC<Props> = ({ token, socket }) => {
                             </span>
                           </div>
                         </td>
-                        <td style={{ fontFamily: 'monospace', fontWeight: 700 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                            <span style={{ color: '#38bdf8' }}>{client.ip_address || '—'}</span>
-                            {client.ip_address && (
-                              <button
-                                onClick={() => copyToClipboard(client.ip_address, 'ip')}
-                                className="olt-action-btn"
-                                style={{ padding: '0.15rem' }}
-                                title="Salin IP Address"
-                              >
-                                {copiedIp === client.ip_address ? (
-                                  <Check size={12} style={{ color: '#34d399' }} />
-                                ) : (
-                                  <Copy size={12} />
-                                )}
-                              </button>
-                            )}
-                          </div>
+                        <td style={{ fontFamily: 'monospace', fontWeight: 600, color: client.ip_address && client.ip_address !== '-' ? '#38bdf8' : '#64748b' }}>
+                          {client.ip_address && client.ip_address !== '-' ? client.ip_address : '—'}
                         </td>
                         <td style={{ fontFamily: 'monospace' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>

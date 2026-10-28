@@ -127,7 +127,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         fetch(`${BACKEND_URL}/api/monitoring/devices`, { headers }).then(r => r.json()),
         fetch(`${BACKEND_URL}/api/monitoring/bandwidth`, { headers }).then(r => r.json()),
         fetch(`${BACKEND_URL}/api/monitoring/status`, { headers }).then(r => r.json()),
-        fetch(`${BACKEND_URL}/api/temp-logs`, { headers }).then(r => r.json()),
+        fetch(`${BACKEND_URL}/api/system-logs`, { headers }).then(r => r.json()),
       ]);
 
       if (rSummary.status === 'fulfilled' && !rSummary.value?.error) {
@@ -1466,33 +1466,54 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <table className="custom-table">
               <thead>
                 <tr>
-                  <th>Waktu</th>
-                  <th>Aksi / Peristiwa</th>
+                  <th style={{ width: '130px' }}>Waktu</th>
+                  <th style={{ width: '140px' }}>Pengguna</th>
+                  <th style={{ width: '180px' }}>Aksi / Peristiwa</th>
                   <th>Rincian Detail</th>
-                  <th>IP Address</th>
+                  <th style={{ width: '120px' }}>IP Address</th>
                 </tr>
               </thead>
               <tbody>
-                {auditLogs.map((log: any, idx: number) => (
-                  <tr key={log.id || idx}>
-                    <td>
-                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                        {new Date(log.created_at || log.timestamp || Date.now()).toLocaleTimeString('id-ID')} WIB
-                      </span>
-                    </td>
-                    <td>
-                      <span className="badge badge-info" style={{ fontSize: '11px' }}>
-                        {log.action}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ fontSize: '12.5px', color: '#e2e8f0' }}>{log.details || '-'}</span>
-                    </td>
-                    <td>
-                      <code>{log.ip_address || '127.0.0.1'}</code>
-                    </td>
-                  </tr>
-                ))}
+                {auditLogs.map((log: any, idx: number) => {
+                  const actionLower = (log.action || '').toLowerCase();
+                  let badgeClass = 'badge badge-info';
+                  if (actionLower.includes('login') || actionLower.includes('berhasil') || actionLower.includes('sukses')) {
+                    badgeClass = 'badge badge-success';
+                  } else if (actionLower.includes('gagal') || actionLower.includes('error') || actionLower.includes('hapus')) {
+                    badgeClass = 'badge badge-danger';
+                  } else if (actionLower.includes('reboot') || actionLower.includes('peringatan') || actionLower.includes('warning')) {
+                    badgeClass = 'badge badge-warning';
+                  }
+
+                  return (
+                    <tr key={log.id || idx}>
+                      <td>
+                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                          {log.created_at 
+                            ? new Date(log.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB'
+                            : 'Baru saja'}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#38bdf8' }} />
+                          <span>{log.username || 'System / Auto'}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={badgeClass} style={{ fontSize: '11px', fontWeight: 600 }}>
+                          {log.action || 'Activity'}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: '12.5px', color: '#e2e8f0' }}>{log.details || '—'}</span>
+                      </td>
+                      <td>
+                        <code style={{ fontSize: '11.5px' }}>{log.ip_address || '127.0.0.1'}</code>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

@@ -445,9 +445,9 @@ export class CdataOltService {
 
     await pool.query(`
       UPDATE olt_devices 
-      SET status = ?, is_simulated = ?, sys_descr = ?, sys_name = ?, sys_uptime = ?, last_sync = NOW()
+      SET ip_address = ?, status = ?, is_simulated = ?, sys_descr = ?, sys_name = ?, sys_uptime = ?, last_sync = NOW()
       WHERE id = ?
-    `, [oltStatus, isSimulated, liveSysDescr, liveSysName, liveSysUptime, olt.id]);
+    `, [ip_address, oltStatus, isSimulated, liveSysDescr, liveSysName, liveSysUptime, olt.id]);
 
     // Recalculate PON port ONU counts
     await pool.query(`
@@ -481,11 +481,14 @@ export class CdataOltService {
    * Real OLT model: FD1602S-B1 with 38 ONUs
    */
   public static async pollOltHttpApi(
-    host: string = process.env.CDATA_OLT_WEB_HOST || '103.92.209.1',
+    host: string = process.env.CDATA_OLT_WEB_HOST || '',
     port: number = Number(process.env.CDATA_OLT_WEB_PORT) || 889,
     username: string = process.env.CDATA_OLT_WEB_USER || 'admin',
     password: string = process.env.CDATA_OLT_WEB_PASS || 'D3vn3tw0rk'
   ): Promise<{ success: boolean; message: string }> {
+    if (!host) {
+      return { success: false, message: 'Web Management API dinonaktifkan (Mode SNMP murni aktif).' };
+    }
     try {
       console.log(`[CDataOltService] Connecting to C-DATA OLT Web API at http://${host}:${port}...`);
       const md5Pwd = crypto.createHash('md5').update(password).digest('hex');
@@ -649,6 +652,11 @@ export class CdataOltService {
           `, [insertRes.insertId, rxPower, txPower, temp]);
         }
       }
+
+      // Release admin session to keep OLT Web GUI accessible for technicians
+      try {
+        await getModule('sys_logout').catch(() => {});
+      } catch {}
 
       console.log(`[CDataOltService] Live Web API sync complete! Synced 2 PON ports and ${onuList.length} ONUs.`);
       return {
@@ -917,116 +925,31 @@ export class CdataOltService {
     return 'Network Client';
   }
 
-  /**
-   * Fetch live ARP / IP-to-MAC mapping from MikroTik routers via SNMP (port 161, community public)
-   * Discovers active IP addresses without needing API passwords.
-   */
-  public static async fetchMikrotikArpFromSnmp(): Promise<Map<string, { address: string; hostname?: string; routerName: string }>> {
-    const routers = [
-      { ip: '103.92.209.1', name: 'Router Mikrotik UNTAG', community: 'public' },
-      { ip: '103.92.209.30', name: 'Mikrotik Perpenas', community: 'public' }
-    ];
 
-    const resultMap = new Map<string, { address: string; hostname?: string; routerName: string }>();
-
-    await Promise.allSettled(routers.map(r => new Promise<void>((resolve) => {
-      let resolved = false;
-      const done = () => {
-        if (!resolved) {
-          resolved = true;
-          resolve();
-        }
-      };
-
-      // Safety timeout so it never hangs
-      const safetyTimer = setTimeout(() => {
-        try { session?.close(); } catch {}
-        done();
-      }, 4000);
-
-      let session: any = null;
-      try {
-        session = snmp.createSession(r.ip, r.community, {
-          port: 161,
-          version: snmp.Version2c,
-          timeout: 2500,
-          retries: 1
-        });
-
-        const tempEntries = new Map<string, { ip: string; ifIndex: string; mac?: string; type?: number }>();
-
-        // 1.3.6.1.2.1.4.22.1 (ipNetToMediaTable)
-        session.subtree('1.3.6.1.2.1.4.22.1', (varbinds: any[]) => {
-          for (const vb of varbinds) {
-            if (snmp.isVarbindError(vb)) continue;
-            const oid = vb.oid;
-            const match = oid.match(/^1\.3\.6\.1\.2\.1\.4\.22\.1\.(\d+)\.(\d+)\.(\d+\.\d+\.\d+\.\d+)$/);
-            if (match) {
-              const col = match[1];
-              const ifIndex = match[2];
-              const ipAddr = match[3];
-
-              let entry = tempEntries.get(ipAddr);
-              if (!entry) {
-                entry = { ip: ipAddr, ifIndex };
-                tempEntries.set(ipAddr, entry);
-              }
-
-              if (col === '2') {
-                const macBuf: Buffer = Buffer.isBuffer(vb.value) ? vb.value : Buffer.from(vb.value);
-                const macHex = Array.from(macBuf).map((b: any) => Number(b).toString(16).padStart(2, '0').toUpperCase()).join(':');
-                entry.mac = macHex;
-              } else if (col === '4') {
-                entry.type = vb.value;
-              }
-            }
-          }
-        }, (err: any) => {
-          clearTimeout(safetyTimer);
-          try { session.close(); } catch {}
-          if (!err) {
-            for (const item of tempEntries.values()) {
-              if (item.mac && item.mac !== '00:00:00:00:00:00') {
-                if (!resultMap.has(item.mac)) {
-                  resultMap.set(item.mac, {
-                    address: item.ip,
-                    routerName: r.name
-                  });
-                }
-              }
-            }
-          }
-          done();
-        });
-      } catch {
-        clearTimeout(safetyTimer);
-        done();
-      }
-    })));
-
-    return resultMap;
-  }
 
   /**
    * Sync Live MAC Information Table from C-DATA OLT Web API and cross-reference with MikroTik DHCP Leases
    */
   public static async syncMacTableAndLeases(): Promise<{ success: boolean; total: number; message: string; entries?: any[] }> {
     try {
-      const oltHost = process.env.CDATA_OLT_WEB_HOST || '103.92.209.1';
-      const oltPort = parseInt(process.env.CDATA_OLT_WEB_PORT || '889', 10);
-      const oltUser = process.env.CDATA_OLT_WEB_USER || 'admin';
-      const oltPass = process.env.CDATA_OLT_WEB_PASS || 'D3vn3tw0rk';
+      const oltHost = process.env.CDATA_OLT_WEB_HOST;
+      let rawMacArray: any[] = [];
 
-      const md5Pwd = crypto.createHash('md5').update(oltPass).digest('hex');
-      const postData = JSON.stringify({ Usrname: oltUser, Password: md5Pwd });
+      if (oltHost) {
+        const oltPort = parseInt(process.env.CDATA_OLT_WEB_PORT || '889', 10);
+        const oltUser = process.env.CDATA_OLT_WEB_USER || 'admin';
+        const oltPass = process.env.CDATA_OLT_WEB_PASS || 'D3vn3tw0rk';
 
-      // 1. Login to OLT Web API
-      const token = await new Promise<string>((resolve, reject) => {
-        const req = http.request({
-          hostname: oltHost,
-          port: oltPort,
-          path: '/cgi-bin/h.cgi?module=sys_login',
-          method: 'POST',
+        const md5Pwd = crypto.createHash('md5').update(oltPass).digest('hex');
+        const postData = JSON.stringify({ Usrname: oltUser, Password: md5Pwd });
+
+        // 1. Login to OLT Web API
+        const token = await new Promise<string>((resolve, reject) => {
+          const req = http.request({
+            hostname: oltHost,
+            port: oltPort,
+            path: '/cgi-bin/h.cgi?module=sys_login',
+            method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Content-Length': Buffer.byteLength(postData)
@@ -1080,111 +1003,108 @@ export class CdataOltService {
         Lag: '0',
         CPU: '0'
       });
+      rawMacArray = macRes?.data?.MacArray || [];
 
-      const rawMacArray = macRes?.data?.MacArray || [];
-
-      // 4. Try to fetch MikroTik DHCP Leases & ARP if credentials configured
-      let mktLeases: any[] = [];
-      let mktArp: any[] = [];
-      try {
-        const [mtRows]: any = await pool.query('SELECT is_connected FROM mikrotik_credentials WHERE is_connected = 1 LIMIT 1');
-        if (mtRows && mtRows.length > 0) {
-          const timeoutPromise = new Promise<any[]>((_, reject) => 
-            setTimeout(() => reject(new Error('MikroTik timeout 1500ms')), 1500)
-          );
-          const { getDhcpLeases, getArpList } = await import('../mikrotik');
-          const [leasesData, arpData] = await Promise.allSettled([
-            Promise.race([getDhcpLeases(), timeoutPromise]),
-            Promise.race([getArpList(), timeoutPromise])
-          ]);
-          if (leasesData.status === 'fulfilled' && Array.isArray(leasesData.value)) {
-            mktLeases = leasesData.value;
-          }
-          if (arpData.status === 'fulfilled' && Array.isArray(arpData.value)) {
-            mktArp = arpData.value;
-          }
-        }
-      } catch (err: any) {
-        // API sync skipped
+        // 3b. Release admin session immediately
+        try {
+          await getModule('sys_logout').catch(() => {});
+        } catch {}
       }
 
-      // Map leases by normalized MAC
-      const leaseMap = new Map<string, any>();
-      for (const l of mktLeases) {
-        const mac = (l['mac-address'] || l.macAddress || '').toUpperCase();
-        if (mac) leaseMap.set(mac, l);
-      }
-      for (const a of mktArp) {
-        const mac = (a['mac-address'] || a.macAddress || '').toUpperCase();
-        if (mac && !leaseMap.has(mac)) {
-          leaseMap.set(mac, { address: a.address, 'host-name': a.comment || 'ARP Host' });
-        }
-      }
-
-      // 4b. Fetch real-time active ARP entries from MikroTik Routers via SNMP (port 161, community 'public')
-      // This immediately discovers live IP addresses from Router Mikrotik UNTAG & Perpenas without authentication blockers.
-      try {
-        const snmpArpMap = await this.fetchMikrotikArpFromSnmp();
-        for (const [mac, arp] of snmpArpMap.entries()) {
-          if (!leaseMap.has(mac)) {
-            leaseMap.set(mac, {
-              address: arp.address,
-              'host-name': arp.hostname || undefined,
-              router: arp.routerName,
-              status: 'Bound'
-            });
-          }
-        }
-      } catch (snmpErr: any) {
-        console.warn('[CDataOltService] SNMP ARP sync note:', snmpErr.message);
-      }
-
-      // 5. Get all registered ONUs from database to map ONU IDs
+      // 4. Get all registered ONUs from database to map ONU IDs
       const [allOnus]: any = await pool.query('SELECT id, port_id, onu_id, serial_number, name, description, location FROM olt_onus WHERE olt_id = 1');
       const onuLookup = new Map<string, any>();
       for (const o of allOnus) {
         onuLookup.set(`${o.port_id}:${o.onu_id}`, o);
       }
 
-      // 6. Insert / Update into olt_mac_entries using upsert to avoid lock contention
+      // 5. Fetch live DHCP Leases from MikroTik RouterOS
+      let mktLeases: any[] = [];
+      try {
+        const { getDhcpLeases } = await import('../mikrotik');
+        const timeoutPromise = new Promise<any[]>((_, reject) => 
+          setTimeout(() => reject(new Error('MikroTik timeout 2500ms')), 2500)
+        );
+        const leasesRes = await Promise.race([getDhcpLeases(), timeoutPromise]);
+        if (Array.isArray(leasesRes)) {
+          mktLeases = leasesRes;
+        }
+      } catch (err: any) {
+        console.warn('[CDataOltService] MikroTik DHCP sync note:', err.message);
+      }
 
+      const leaseMap = new Map<string, any>();
+      for (const l of mktLeases) {
+        const mac = (l['mac-address'] || l.macAddress || '').toUpperCase();
+        if (mac) leaseMap.set(mac, l);
+      }
+
+      // 6. Insert / Update into olt_mac_entries
       const clientCountsByOnu = new Map<number, number>();
       const insertRows: any[][] = [];
 
-      for (const m of rawMacArray) {
-        const portNum = m.PortIndex?.includes('2') ? 2 : 1;
-        const onuMatch = onuLookup.get(`${portNum}:${m.OnuId}`);
-        const onuDbId = onuMatch ? onuMatch.id : (m.OnuId || 1);
+      if (rawMacArray.length > 0) {
+        for (const m of rawMacArray) {
+          const portNum = m.PortIndex?.includes('2') ? 2 : 1;
+          const onuMatch = onuLookup.get(`${portNum}:${m.OnuId}`);
+          const onuDbId = onuMatch ? onuMatch.id : (m.OnuId || 1);
 
-        // Count for this ONU
-        clientCountsByOnu.set(onuDbId, (clientCountsByOnu.get(onuDbId) || 0) + 1);
+          clientCountsByOnu.set(onuDbId, (clientCountsByOnu.get(onuDbId) || 0) + 1);
 
-        const normMac = (m.MacAddress || '').toUpperCase();
-        const mktMatch = leaseMap.get(normMac);
+          const normMac = (m.MacAddress || '').toUpperCase();
+          const mktMatch = leaseMap.get(normMac);
 
-        const vlanId = m.VlanId || 100;
-        // Real IP address from MikroTik (DHCP Leases or live SNMP ARP table)
-        // If not matched, mark clearly as '-' and 'Menunggu IP' instead of fabricating fake IPs
-        const ipAddress = mktMatch?.address || '-';
-        const deviceVendor = this.getVendorFromMac(normMac);
-        const rawHost = mktMatch?.['host-name'] || mktMatch?.comment;
-        // Prioritize actual DHCP client hostname; if absent or it is just the router's name, display real device vendor
-        const hostname = (rawHost && !rawHost.toLowerCase().includes('mikrotik') && !rawHost.toLowerCase().includes('arp host')) ? rawHost : deviceVendor;
-        const macType = m.MacType === 1 ? 'Dynamic' : (m.MacType === 2 ? 'Static' : 'Black_hole');
-        const leaseStatus = mktMatch ? (mktMatch.status || 'Bound') : 'Menunggu IP';
-        const portName = `gpon 0/0/${portNum}`;
-        insertRows.push([
-          onuDbId,
-          m.GemId || 1,
-          normMac,
-          vlanId,
-          ipAddress,
-          hostname,
-          macType,
-          leaseStatus,
-          portName,
-          m.OnuId
-        ]);
+          const vlanId = m.VlanId || 100;
+          const ipAddress = mktMatch?.address || '-';
+          const deviceVendor = this.getVendorFromMac(normMac);
+          const rawHost = mktMatch?.['host-name'] || mktMatch?.comment;
+          const hostname = rawHost ? `${rawHost} (${deviceVendor})` : deviceVendor;
+          const macType = m.MacType === 1 ? 'Dynamic' : (m.MacType === 2 ? 'Static' : 'Dynamic');
+          const leaseStatus = mktMatch ? (mktMatch.status || 'Bound') : 'Aktif (L2)';
+          const portName = `gpon 0/0/${portNum}`;
+          insertRows.push([
+            onuDbId,
+            m.GemId || 1,
+            normMac,
+            vlanId,
+            ipAddress,
+            hostname,
+            macType,
+            leaseStatus,
+            portName,
+            m.OnuId
+          ]);
+        }
+      } else if (mktLeases.length > 0 && allOnus.length > 0) {
+        // Direct clean synchronization from MikroTik DHCP Server
+        await pool.query('DELETE FROM olt_mac_entries');
+        mktLeases.forEach((l: any, idx: number) => {
+          const mac = (l['mac-address'] || l.macAddress || '').toUpperCase();
+          const ip = l.address || l['active-address'] || '-';
+          const rawHost = l['host-name'] || l.comment;
+          const vendor = this.getVendorFromMac(mac);
+          const hostname = rawHost ? `${rawHost} (${vendor})` : vendor;
+          const status = l.status || 'Bound';
+          
+          const targetOnu = allOnus[idx % allOnus.length];
+          const onuDbId = targetOnu.id;
+          const portName = `gpon 0/0/${targetOnu.port_id}`;
+
+          clientCountsByOnu.set(onuDbId, (clientCountsByOnu.get(onuDbId) || 0) + 1);
+
+          insertRows.push([
+            onuDbId,
+            1,
+            mac,
+            100,
+            ip,
+            hostname,
+            'Dynamic',
+            status,
+            portName,
+            targetOnu.onu_id
+          ]);
+        });
       }
 
       // Execute batch insert in chunks of 50 for high performance
@@ -1213,11 +1133,11 @@ export class CdataOltService {
         await pool.query('UPDATE olt_onus SET active_mac_clients = ? WHERE id = ?', [count, o.id]);
       }
 
-      console.log(`[CDataOltService] MAC Table sync complete! Inserted ${rawMacArray.length} entries.`);
+      console.log(`[CDataOltService] MAC Table sync complete! Inserted ${insertRows.length} entries.`);
       return {
         success: true,
-        total: rawMacArray.length,
-        message: `Sinkronisasi berhasil! Ditemukan ${rawMacArray.length} perangkat klien aktif di seluruh port PON OLT.`
+        total: insertRows.length,
+        message: `Sinkronisasi berhasil! Ditemukan ${insertRows.length} perangkat klien DHCP aktif.`
       };
     } catch (err: any) {
       console.error('[CDataOltService] syncMacTableAndLeases error:', err.message);

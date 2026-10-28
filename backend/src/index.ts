@@ -2280,6 +2280,20 @@ app.post('/webhook/generic', async (req, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+app.get('/api/system-logs', async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT s.*, u.username 
+      FROM system_logs s 
+      LEFT JOIN users u ON s.user_id = u.id 
+      ORDER BY s.id DESC LIMIT 200
+    `);
+    res.json(rows);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.use('/api', crudRouter);
 
 // ----------------------------------------------------
@@ -2307,20 +2321,6 @@ if (!IS_VERCEL) {
         io.emit('mikrotik_telemetry_stream', { timestamp: Date.now() });
       }
     }, 5000);
-
-    app.get('/api/system-logs', requireAuth, async (req, res) => {
-      try {
-        const [rows] = await pool.query(`
-          SELECT s.*, u.username 
-          FROM system_logs s 
-          LEFT JOIN users u ON s.user_id = u.id 
-          ORDER BY s.id DESC LIMIT 200
-        `);
-        res.json(rows);
-      } catch (e: any) {
-        res.status(500).json({ error: e.message });
-      }
-    });
 
     httpServer!.listen(PORT, () => {
       console.log(`🚀 Server NEMESYS running on port ${PORT}`);
