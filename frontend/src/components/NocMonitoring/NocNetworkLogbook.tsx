@@ -7,28 +7,19 @@ import {
   Printer,
   FileSpreadsheet,
   Search,
-  Filter,
   RefreshCw,
   Camera,
-  Image as ImageIcon,
   Trash2,
   AlertTriangle,
   CheckCircle2,
   X,
-  Maximize2,
-  Calendar,
   Layers,
   Wrench,
-  ShieldAlert,
   Server,
   Wifi,
-  ExternalLink,
-  ChevronRight,
-  ChevronLeft,
   Info,
   Sliders,
   Check,
-  FileText,
   UploadCloud,
   ArrowLeft
 } from 'lucide-react';
@@ -1511,6 +1502,26 @@ export const NocNetworkLogbook: React.FC<Props> = ({ token }) => {
   // =========================================================================
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%' }}>
+      {/* Error Banner */}
+      {errorMsg && (
+        <div
+          style={{
+            background: 'rgba(239, 68, 68, 0.15)',
+            border: '1px solid rgba(239, 68, 68, 0.4)',
+            borderRadius: '10px',
+            padding: '0.85rem 1.25rem',
+            color: '#fca5a5',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            fontSize: '0.875rem'
+          }}
+        >
+          <AlertTriangle size={18} style={{ color: '#ef4444', flexShrink: 0 }} />
+          <span>{errorMsg}</span>
+        </div>
+      )}
+
       {/* 1. TOP STATS CARDS */}
       <div
         style={{
