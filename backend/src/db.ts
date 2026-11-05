@@ -1510,6 +1510,70 @@ export async function initializeDatabase() {
       console.error('Error creating C-DATA OLT tables:', oltErr);
     }
 
+    try {
+      // 1. Unified Change Logbook table (MikroTik, OLT, ONU, Switch, etc.)
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS network_change_logs (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          device_type ENUM('mikrotik', 'olt', 'onu', 'switch', 'other') DEFAULT 'mikrotik',
+          category VARCHAR(60) NOT NULL,
+          target_name VARCHAR(150) NOT NULL,
+          action_title VARCHAR(255) NOT NULL,
+          details TEXT NULL,
+          before_state TEXT NULL,
+          after_state TEXT NULL,
+          impact_level ENUM('low', 'medium', 'high', 'critical') DEFAULT 'low',
+          pic_name VARCHAR(100) NOT NULL,
+          execution_start DATETIME NULL,
+          execution_end DATETIME NULL,
+          duration_minutes INT DEFAULT 0,
+          documentation_images LONGTEXT NULL,
+          mission_id INT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_device_type (device_type),
+          INDEX idx_category (category),
+          INDEX idx_created_at (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      // 2. Network Maintenance Windows table (Scheduled downtime & alarm suppression)
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS network_maintenance_windows (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          device_type VARCHAR(50) DEFAULT 'all',
+          target_id VARCHAR(100) NULL,
+          target_name VARCHAR(150) NOT NULL,
+          reason TEXT NOT NULL,
+          scheduled_start DATETIME NOT NULL,
+          scheduled_end DATETIME NOT NULL,
+          actual_end DATETIME NULL,
+          is_active TINYINT(1) DEFAULT 1,
+          silence_alarms TINYINT(1) DEFAULT 1,
+          created_by VARCHAR(100) NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_active_schedule (is_active, scheduled_start, scheduled_end)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      // Seed initial change logs if empty
+      const [existingLogs]: any = await pool.query('SELECT COUNT(*) as cnt FROM network_change_logs');
+      if (existingLogs[0].cnt === 0) {
+        await pool.query(`
+          INSERT INTO network_change_logs 
+          (device_type, category, target_name, action_title, details, before_state, after_state, impact_level, pic_name, execution_start, execution_end, duration_minutes, documentation_images)
+          VALUES 
+          ('mikrotik', 'Queue / Bandwidth', 'Simple Queue: Dosen_Lab_Komputer', 'Upgrade Alokasi Bandwidth Sidang Skripsi', 'Menaikkan limit download/upload saat pelaksanaan ujian komprehensif mahasiswa dari 20Mbps ke 50Mbps.', 'Max-limit: 20M/20M, burst: none', 'Max-limit: 50M/50M, burst: 70M/70M 10s', 'low', 'Budi Santoso (NOC)', NOW() - INTERVAL 180 MINUTE, NOW() - INTERVAL 155 MINUTE, 25, '[]'),
+          ('olt', 'Splicing / Kabel Optik', 'ODC Gedung C - Core 4', 'Re-splicing Pigtail Core 4 Akibat Bending', 'Peredaman sebelumnya drop ke -29.4 dBm karena kabel terjepit rack. Dilakukan pemotongan dan splicing ulang fusion splicer.', 'RX Power: -29.4 dBm (High Loss Warning)', 'RX Power: -18.2 dBm (Optimal Normal)', 'medium', 'Fadhil Pratama (FTTH Tech)', NOW() - INTERVAL 120 MINUTE, NOW() - INTERVAL 75 MINUTE, 45, '[]'),
+          ('mikrotik', 'Firewall / NAT', 'Filter Rules: SSH & Winbox Brute Force', 'Penambahan Rule Drop Port Scan & Blacklist Auto', 'Mencegah flooding percobaan login SSH dan Winbox dari subnet publik ke address list blacklist.', 'Hanya default firewall tanpa rule tarpit/blacklist dinamis', 'Chain input: src-address-list=blacklist action=drop + ps-auto-detect', 'low', 'Rian Hidayat (NetSec)', NOW() - INTERVAL 60 MINUTE, NOW() - INTERVAL 42 MINUTE, 18, '[]'),
+          ('onu', 'Ganti Modem / ONU', 'ONU-02 Lab Elektro (CDAT991032F1)', 'Penggantian Unit Modem Rusak Kena Petir', 'Modem lama lampu LOS merah terus dan port LAN 1 mati. Diganti unit baru FD511G-X dan re-bind MAC di OLT.', 'ONU Status: Offline / LOS (Dead Hardware)', 'ONU Status: Online, RX -19.8 dBm, 1 Gbps Full-Duplex', 'high', 'Ahmad Dani (Teknisi Lapangan)', NOW() - INTERVAL 40 MINUTE, NOW() - INTERVAL 10 MINUTE, 30, '[]')
+        `);
+        console.log('Seeded initial Network Change Logs successfully.');
+      }
+    } catch (logErr) {
+      console.error('Error creating Network Change Log tables:', logErr);
+    }
+
     console.log('Database tables verified/created successfully');
 
   } catch (error) {

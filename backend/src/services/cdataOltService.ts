@@ -112,6 +112,10 @@ export interface OltOnuRecord {
 }
 
 export class CdataOltService {
+  private static summaryCache: { at: number; data: any } | null = null;
+  private static ponsCache: { at: number; data: OltPonRecord[] } | null = null;
+  private static onusCache: { at: number; key: string; data: OltOnuRecord[] } | null = null;
+
   /**
    * Helper to perform an SNMP subtree walk with Promise wrapper
    */
@@ -364,7 +368,8 @@ export class CdataOltService {
 
           const sn = snVb?.value?.toString().trim() || `CDAT${portId}0${onuId}`;
           const desc = descVb?.value?.toString().trim() || `ONU-PON${portId}-${onuId}`;
-          const distance = parseInt(distVb?.value?.toString() || '400', 10);
+          const rawDist = distVb?.value ? parseInt(distVb.value.toString(), 10) : 0;
+          const distance = rawDist > 0 ? rawDist : 0;
           const rxPower = this.parseFloatSafe(rxVb?.value, -21.0);
           const txPower = this.parseFloatSafe(txVb?.value, 2.1);
           const optTemp = this.parseFloatSafe(tempVb?.value, 40.0);
@@ -381,7 +386,7 @@ export class CdataOltService {
               rx_optical_power = VALUES(rx_optical_power),
               tx_optical_power = VALUES(tx_optical_power),
               optical_temperature = VALUES(optical_temperature),
-              distance_meters = VALUES(distance_meters),
+              distance_meters = IF(VALUES(distance_meters) > 0, VALUES(distance_meters), distance_meters),
               active_mac_clients = VALUES(active_mac_clients),
               updated_at = NOW()
           `, [olt.id, slotId, portId, onuId, sn, desc, desc, runState, rxPower, txPower, optTemp, distance, activeClients]);
@@ -676,6 +681,9 @@ export class CdataOltService {
    * Get High-Level Dashboard KPI Summary
    */
   public static async getSummary() {
+    if (this.summaryCache && Date.now() - this.summaryCache.at < 3000) {
+      return this.summaryCache.data;
+    }
     const olt = await this.getOltDevice();
     if (!olt) return null;
 
@@ -688,7 +696,10 @@ export class CdataOltService {
         SUM(CASE WHEN run_state = 1 AND (rx_optical_power < -27.00 OR rx_optical_power > -8.00) THEN 1 ELSE 0 END) as critical_optical_count,
         SUM(CASE WHEN run_state = 1 AND rx_optical_power BETWEEN -24.00 AND -15.00 THEN 1 ELSE 0 END) as optimal_optical_count,
         SUM(active_mac_clients) as total_active_macs,
-        AVG(CASE WHEN run_state = 1 THEN rx_optical_power ELSE NULL END) as avg_rx_power
+        AVG(CASE WHEN run_state = 1 THEN rx_optical_power ELSE NULL END) as avg_rx_power,
+        AVG(CASE WHEN run_state = 1 AND distance_meters > 0 THEN distance_meters ELSE NULL END) as avg_distance_meters,
+        MAX(CASE WHEN run_state = 1 THEN distance_meters ELSE 0 END) as max_distance_meters,
+        MIN(CASE WHEN run_state = 1 AND distance_meters > 0 THEN distance_meters ELSE NULL END) as min_distance_meters
       FROM olt_onus
       WHERE olt_id = ?
     `, [olt.id]);
@@ -709,7 +720,7 @@ export class CdataOltService {
       WHERE olt_id = ? AND status = 'Pending'
     `, [olt.id]);
 
-    return {
+    const resultSummary = {
       device: olt,
       onus: {
         total: onuCounts[0]?.total_onus || 0,
@@ -719,7 +730,10 @@ export class CdataOltService {
         warning: onuCounts[0]?.warning_optical_count || 0,
         critical: onuCounts[0]?.critical_optical_count || 0,
         total_active_macs: onuCounts[0]?.total_active_macs || 0,
-        avg_rx_power: parseFloat(onuCounts[0]?.avg_rx_power || '-21.50').toFixed(2)
+        avg_rx_power: parseFloat(onuCounts[0]?.avg_rx_power || '-21.50').toFixed(2),
+        avg_distance_meters: Math.round(Number(onuCounts[0]?.avg_distance_meters) || 0),
+        max_distance_meters: Number(onuCounts[0]?.max_distance_meters) || 0,
+        min_distance_meters: Number(onuCounts[0]?.min_distance_meters) || 0
       },
       pons: {
         total: ponCounts[0]?.total_pons || 8,
@@ -731,12 +745,17 @@ export class CdataOltService {
         pending_count: autofindCounts[0]?.pending_autofind || 0
       }
     };
+    this.summaryCache = { at: Date.now(), data: resultSummary };
+    return resultSummary;
   }
 
   /**
    * Get all PON ports with optical DDM SFP metrics
    */
   public static async getPons(oltId?: number): Promise<OltPonRecord[]> {
+    if (!oltId && this.ponsCache && Date.now() - this.ponsCache.at < 3000) {
+      return this.ponsCache.data;
+    }
     const olt = oltId ? { id: oltId } : await this.getOltDevice();
     if (!olt) return [];
 
@@ -746,7 +765,11 @@ export class CdataOltService {
       ORDER BY port_id ASC
     `, [olt.id]);
 
-    return rows as OltPonRecord[];
+    const resultPons = rows as OltPonRecord[];
+    if (!oltId) {
+      this.ponsCache = { at: Date.now(), data: resultPons };
+    }
+    return resultPons;
   }
 
   /**
@@ -757,6 +780,10 @@ export class CdataOltService {
     status?: 'all' | 'online' | 'offline' | 'warning' | 'critical';
     search?: string;
   }): Promise<OltOnuRecord[]> {
+    const cacheKey = `${filters.port_id || ''}-${filters.status || ''}-${filters.search || ''}`;
+    if (this.onusCache && this.onusCache.key === cacheKey && Date.now() - this.onusCache.at < 3000) {
+      return this.onusCache.data;
+    }
     const olt = await this.getOltDevice();
     if (!olt) return [];
 
@@ -789,7 +816,9 @@ export class CdataOltService {
     query += ' ORDER BY port_id ASC, onu_id ASC';
 
     const [rows]: any = await pool.query(query, params);
-    return rows as OltOnuRecord[];
+    const resultOnus = rows as OltOnuRecord[];
+    this.onusCache = { at: Date.now(), key: cacheKey, data: resultOnus };
+    return resultOnus;
   }
 
   /**
@@ -925,7 +954,41 @@ export class CdataOltService {
     return 'Network Client';
   }
 
+  /**
+   * Resolve accurate IEEE 802.1Q VLAN ID based on client IP address and network subnet
+   * Direct mapping for campus network topology:
+   * 192.168.X.y -> VLAN X (e.g. 192.168.31.x -> VLAN 31, 192.168.30.x -> VLAN 30, 192.168.17.x -> VLAN 17, 192.168.23.x -> VLAN 23, 192.168.159.x -> VLAN 159)
+   * 172.168.X.y -> VLAN X (e.g. 172.168.30.x -> VLAN 30, 172.168.42.x -> VLAN 42, 172.168.43.x -> VLAN 43, 172.168.101.x -> VLAN 101, 172.168.164.x -> VLAN 164, 172.168.36.x -> VLAN 36, 172.168.144.x -> VLAN 144, 172.168.99.x -> VLAN 99, 172.168.147.x -> VLAN 147, 172.168.96.x -> VLAN 96, 172.168.145.x -> VLAN 145, 172.168.146.x -> VLAN 146, 172.168.98.x -> VLAN 98)
+   * 172.16.X.y  -> VLAN X (e.g. 172.16.92.x -> VLAN 92 Bakeu, 172.16.35.x -> VLAN 35, 172.16.47.x -> VLAN 47 Aula, 172.16.45.x -> VLAN 45 FOH)
+   */
+  public static resolveVlanFromIp(ip: string): number {
+    if (!ip || ip === '-' || !ip.includes('.')) return 100;
+    const parts = ip.trim().split('.').map(Number);
+    if (parts.length < 4 || parts.some(isNaN)) return 100;
 
+    // Subnet 192.168.X.y -> VLAN X
+    if (parts[0] === 192 && parts[1] === 168) {
+      if (parts[2] > 0 && parts[2] <= 4094) {
+        return parts[2];
+      }
+    }
+
+    // Subnet 172.168.X.y -> VLAN X
+    if (parts[0] === 172 && parts[1] === 168) {
+      if (parts[2] > 0 && parts[2] <= 4094) {
+        return parts[2];
+      }
+    }
+
+    // Subnet 172.16.X.y -> VLAN X
+    if (parts[0] === 172 && parts[1] === 16) {
+      if (parts[2] > 0 && parts[2] <= 4094) {
+        return parts[2];
+      }
+    }
+
+    return 100;
+  }
 
   /**
    * Sync Live MAC Information Table from C-DATA OLT Web API and cross-reference with MikroTik DHCP Leases
@@ -936,79 +999,91 @@ export class CdataOltService {
       let rawMacArray: any[] = [];
 
       if (oltHost) {
-        const oltPort = parseInt(process.env.CDATA_OLT_WEB_PORT || '889', 10);
-        const oltUser = process.env.CDATA_OLT_WEB_USER || 'admin';
-        const oltPass = process.env.CDATA_OLT_WEB_PASS || 'D3vn3tw0rk';
-
-        const md5Pwd = crypto.createHash('md5').update(oltPass).digest('hex');
-        const postData = JSON.stringify({ Usrname: oltUser, Password: md5Pwd });
-
-        // 1. Login to OLT Web API
-        const token = await new Promise<string>((resolve, reject) => {
-          const req = http.request({
-            hostname: oltHost,
-            port: oltPort,
-            path: '/cgi-bin/h.cgi?module=sys_login',
-            method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Content-Length': Buffer.byteLength(postData)
-          }
-        }, (res) => {
-          let b = '';
-          res.on('data', (d) => b += d);
-          res.on('end', () => {
-            try {
-              const j = JSON.parse(b);
-              if (j.data?.token) resolve(j.data.token);
-              else reject(new Error('Login failed: ' + b));
-            } catch (e: any) {
-              reject(e);
-            }
-          });
-        });
-        req.on('error', reject);
-        req.write(postData);
-        req.end();
-      });
-
-      const getModule = (mod: string, params: Record<string, string> = {}) => new Promise<any>((resolve) => {
-        let url = `/cgi-bin/h.cgi?module=${mod}`;
-        if (Object.keys(params).length > 0) {
-          url += '&' + new URLSearchParams(params).toString();
-        }
-        http.get({
-          hostname: oltHost,
-          port: oltPort,
-          path: url,
-          headers: { 'Cookie': `token=${token}`, 'token': token }
-        }, (r) => {
-          let b = '';
-          r.on('data', (d) => b += d);
-          r.on('end', () => {
-            try { resolve(JSON.parse(b)); } catch (e) { resolve(null); }
-          });
-        }).on('error', () => resolve(null));
-      });
-
-      // 2. Get GPON port indexes
-      const portInfo = await getModule('sys_port_info');
-      const portIndexes = portInfo?.data?.gpon?.map((p: any) => p.Index).join(',') || '1310721,1310722';
-
-      // 3. Fetch MAC table from OLT
-      const macRes = await getModule('mac_address_get', {
-        PageNumber: '1',
-        PageSize: '500',
-        PortIndex: portIndexes,
-        Lag: '0',
-        CPU: '0'
-      });
-      rawMacArray = macRes?.data?.MacArray || [];
-
-        // 3b. Release admin session immediately
         try {
-          await getModule('sys_logout').catch(() => {});
-        } catch {}
+          const oltPort = parseInt(process.env.CDATA_OLT_WEB_PORT || '889', 10);
+          const oltUser = process.env.CDATA_OLT_WEB_USER || 'admin';
+          const oltPass = process.env.CDATA_OLT_WEB_PASS || 'D3vn3tw0rk';
+
+          const md5Pwd = crypto.createHash('md5').update(oltPass).digest('hex');
+          const postData = JSON.stringify({ Usrname: oltUser, Password: md5Pwd });
+
+          // 1. Login to OLT Web API with timeout
+          const token = await new Promise<string>((resolve, reject) => {
+            const req = http.request({
+              hostname: oltHost,
+              port: oltPort,
+              path: '/cgi-bin/h.cgi?module=sys_login',
+              method: 'POST',
+              timeout: 1500,
+              headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(postData)
+              }
+            }, (res) => {
+              let b = '';
+              res.on('data', (d) => b += d);
+              res.on('end', () => {
+                try {
+                  const j = JSON.parse(b);
+                  if (j.data?.token) resolve(j.data.token);
+                  else reject(new Error('Login failed: ' + b));
+                } catch (e: any) {
+                  reject(e);
+                }
+              });
+            });
+            req.on('timeout', () => {
+              req.destroy();
+              reject(new Error('OLT Web connection timeout'));
+            });
+            req.on('error', reject);
+            req.write(postData);
+            req.end();
+          });
+
+          const getModule = (mod: string, params: Record<string, string> = {}) => new Promise<any>((resolve) => {
+            let url = `/cgi-bin/h.cgi?module=${mod}`;
+            if (Object.keys(params).length > 0) {
+              url += '&' + new URLSearchParams(params).toString();
+            }
+            const req = http.get({
+              hostname: oltHost,
+              port: oltPort,
+              path: url,
+              timeout: 1500,
+              headers: { 'Cookie': `token=${token}`, 'token': token }
+            }, (r) => {
+              let b = '';
+              r.on('data', (d) => b += d);
+              r.on('end', () => {
+                try { resolve(JSON.parse(b)); } catch (e) { resolve(null); }
+              });
+            });
+            req.on('timeout', () => { req.destroy(); resolve(null); });
+            req.on('error', () => resolve(null));
+          });
+
+          // 2. Get GPON port indexes
+          const portInfo = await getModule('sys_port_info');
+          const portIndexes = portInfo?.data?.gpon?.map((p: any) => p.Index).join(',') || '1310721,1310722';
+
+          // 3. Fetch MAC table from OLT
+          const macRes = await getModule('mac_address_get', {
+            PageNumber: '1',
+            PageSize: '500',
+            PortIndex: portIndexes,
+            Lag: '0',
+            CPU: '0'
+          });
+          rawMacArray = macRes?.data?.MacArray || [];
+
+          // 3b. Release admin session immediately
+          try {
+            await getModule('sys_logout').catch(() => {});
+          } catch {}
+        } catch (oltErr: any) {
+          console.warn('[CDataOltService] OLT Web API bypass (using network telemetry):', oltErr.message);
+        }
       }
 
       // 4. Get all registered ONUs from database to map ONU IDs
@@ -1054,8 +1129,8 @@ export class CdataOltService {
           const normMac = (m.MacAddress || '').toUpperCase();
           const mktMatch = leaseMap.get(normMac);
 
-          const vlanId = m.VlanId || 100;
           const ipAddress = mktMatch?.address || '-';
+          const vlanId = m.VlanId || this.resolveVlanFromIp(ipAddress);
           const deviceVendor = this.getVendorFromMac(normMac);
           const rawHost = mktMatch?.['host-name'] || mktMatch?.comment;
           const hostname = rawHost ? `${rawHost} (${deviceVendor})` : deviceVendor;
@@ -1076,17 +1151,47 @@ export class CdataOltService {
           ]);
         }
       } else if (mktLeases.length > 0 && allOnus.length > 0) {
-        // Direct clean synchronization from MikroTik DHCP Server
+        // Direct clean synchronization with dynamic VLAN and ONU correlation
         await pool.query('DELETE FROM olt_mac_entries');
         mktLeases.forEach((l: any, idx: number) => {
           const mac = (l['mac-address'] || l.macAddress || '').toUpperCase();
           const ip = l.address || l['active-address'] || '-';
-          const rawHost = l['host-name'] || l.comment;
+          const rawHost = l['host-name'] || l.comment || '';
           const vendor = this.getVendorFromMac(mac);
           const hostname = rawHost ? `${rawHost} (${vendor})` : vendor;
           const status = l.status || 'Bound';
-          
-          const targetOnu = allOnus[idx % allOnus.length];
+          const vlanId = this.resolveVlanFromIp(ip);
+
+          // Intelligent ONU correlation by department name / location / VLAN tag
+          const hostLower = rawHost.toLowerCase();
+          let matchedOnu = allOnus.find((o: any) => {
+            const oName = (o.name || '').toLowerCase();
+            if (hostLower.includes('perpenas') && oName.includes('perpenas')) return true;
+            if (hostLower.includes('hukum') && oName.includes('hukum')) return true;
+            if (hostLower.includes('pertanian') && oName.includes('pertanian')) return true;
+            if (hostLower.includes('teknik') && oName.includes('teknik')) return true;
+            if (hostLower.includes('bakeu') && oName.includes('bakeu')) return true;
+            if (hostLower.includes('foh') && oName.includes('foh')) return true;
+            if (hostLower.includes('spi') && oName.includes('spi')) return true;
+            if (hostLower.includes('fkip') && oName.includes('fkip')) return true;
+            if (hostLower.includes('fisip') && oName.includes('fisip')) return true;
+            if (hostLower.includes('ekonomi') && oName.includes('ekonomi')) return true;
+            if (hostLower.includes('sarpras') && oName.includes('sarpras')) return true;
+            if ((hostLower.includes('upt') || hostLower.includes('lab')) && oName.includes('lab')) return true;
+            if (hostLower.includes('pppm') && oName.includes('pppm')) return true;
+            if (hostLower.includes('mplb') && oName.includes('mplb')) return true;
+            return false;
+          });
+
+          // VLAN-level fallback mapping to relevant ONU department
+          if (!matchedOnu) {
+            if (vlanId === 31) matchedOnu = allOnus.find((o: any) => o.name?.toLowerCase().includes('perpenas'));
+            else if (vlanId === 92) matchedOnu = allOnus.find((o: any) => o.name?.toLowerCase().includes('bakeu'));
+            else if (vlanId === 45) matchedOnu = allOnus.find((o: any) => o.name?.toLowerCase().includes('foh'));
+            else if (vlanId === 30) matchedOnu = allOnus.find((o: any) => o.name?.toLowerCase().includes('hukum') || o.name?.toLowerCase().includes('mplb'));
+          }
+
+          const targetOnu = matchedOnu || allOnus[idx % allOnus.length];
           const onuDbId = targetOnu.id;
           const portName = `gpon 0/0/${targetOnu.port_id}`;
 
@@ -1096,7 +1201,7 @@ export class CdataOltService {
             onuDbId,
             1,
             mac,
-            100,
+            vlanId,
             ip,
             hostname,
             'Dynamic',
@@ -1119,6 +1224,7 @@ export class CdataOltService {
             (onu_id, eth_port_id, mac_address, vlan_id, ip_address, hostname, mac_type, lease_status, port_name, onu_number, last_seen)
             VALUES ${placeholders}
             ON DUPLICATE KEY UPDATE
+              vlan_id = VALUES(vlan_id),
               ip_address = VALUES(ip_address),
               hostname = VALUES(hostname),
               lease_status = VALUES(lease_status),
@@ -1238,6 +1344,26 @@ export class CdataOltService {
 
     const [rows]: any = await pool.query(query, params);
     return rows;
+  }
+
+  /**
+   * Update or calibrate physical fiber cable distance (meters) for an ONU
+   */
+  public static async updateOnuDistance(onuId: number, distanceMeters: number): Promise<{ success: boolean; message: string }> {
+    const onu = await this.getOnuById(onuId);
+    if (!onu) return { success: false, message: 'Modem ONU tidak ditemukan.' };
+
+    const distance = Math.max(0, distanceMeters);
+    await pool.query('UPDATE olt_onus SET distance_meters = ?, updated_at = NOW() WHERE id = ?', [distance, onuId]);
+
+    // Clear caches so UI updates immediately
+    this.onusCache = null;
+    this.summaryCache = null;
+
+    return {
+      success: true,
+      message: `Jarak bentangan kabel fiber untuk ${onu.name || onu.serial_number} berhasil diperbarui menjadi ${distance} meter.`
+    };
   }
 
   /**

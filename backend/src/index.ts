@@ -57,6 +57,7 @@ import uploadRouter from './routes/upload';
 import { uploadBase64Image } from './services/storageService';
 import { gedungRuanganRouter } from './routes/gedungRuangan';
 import { cdataOltRouter } from './routes/cdataOlt';
+import networkLogsRouter from './routes/networkLogs';
 
 // Static file serving for physical uploads (with CORS)
 const uploadsDirectory = path.join(__dirname, '../uploads');
@@ -77,6 +78,7 @@ app.use('/api/monitoring', nocMonitoringRouter);
 app.use('/api/notifications', requireAuth, notificationRouter);
 app.use('/api/mikrotik-dashboard', mikrotikDashboardRouter);
 app.use('/api/upload', uploadRouter);
+app.use('/api/network-logs', networkLogsRouter);
 app.use('/api', gedungRuanganRouter);
 
 // Broadcast database change helper (no-op on Vercel)

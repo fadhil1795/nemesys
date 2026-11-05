@@ -673,6 +673,10 @@ export function classifyZabbixDevice(
 
 export class NocZabbixService {
   private static liveConnCache: { at: number; res: { connected: boolean; version?: string; authenticated?: boolean; hostCount?: number; error?: string } } | null = null;
+  private static devicesCache: { at: number; data: NocDeviceItem[] } | null = null;
+  private static problemsCache: { at: number; data: NocProblemItem[] } | null = null;
+  private static bandwidthCache: { at: number; data: NocBandwidthSummary } | null = null;
+  private static kpiCache: { at: number; data: any } | null = null;
 
   // Check if live Zabbix server is configured & reachable (cached 15s)
   static async isLiveZabbixConnected(): Promise<{ connected: boolean; version?: string; authenticated?: boolean; hostCount?: number; error?: string }> {
@@ -752,6 +756,9 @@ export class NocZabbixService {
 
   // Get all categorized devices with live metrics
   static async getDevices(): Promise<NocDeviceItem[]> {
+    if (this.devicesCache && Date.now() - this.devicesCache.at < 5000) {
+      return this.devicesCache.data;
+    }
     const liveCheck = await this.isLiveZabbixConnected();
     if (!liveCheck.connected) {
       return generateMockDevices();
@@ -787,7 +794,7 @@ export class NocZabbixService {
         }
       }
 
-      return zHosts.map((zh) => {
+      const result: NocDeviceItem[] = zHosts.map((zh) => {
         const groups = zh.hostgroups || zh.groups || [];
         const tags = zh.tags || [];
         const items = itemsByHost.get(zh.hostid) || [];
@@ -930,6 +937,8 @@ export class NocZabbixService {
           lastSeen: 'Live Zabbix',
         };
       });
+      this.devicesCache = { at: Date.now(), data: result };
+      return result;
     } catch (err) {
       return [];
     }
@@ -937,6 +946,9 @@ export class NocZabbixService {
 
   // Get active problems from Zabbix
   static async getActiveProblems(): Promise<NocProblemItem[]> {
+    if (this.problemsCache && Date.now() - this.problemsCache.at < 5000) {
+      return this.problemsCache.data;
+    }
     const liveCheck = await this.isLiveZabbixConnected();
     if (!liveCheck.connected) {
       return [];
@@ -989,7 +1001,7 @@ export class NocZabbixService {
         0: 'Info',
       };
 
-      return zProblems.map((p) => {
+      const result: NocProblemItem[] = zProblems.map((p) => {
         const severityNum = (Number(p.severity) || 2) as 1 | 2 | 3 | 4 | 5;
         const ageSec = Math.max(0, now - Number(p.clock));
         const hours = Math.floor(ageSec / 3600);
@@ -1015,6 +1027,8 @@ export class NocZabbixService {
           deviceCategory: hostInfo?.category || 'mikrotik',
         };
       });
+      this.problemsCache = { at: Date.now(), data: result };
+      return result;
     } catch (err) {
       return [];
     }
@@ -1285,6 +1299,9 @@ export class NocZabbixService {
 
   // Get Bandwidth Summary & Time-Series
   static async getBandwidthSummary(): Promise<NocBandwidthSummary> {
+    if (this.bandwidthCache && Date.now() - this.bandwidthCache.at < 5000) {
+      return this.bandwidthCache.data;
+    }
     try {
       const liveItems = await callZabbixRPC<any[]>('item.get', {
         output: ['itemid', 'name', 'lastvalue', 'units', 'key_'],
@@ -1351,7 +1368,7 @@ export class NocZabbixService {
         const p95Idx = Math.floor(sortedIn.length * 0.95);
         const p95Mbps = sortedIn[p95Idx] || (liveInMbps * 0.95);
 
-        return {
+        const resSummary: NocBandwidthSummary = {
           totalInboundBps: totalIn,
           totalOutboundBps: totalOut,
           capacityBps,
@@ -1363,6 +1380,8 @@ export class NocZabbixService {
           topInterfaces: top5.length > 0 ? top5 : [],
           history24h,
         };
+        this.bandwidthCache = { at: Date.now(), data: resSummary };
+        return resSummary;
       }
     } catch (e) {}
 
@@ -1778,6 +1797,9 @@ export class NocZabbixService {
 
   // Aggregated KPI Summary for Header Cards
   static async getSummaryKPI() {
+    if (this.kpiCache && Date.now() - this.kpiCache.at < 5000) {
+      return this.kpiCache.data;
+    }
     const devices = await this.getDevices();
     const problems = await this.getActiveProblems();
     const bandwidth = await this.getBandwidthSummary();
@@ -1825,7 +1847,7 @@ export class NocZabbixService {
       dhcpSource = 'offline';
     }
 
-    return {
+    const resultKpi = {
       totalBandwidthGbps: Number((bandwidth.totalInboundBps / 1_000_000_000).toFixed(2)),
       overallUptimePercent: overallUptime,
       totalDevices: totalDevCount,
@@ -1880,6 +1902,8 @@ export class NocZabbixService {
         unackedCount: problems.filter((p) => !p.acknowledged).length,
       },
     };
+    this.kpiCache = { at: Date.now(), data: resultKpi };
+    return resultKpi;
   }
 
   // Live Streaming Telemetry & History for a specific interface / VLAN / PPPoE tunnel

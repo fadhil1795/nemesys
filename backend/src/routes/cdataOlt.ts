@@ -68,6 +68,25 @@ cdataOltRouter.get('/onus/:id', async (req: Request, res: Response) => {
   }
 });
 
+// PUT /api/monitoring/cdata-olt/onus/:id/distance - Update physical cable distance
+cdataOltRouter.put('/onus/:id/distance', async (req: Request, res: Response) => {
+  try {
+    const onuId = parseInt(req.params.id, 10);
+    const { distance_meters } = req.body;
+    if (distance_meters === undefined || isNaN(Number(distance_meters))) {
+      return res.status(400).json({ error: 'Field distance_meters harus berupa angka valid' });
+    }
+    const result = await CdataOltService.updateOnuDistance(onuId, parseInt(distance_meters, 10));
+    const io = req.app.get('socketio');
+    if (io && result.success) {
+      io.emit('olt_telemetry_updated', { timestamp: new Date().toISOString() });
+    }
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Gagal memperbarui jarak ONU: ' + err.message });
+  }
+});
+
 // GET /api/monitoring/cdata-olt/onus/:id/history - Optical History
 cdataOltRouter.get('/onus/:id/history', async (req: Request, res: Response) => {
   try {

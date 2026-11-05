@@ -26,7 +26,9 @@ import {
   Zap,
   Info,
   Eye,
-  ArrowUpRight
+  ArrowUpRight,
+  Edit3,
+  BookOpen
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -43,6 +45,7 @@ import { Line } from 'react-chartjs-2';
 import { io } from 'socket.io-client';
 import { BACKEND_URL } from '../../App';
 import type { CdataOltSummary, CdataOltPon, CdataOltOnu } from '../../types/noc';
+import { NocNetworkLogbook } from './NocNetworkLogbook';
 import './NocCdataOlt.css';
 
 ChartJS.register(
@@ -76,8 +79,8 @@ export const NocCdataOlt: React.FC<Props> = ({ token, socket }) => {
   const [lastRealtimeUpdate, setLastRealtimeUpdate] = useState<string | null>(null);
   const [realtimeFlash, setRealtimeFlash] = useState<boolean>(false);
 
-  // Stage View: 'olt' = Monitor OLT Chassis & SFP Dulu, 'onu' = Monitor ONU Pelanggan, 'clients' = Daftar Klien MAC & DHCP Leases
-  const [activeStage, setActiveStage] = useState<'olt' | 'onu' | 'clients'>('olt');
+  // Stage View: 'olt' = Monitor OLT Chassis & SFP Dulu, 'onu' = Monitor ONU Pelanggan, 'clients' = Daftar Klien MAC & DHCP Leases, 'logbook' = Logbook Perubahan & Maintenance
+  const [activeStage, setActiveStage] = useState<'olt' | 'onu' | 'clients' | 'logbook'>('olt');
 
   // MAC Leases Stage State
   const [macLeases, setMacLeases] = useState<any[]>([]);
@@ -130,6 +133,45 @@ export const NocCdataOlt: React.FC<Props> = ({ token, socket }) => {
   const [autofindList, setAutofindList] = useState<any[]>([]);
   const [registeringItem, setRegisteringItem] = useState<any | null>(null);
   const [registerForm, setRegisterForm] = useState({ name: '', description: '', location: '', building_id: '1' });
+
+  // Distance Calibration Modal State
+  const [distanceModalOpen, setDistanceModalOpen] = useState<boolean>(false);
+  const [selectedOnuForDistance, setSelectedOnuForDistance] = useState<CdataOltOnu | null>(null);
+  const [calibratedDistance, setCalibratedDistance] = useState<number>(0);
+  const [savingDistance, setSavingDistance] = useState<boolean>(false);
+
+  const handleOpenDistanceModal = (onu: CdataOltOnu) => {
+    setSelectedOnuForDistance(onu);
+    setCalibratedDistance(onu.distance_meters || 0);
+    setDistanceModalOpen(true);
+  };
+
+  const handleSaveDistance = async () => {
+    if (!selectedOnuForDistance) return;
+    setSavingDistance(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/monitoring/cdata-olt/onus/${selectedOnuForDistance.id}/distance`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ distance_meters: calibratedDistance })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast('success', data.message || 'Jarak bentangan kabel berhasil dikalibrasi!');
+        setDistanceModalOpen(false);
+        fetchData(true);
+      } else {
+        showToast('error', data.error || 'Gagal menyimpan kalibrasi jarak');
+      }
+    } catch (err: any) {
+      showToast('error', 'Gagal menghubungi server: ' + err.message);
+    } finally {
+      setSavingDistance(false);
+    }
+  };
 
   const [toastMsg, setToastMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
@@ -224,9 +266,6 @@ export const NocCdataOlt: React.FC<Props> = ({ token, socket }) => {
 
   useEffect(() => {
     fetchData();
-    if (macLeases.length === 0) {
-      fetchMacLeases(false);
-    }
 
     // Initialize real-time WebSocket connection
     let activeSocket = socket;
@@ -885,7 +924,7 @@ export const NocCdataOlt: React.FC<Props> = ({ token, socket }) => {
             className={`olt-stage-btn ${activeStage === 'clients' ? 'active' : ''}`}
           >
             <Users size={16} />
-            <span>3. Daftar DHCP Leases &amp; Klien Terhubung ({macLeases.length || 0} Leases)</span>
+            <span>3. Daftar DHCP Leases &amp; Klien ({macLeases.length || 0} Leases)</span>
             <span
               className="olt-stage-pill"
               style={{
@@ -896,11 +935,31 @@ export const NocCdataOlt: React.FC<Props> = ({ token, socket }) => {
               {macLeases.length || 0} Leases
             </span>
           </button>
+
+          <button
+            onClick={() => setActiveStage('logbook')}
+            className={`olt-stage-btn ${activeStage === 'logbook' ? 'active' : ''}`}
+            style={{
+              borderColor: activeStage === 'logbook' ? '#38bdf8' : undefined
+            }}
+          >
+            <BookOpen size={16} />
+            <span>4. Buku Logbook &amp; Maintenance (MikroTik + OLT + Fiber)</span>
+            <span
+              className="olt-stage-pill"
+              style={{
+                background: activeStage === 'logbook' ? '#38bdf8' : 'rgba(56, 189, 248, 0.2)',
+                color: activeStage === 'logbook' ? '#0f172a' : '#38bdf8'
+              }}
+            >
+              📘 NOC Log
+            </span>
+          </button>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: '#94a3b8', paddingRight: '0.5rem' }}>
           <Info size={14} style={{ color: '#818cf8' }} />
-          <span>Alur: Cek OLT &rarr; Cek Modem ONU &rarr; Cek User Klien IP/MAC</span>
+          <span>Alur: OLT &rarr; ONU &rarr; DHCP Leases &rarr; Buku Logbook NOC</span>
         </div>
       </div>
 
@@ -1621,9 +1680,68 @@ export const NocCdataOlt: React.FC<Props> = ({ token, socket }) => {
                               </div>
                             </td>
 
-                            {/* Distance */}
-                            <td style={{ fontFamily: 'monospace', color: '#cbd5e1' }}>
-                              {Number(onu.run_state) === 1 && onu.distance_meters ? `${onu.distance_meters} m` : '—'}
+                            {/* Distance (Bentangan Kabel Fiber) */}
+                            <td>
+                              {Number(onu.run_state) === 1 && Number(onu.distance_meters) > 0 ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    <span style={{
+                                      fontFamily: 'monospace',
+                                      fontWeight: 700,
+                                      fontSize: '0.85rem',
+                                      color: onu.distance_meters <= 50 ? '#38bdf8' : (onu.distance_meters <= 150 ? '#34d399' : '#fbbf24')
+                                    }}>
+                                      {onu.distance_meters} m
+                                    </span>
+                                    <button
+                                      onClick={() => handleOpenDistanceModal(onu)}
+                                      className="olt-action-btn"
+                                      style={{ padding: '0.15rem 0.35rem', fontSize: '0.65rem' }}
+                                      title="Kalibrasi Jarak OTDR"
+                                    >
+                                      <Edit3 size={11} />
+                                    </button>
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                    <span
+                                      className="olt-badge"
+                                      style={{
+                                        fontSize: '0.6rem',
+                                        padding: '0.1rem 0.35rem',
+                                        background: onu.distance_meters <= 50
+                                          ? 'rgba(56, 189, 248, 0.12)'
+                                          : (onu.distance_meters <= 150 ? 'rgba(52, 211, 153, 0.12)' : 'rgba(251, 191, 36, 0.12)'),
+                                        color: onu.distance_meters <= 50
+                                          ? '#38bdf8'
+                                          : (onu.distance_meters <= 150 ? '#34d399' : '#fbbf24')
+                                      }}
+                                    >
+                                      {onu.distance_meters <= 50 ? 'Drop Gedung' : (onu.distance_meters <= 150 ? 'Distribusi' : 'Backbone')}
+                                    </span>
+                                    {onu.rx_optical_power && (
+                                      <span style={{ fontSize: '0.62rem', color: '#94a3b8', fontFamily: 'monospace' }}>
+                                        Loss: {Math.abs(4.5 - parseFloat(String(onu.rx_optical_power))).toFixed(1)} dB
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                  <span style={{ color: '#64748b', fontSize: '0.75rem', fontStyle: 'italic' }}>
+                                    {Number(onu.run_state) === 1 ? 'Belum terukur' : 'Offline'}
+                                  </span>
+                                  {Number(onu.run_state) === 1 && (
+                                    <button
+                                      onClick={() => handleOpenDistanceModal(onu)}
+                                      className="olt-action-btn"
+                                      style={{ padding: '0.15rem 0.35rem', fontSize: '0.65rem' }}
+                                      title="Set Jarak Manual"
+                                    >
+                                      <Edit3 size={11} />
+                                    </button>
+                                  )}
+                                </div>
+                              )}
                             </td>
 
                             {/* Active Connected Clients (MAC count & Inline Toggle) */}
@@ -2170,6 +2288,13 @@ export const NocCdataOlt: React.FC<Props> = ({ token, socket }) => {
         </div>
       )}
 
+      {/* ========================================================================= */}
+      {/* LEVEL 4: BUKU LOGBOOK & PEMELIHARAAN (MIKROTIK + OLT + ONU + FIBER)       */}
+      {/* ========================================================================= */}
+      {activeStage === 'logbook' && (
+        <NocNetworkLogbook token={token} />
+      )}
+
       {/* Optical Power History Modal */}
       {historyModalOpen && selectedOnuForHistory && (
         <div className="olt-modal-overlay">
@@ -2572,6 +2697,94 @@ export const NocCdataOlt: React.FC<Props> = ({ token, socket }) => {
                   style={{ width: '100%', justifyContent: 'center' }}
                 >
                   Simpan &amp; Terapkan Konfigurasi
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Distance Calibration Modal */}
+      {distanceModalOpen && selectedOnuForDistance && (
+        <div className="olt-modal-overlay">
+          <div className="olt-modal-content" style={{ maxWidth: '440px' }}>
+            <div className="olt-modal-header">
+              <div className="olt-modal-title">
+                <Cable size={18} style={{ color: '#38bdf8' }} />
+                <span>Kalibrasi Jarak Bentangan Kabel Fiber</span>
+              </div>
+              <button onClick={() => setDistanceModalOpen(false)} className="olt-modal-close-btn">
+                <XCircle size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={(e) => { e.preventDefault(); handleSaveDistance(); }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>
+                  {selectedOnuForDistance.name || selectedOnuForDistance.serial_number}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.2rem' }}>
+                  PON {selectedOnuForDistance.port_id}:{selectedOnuForDistance.onu_id} &bull; SN: {selectedOnuForDistance.serial_number}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#cbd5e1', marginTop: '0.35rem' }}>
+                  Redaman Rx Saat Ini: <strong style={{ color: '#34d399' }}>{selectedOnuForDistance.rx_optical_power} dBm</strong>
+                </div>
+              </div>
+
+              <div className="olt-form-group">
+                <label className="olt-form-label">
+                  Jarak Fisik Kabel Fiber (Meter) - OTDR / As-Built Drawing
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="number"
+                    min="0"
+                    max="40000"
+                    required
+                    value={calibratedDistance}
+                    onChange={(e) => setCalibratedDistance(parseInt(e.target.value, 10) || 0)}
+                    className="olt-form-input"
+                    style={{ fontFamily: 'monospace', fontSize: '1rem', fontWeight: 600 }}
+                  />
+                  <span style={{ color: '#94a3b8', fontSize: '0.9rem', fontWeight: 600 }}>Meter</span>
+                </div>
+                <span style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '0.25rem' }}>
+                  Masukkan jarak fisik bentangan kabel optik dari OLT ke modem ONU ini.
+                </span>
+              </div>
+
+              {/* Quick preset buttons */}
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.7rem', color: '#94a3b8', alignSelf: 'center' }}>Preset:</span>
+                {[10, 25, 50, 75, 100, 125, 150, 200].map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setCalibratedDistance(d)}
+                    className="olt-filter-btn"
+                    style={{ fontSize: '0.65rem', padding: '0.2rem 0.45rem' }}
+                  >
+                    {d}m
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setDistanceModalOpen(false)}
+                  className="olt-btn olt-btn-default"
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingDistance}
+                  className="olt-btn olt-btn-primary"
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
+                  {savingDistance ? 'Menyimpan...' : 'Simpan Jarak'}
                 </button>
               </div>
             </form>
