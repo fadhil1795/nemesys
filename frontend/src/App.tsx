@@ -57,6 +57,7 @@ import { Activity } from 'lucide-react';
 import { NocDashboard } from './components/NocMonitoring/NocDashboard';
 import { NocCdataOlt } from './components/NocMonitoring/NocCdataOlt';
 import { NocNetworkLogbook } from './components/NocMonitoring/NocNetworkLogbook';
+import { NocNtopng } from './components/NocMonitoring/NocNtopng';
 import { SlaReportManager } from './components/SlaReportManager';
 import { MikrotikDashboard } from './components/MikrotikDashboard';
 import { UserProfile } from './components/UserProfile';
@@ -445,6 +446,12 @@ export default function App() {
             <NocNetworkLogbook token={token || ''} />
           </div>
         );
+      case 'ntopng':
+        return (
+          <div className="p-4 w-full">
+            <NocNtopng token={token || ''} />
+          </div>
+        );
       case 'mikrotik-noc':
         return <MikrotikDashboard token={token || ''} socket={socket} />;
       case 'sla-report':
@@ -525,6 +532,10 @@ export default function App() {
           <a className={`menu-item ${currentMenu === 'mikrotik-noc' ? 'active' : ''}`} onClick={() => setCurrentMenu('mikrotik-noc')} title="MikroTik RouterOS">
             <RouterIcon size={17} /> <span className="menu-item-text">MikroTik RouterOS</span>
             <span className="menu-item-badge badge-sky">ROUTEROS</span>
+          </a>
+          <a className={`menu-item ${currentMenu === 'ntopng' ? 'active' : ''}`} onClick={() => setCurrentMenu('ntopng')} title="Traffic Flow & DPI Analyzer (ntopng)">
+            <Activity size={17} className="text-emerald-400" /> <span className="menu-item-text">Traffic Flow (ntopng)</span>
+            <span className="menu-item-badge badge-emerald">DPI 3050</span>
           </a>
           <a className={`menu-item ${currentMenu === 'network-logbook' ? 'active' : ''}`} onClick={() => setCurrentMenu('network-logbook')} title="Buku Logbook Perubahan & Maintenance">
             <BookOpen size={17} /> <span className="menu-item-text">Logbook Perubahan</span>

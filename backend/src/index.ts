@@ -81,6 +81,16 @@ app.use('/api/upload', uploadRouter);
 app.use('/api/network-logs', networkLogsRouter);
 app.use('/api', gedungRuanganRouter);
 
+// ntopng Configuration Endpoint
+app.get('/api/ntopng/config', (_req, res) => {
+  res.json({
+    success: true,
+    publicUrl: process.env.NTOPNG_URL || 'http://103.92.209.107:3050',
+    localUrl: process.env.NTOPNG_LOCAL_URL || 'http://192.168.1.2:3050',
+    port: 3050
+  });
+});
+
 // Broadcast database change helper (no-op on Vercel)
 async function broadcastUpdate() {
   if (io) {

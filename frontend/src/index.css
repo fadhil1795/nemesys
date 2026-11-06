@@ -366,6 +366,12 @@ html, body {
   border: 1px solid rgba(99, 102, 241, 0.35);
 }
 
+.badge-emerald {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
 /* Main Content Container */
 .main-content {
   flex: 1;
